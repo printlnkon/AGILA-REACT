@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-
 import Navbar from '@/features/Index/components/Navbar';
 import Hero from '@/features/Index/components/Hero';
 import About from '@/features/Index/components/About';
