@@ -18,7 +18,7 @@
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/yourusername/AGILA-REACT.git
+   https://github.com/printlnkon/AGILA-REACT.git
    cd AGILA-REACT
    ```
 
