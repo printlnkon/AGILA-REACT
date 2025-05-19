@@ -1,4 +1,5 @@
 import person1 from '@/assets/images/person-1.jpg';
+import { MonitorSmartphone, Database, UserPlus} from 'lucide-react';
 
 const About = () => {
   return (
@@ -13,21 +14,22 @@ const About = () => {
           </p>
         </div>
         
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-10">
-          <div className="lg:w-1/2" data-aos="fade-down" data-aos-delay="50">
+        {/* Center everything with max-widths */}
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-16">
+          <div className="w-full lg:w-2/5 max-w-md" data-aos="fade-down" data-aos-delay="50">
             <img src={person1} alt="About AGILA" className="rounded-md shadow-lg w-full" />
           </div>
           
-          <div className="lg:w-5/12" data-aos="fade-down" data-aos-delay="150">
-            <h1 className="text-3xl font-bold mb-3">About AGILA</h1>
+          <div className="w-full lg:w-2/5 max-w-md" data-aos="fade-down" data-aos-delay="150">
+            <h1 className="text-3xl font-bold mb-3">AGILA</h1>
             <p className="text-gray-600 mb-8">
               AGILA redefines the future of attendance at STI College Caloocan.
               Through the power of artificial intelligence, we deliver smarter, faster, and more secure solutions for tracking teacher and student attendance.
             </p>
             
             <div className="flex mb-6">
-              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4">
-                <i className="ri-user-add-fill text-2xl"></i>
+              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4 flex items-center justify-center w-14 h-14">
+                <UserPlus size={30} />
               </div>
               <div>
                 <h5 className="text-xl font-semibold mb-2">Smart Attendance</h5>
@@ -36,8 +38,8 @@ const About = () => {
             </div>
             
             <div className="flex mb-6">
-              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4">
-                <i className="ri-loader-2-line text-2xl"></i>
+              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4 flex items-center justify-center w-14 h-14">
+                <Database size={30} />
               </div>
               <div>
                 <h5 className="text-xl font-semibold mb-2">Instant Data Reporting</h5>
@@ -46,8 +48,8 @@ const About = () => {
             </div>
             
             <div className="flex">
-              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4">
-                <i className="ri-device-fill text-2xl"></i>
+              <div className="flex-shrink-0 bg-blue-600 text-white p-4 rounded-lg mr-4 flex items-center justify-center w-14 h-14">
+                <MonitorSmartphone size={30} />
               </div>
               <div>
                 <h5 className="text-xl font-semibold mb-2">Multi-Device Access</h5>
