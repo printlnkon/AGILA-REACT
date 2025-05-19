@@ -2,12 +2,12 @@ import person1 from '@/assets/images/person-1.jpg';
 
 const TeamMember = ({ image, name, role, delay }) => (
   <div className="col-span-1" data-aos="fade-down" data-aos-delay={delay}>
-    <div className="bg-blue-700 rounded-lg overflow-hidden group relative">
-      <div className="overflow-hidden">
+    <div className="bg-blue-700 rounded-lg overflow-hidden group relative h-80">
+      <div className="overflow-hidden h-full">
         <img 
           src={image} 
           alt={name} 
-          className="w-full h-72 object-cover transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
         />
       </div>
       <div className="absolute inset-0 bg-blue-700 bg-opacity-80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -30,7 +30,7 @@ const Team = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           <TeamMember 
             image={person1}
             name="Kalfontein T. Cruz" 
