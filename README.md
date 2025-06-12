@@ -24,7 +24,7 @@
 
 2. Install dependencies
    ```bash
-   cd web
+   cd frontend
    npm install
    ```
 

@@ -1,4 +1,4 @@
-export const refreshBehavior = () => {
+export default function refreshPageBehavior() {
   if ("scrollRestoration" in history) {
     history.scrollRestoration = "manual";
   }
@@ -6,6 +6,4 @@ export const refreshBehavior = () => {
   window.addEventListener("load", function () {
     window.scrollTo(0, 0);
   });
-};
-
-export default refreshBehavior;
+}
