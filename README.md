@@ -4,15 +4,15 @@
 
 - **Frontend**: React.js, Tailwind CSS
 - **Animation**: AOS (Animate On Scroll)
-- **Icons**: -
-- **Routing**: -
+- **Icons**: - Lucide Icons
+- **Routing**: - React Router
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v14 or higher)
-- npm or yarn
+- npm
 
 ### Installation
 
@@ -24,7 +24,7 @@
 
 2. Install dependencies
    ```bash
-   cd web
+   cd frontend
    npm install
    ```
 
