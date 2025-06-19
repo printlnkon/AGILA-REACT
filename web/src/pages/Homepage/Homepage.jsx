@@ -6,9 +6,9 @@ import Hero from "@/components/Index/Hero";
 import About from "@/components/Index/About";
 import Contact from "@/components/Index/Contact";
 import Footer from "@/components/Index/Footer";
-import refreshPageBehavior from "@/components/refreshPageBehavior.js";
+import refreshPageBehavior from "@/utils/refreshPageBehavior.js";
 
-export default function Index() {
+export default function HomePage() {
   useEffect(() => {
     AOS.init({
       duration: 1000,
