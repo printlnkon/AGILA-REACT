@@ -1,4 +1,4 @@
-import ErrorMessage from "@/components/ErrorMessage";
+import ErrorMessage from "@/utils/ErrorMessage";
 import SideBar from "@/components/AdminDashboard/SideBar";
 import Header from "@/components/AdminDashboard/Header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -9,9 +9,7 @@ export default function Admin() {
     <>
       <SidebarProvider>
         {/* sidebar */}
-        <ErrorMessage>
-          <SideBar />
-        </ErrorMessage>
+        <SideBar />
 
         <SidebarInset>
           {/* breadcrumbs */}

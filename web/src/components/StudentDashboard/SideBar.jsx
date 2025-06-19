@@ -28,7 +28,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchForm } from "@/components/ui/search-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const items = {
   navMain: [
@@ -38,7 +39,7 @@ const items = {
       items: [
         {
           title: "Home",
-          url: "/admin",
+          url: "/student",
           icon: LayoutDashboard,
         },
       ],
@@ -48,18 +49,18 @@ const items = {
       url: "#",
       items: [
         {
-          title: "Accounts",
-          url: "/admin/accounts",
+          title: "Attendance",
+          url: "#",
           icon: User2,
         },
         {
-          title: "Departments",
-          url: "/admin/departments",
+          title: "Lorem Ipsum",
+          url: "#",
           icon: Building,
         },
         {
-          title: "Schedules",
-          url: "/admin/schedules",
+          title: "Schedule",
+          url: "#",
           icon: Calendar,
         },
       ],
@@ -68,6 +69,19 @@ const items = {
 };
 
 export default function SideBar() {
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      alert("Failed to log out. Please try again.");
+    }
+  }
+
   return (
     <>
       <Sidebar variant="floating" collapsible="icon">
@@ -76,7 +90,7 @@ export default function SideBar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link to="/admin">
+                <Link to="/student">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <GalleryVerticalEnd className="size-4" />
                   </div>
@@ -124,7 +138,7 @@ export default function SideBar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
-                    <User2 /> Username
+                    <User2 /> {currentUser?.firstName || "User"}
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
@@ -135,7 +149,7 @@ export default function SideBar() {
                   <DropdownMenuItem>
                     <Settings /> <span>Settings</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
                     <LogOut /> <span>Sign out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
