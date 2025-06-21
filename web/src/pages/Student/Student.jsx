@@ -1,6 +1,7 @@
-import SideBar from "@/components/StudentDashboard/SideBar";
-import Header from "@/components/StudentDashboard/Header";
+import SideBar from "@/components/StudentComponents/SideBar";
+import Header from "@/components/StudentComponents/Header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Outlet } from "react-router-dom";
 
 export default function Student() {
     return (
@@ -13,7 +14,7 @@ export default function Student() {
           {/* breadcrumbs */}
           <Header />
           {/* main */}
-          {/* <Outlet /> */}
+          <Outlet />
         </SidebarInset>
       </SidebarProvider>
     </>

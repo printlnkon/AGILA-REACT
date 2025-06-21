@@ -8,12 +8,14 @@ import Student from "@/pages/Student/Student";
 import Teacher from "@/pages/Teacher";
 import ProgramHead from "@/pages/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
-import Dashboard from "@/components/AdminDashboard/DashBoard";
-import Accounts from "@/components/AdminDashboard/Accounts";
-import Departments from "@/components/AdminDashboard/Departments";
-import Schedules from "@/components/AdminDashboard/Schedules";
+import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
+import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
+import Accounts from "@/components/AdminComponents/Accounts";
+import Departments from "@/components/AdminComponents/Departments";
+import Schedules from "@/components/AdminComponents/Schedules";
 import AuthProvider from "@/context/AuthContext";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import Attendance from "@/components/StudentComponents/Attendance";
 
 function App() {
   return (
@@ -34,7 +36,7 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Dashboard />} />
+                <Route index element={<AdminDashboard />} />
                 <Route path="accounts" element={<Accounts />} />
                 <Route path="departments" element={<Departments />} />
                 <Route path="schedules" element={<Schedules />} />
@@ -47,7 +49,10 @@ function App() {
                     <Student />
                   </ProtectedRoute>
                 }
-              ></Route>
+              >
+                <Route index element={<StudentDashboard />} />
+                <Route path="attendance" element={<Attendance />} />
+              </Route>
 
               <Route
                 path="/teacher"

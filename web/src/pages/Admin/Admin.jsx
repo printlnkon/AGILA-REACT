@@ -1,6 +1,5 @@
-import ErrorMessage from "@/utils/ErrorMessage";
-import SideBar from "@/components/AdminDashboard/SideBar";
-import Header from "@/components/AdminDashboard/Header";
+import SideBar from "@/components/AdminComponents/SideBar";
+import Header from "@/components/AdminComponents/Header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Outlet } from "react-router-dom";
 
