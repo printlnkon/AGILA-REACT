@@ -1,13 +1,13 @@
 import {
   Calendar,
   LayoutDashboard,
-  Search,
   Settings,
   ChevronUp,
   User2,
   Building,
   LogOut,
   GalleryVerticalEnd,
+  CircleUserRound,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchForm } from "@/components/ui/search-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 const items = {
@@ -39,7 +39,7 @@ const items = {
       items: [
         {
           title: "Home",
-          url: "/student",
+          url: "/admin",
           icon: LayoutDashboard,
         },
       ],
@@ -49,18 +49,18 @@ const items = {
       url: "#",
       items: [
         {
-          title: "Attendance",
-          url: "#",
+          title: "Accounts",
+          url: "/admin/accounts",
           icon: User2,
         },
         {
-          title: "Lorem Ipsum",
-          url: "#",
+          title: "Departments",
+          url: "/admin/departments",
           icon: Building,
         },
         {
-          title: "Schedule",
-          url: "#",
+          title: "Schedules",
+          url: "/admin/schedules",
           icon: Calendar,
         },
       ],
@@ -80,7 +80,19 @@ export default function SideBar() {
       console.error("Logout failed:", error);
       alert("Failed to log out. Please try again.");
     }
-  }
+  };
+
+  const location = useLocation();
+
+  const isActive = (url) => {
+    if (url === "/admin") {
+      return location.pathname === "/admin";
+    }
+    return (
+      location.pathname === url ||
+      (location.pathname.startsWith(url + "/") && url !== "/admin")
+    );
+  };
 
   return (
     <>
@@ -90,7 +102,7 @@ export default function SideBar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link to="/student">
+                <Link to="/admin">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <GalleryVerticalEnd className="size-4" />
                   </div>
@@ -115,12 +127,22 @@ export default function SideBar() {
                 <SidebarMenu>
                   {category.items.map((menuItem) => (
                     <SidebarMenuItem key={menuItem.title}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton
+                        asChild
+                        className={`
+                          transition-all duration-200 ease-in-out
+                          ${
+                            isActive(menuItem.url)
+                              ? "bg-blue-900 text-white font-medium"
+                              : ""
+                          }
+                      `}
+                      >
                         <Link to={menuItem.url}>
                           {menuItem.icon && (
                             <menuItem.icon className="mr-2 h-4 w-4" />
                           )}
-                          {menuItem.title}
+                          <span>{menuItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -138,7 +160,7 @@ export default function SideBar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
-                    <User2 /> {currentUser?.firstName || "User"}
+                    <CircleUserRound /> {currentUser?.firstName || "User"}
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

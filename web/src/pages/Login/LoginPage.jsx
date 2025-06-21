@@ -161,7 +161,6 @@ export default function LoginPage() {
                 ) : (
                   "Log in"
                 )}
-
               </button>
             </form>
           </div>

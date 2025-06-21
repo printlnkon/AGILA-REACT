@@ -1,13 +1,13 @@
 import {
   Calendar,
   LayoutDashboard,
-  Search,
   Settings,
   ChevronUp,
   User2,
   Building,
   LogOut,
   GalleryVerticalEnd,
+  CircleUserRound,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchForm } from "@/components/ui/search-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 const items = {
@@ -39,7 +39,7 @@ const items = {
       items: [
         {
           title: "Home",
-          url: "/admin",
+          url: "/student",
           icon: LayoutDashboard,
         },
       ],
@@ -49,18 +49,18 @@ const items = {
       url: "#",
       items: [
         {
-          title: "Accounts",
-          url: "/admin/accounts",
+          title: "Attendance",
+          url: "/student/attendance",
           icon: User2,
         },
         {
-          title: "Departments",
-          url: "/admin/departments",
+          title: "Lorem Ipsum",
+          url: "#",
           icon: Building,
         },
         {
-          title: "Schedules",
-          url: "/admin/schedules",
+          title: "Schedule",
+          url: "#",
           icon: Calendar,
         },
       ],
@@ -82,6 +82,20 @@ export default function SideBar() {
     }
   };
 
+  const location = useLocation();
+
+  const isActive = (url) => {
+    if (url === "/student") {
+      // Only highlight home when exactly at /student
+      return location.pathname === "/student";
+    }
+
+    return (
+      location.pathname === url ||
+      (location.pathname.startsWith(url + "/") && url !== "/student")
+    );
+  };
+
   return (
     <>
       <Sidebar variant="floating" collapsible="icon">
@@ -90,7 +104,7 @@ export default function SideBar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link to="/admin">
+                <Link to="/student">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <GalleryVerticalEnd className="size-4" />
                   </div>
@@ -115,7 +129,17 @@ export default function SideBar() {
                 <SidebarMenu>
                   {category.items.map((menuItem) => (
                     <SidebarMenuItem key={menuItem.title}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton
+                        asChild
+                        className={`
+                        transition-all duration-200 ease-in-out
+                        ${
+                          isActive(menuItem.url)
+                            ? "bg-blue-900 text-white font-medium"
+                            : ""
+                        }
+                      `}
+                      >
                         <Link to={menuItem.url}>
                           {menuItem.icon && (
                             <menuItem.icon className="mr-2 h-4 w-4" />
@@ -138,7 +162,7 @@ export default function SideBar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton>
-                    <User2 /> {currentUser?.firstName || "User"} 
+                    <CircleUserRound /> {currentUser?.firstName || "User"}
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

@@ -1,4 +1,4 @@
-export default function Accounts() {
+export default function Attendance() {
   return (
     <>
       <div className="flex h-full w-full items-center justify-center">
@@ -7,5 +7,5 @@ export default function Accounts() {
         </div>
       </div>
     </>
-  );
+  )
 }
