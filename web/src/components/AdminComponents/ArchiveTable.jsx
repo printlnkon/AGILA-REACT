@@ -1,7 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import AddUserModal from "@/components/AdminComponents/AddUserModal";
 import {
   collection,
   getDocs,
@@ -10,6 +8,7 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,36 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  MoreHorizontal,
-  Pencil,
-  Columns2,
-  Eye,
-  Copy,
-  Search,
-  X,
-  Archive,
-  UsersRound,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -78,300 +47,132 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// Action handlers
-const handleCopyId = (userId) => {
-  if (!userId) {
-    toast.error("User ID not found");
-    return;
-  }
-  navigator.clipboard
-    .writeText(userId)
-    .then(() => {
-      toast.success("User ID copied to clipboard");
-    })
-    .catch(() => {
-      toast.error("Failed to copy User ID");
-    });
-};
+import {
+  ArrowUpDown,
+  ChevronDown,
+  MoreHorizontal,
+  Columns2,
+  Eye,
+  Trash2,
+  Copy,
+  Search,
+  X,
+  RotateCcw,
+  FolderArchive,
+} from "lucide-react";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { toast } from "sonner";
 
-const handleViewUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement a view modal here or navigate to a details page
-  toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement an edit modal here
-  toast.info(
-    `Edit functionality for ${user.firstName} ${user.lastName} - Coming soon`
-  );
-  console.log("Edit user:", user);
-};
-
-export const createColumns = (handleArchiveUser, handleBatchArchive) => [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-
-  // email column
-  {
-    accessorKey: "email",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown />
-        </Button>
-      );
-    },
-    cell: ({ row }) => (
-      <div className="lowercase">{row.getValue("email") || "N/A"}</div>
-    ),
-  },
-
-  // name column
-  {
-    accessorKey: "name",
-    header: "Name",
-    cell: ({ row }) => {
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="capitalize">{fullName || "N/A"}</div>;
-    },
-  },
-
-  // role column
-  {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
-    },
-  },
-
-  {
-    accessorKey: "createdAt",
-    header: "Created",
-    cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return <div>-</div>;
-
-      // Convert Firebase timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{date.toLocaleDateString()}</div>;
-    },
-  },
-
-  // status column
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.getValue("status") || "active";
-      return (
-        <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            status === "active"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
-        >
-          {status === "active" ? "Active" : "Inactive"}
-        </div>
-      );
-    },
-  },
-  // actions column
-  {
-    header: "Actions",
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const user = row.original;
-      const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-
-      return (
-        <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleCopyId(user.id)}
-                className="cursor-pointer"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-              >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Archive Confirmation Dialog */}
-          <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm Archive</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to archive the user "{user.firstName}{" "}
-                  {user.lastName}"? This will set their account status to
-                  inactive.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowArchiveDialog(false)}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="warning"
-                  onClick={() => {
-                    handleArchiveUser(user);
-                    setShowArchiveDialog(false);
-                  }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-                >
-                  <Archive className="mr-2 h-4 w-4" /> Archive
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
-      );
-    },
-  },
-];
-
-export const pagination = {};
-
-export default function AccountsTable() {
-  const [users, setUsers] = useState([]);
+export default function ArchiveTable() {
+  const [archivedUsers, setArchivedUsers] = useState([]);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [showBatchRestoreDialog, setShowBatchRestoreDialog] = useState(false);
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
 
-  const handleArchiveUser = async (user) => {
+  // Action handlers
+  const handleCopyId = (userId) => {
+    if (!userId) {
+      toast.error("User ID not found");
+      return;
+    }
+    navigator.clipboard
+      .writeText(userId)
+      .then(() => {
+        toast.success("User ID copied to clipboard");
+      })
+      .catch(() => {
+        toast.error("Failed to copy User ID");
+      });
+  };
+
+  const handleViewUser = (user) => {
+    if (!user) {
+      toast.error("User data not found");
+      return;
+    }
+    // You can implement a view modal here or navigate to a details page
+    toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
+    console.log("User details:", user);
+  };
+
+  const handleRestoreUser = async (user) => {
     if (!user || !user.id || !user.role) {
       toast.error("Invalid user data");
-      console.error("Missing required user data:", user);
       return false;
     }
 
     try {
-      // matches the collection path in firestore
-      const rolePath = user.role.toLowerCase().replace(" ", "_");
-      // reference to the user document
-      const userPath = `users/${rolePath}/accounts`;
-      console.log("Looking for user document at path:", userPath);
+      // get reference to the archive document
+      const archiveRef = doc(db, "archive", user.id);
+      const archiveSnap = await getDoc(archiveRef);
 
-      const userDocRef = doc(db, userPath, user.id);
-      const userSnap = await getDoc(userDocRef);
-      if (!userSnap.exists()) {
-        console.error("User document not found at:", userPath, user.id);
-        toast.error("User data not found.");
+      if (!archiveSnap.exists()) {
+        toast.error("Archived user data not found");
         return false;
       }
 
-      const userData = userSnap.data();
+      const userData = archiveSnap.data();
 
-      // create archive document
-      const archiveRef = doc(db, "archive", user.id);
-      await setDoc(archiveRef, {
+      // matches the collection path in firestore
+      const rolePath = user.role.toLowerCase().replace(" ", "_");
+      // create reference to user document in the appropriate collection
+      const userRef = doc(db, `users/${rolePath}/accounts`, user.id);
+
+      const restoreData = {
         ...userData,
-        role: user.role,
         id: user.id,
-        status: "inactive",
+        role: user.role,
+        status: "active",
         email: userData.email || "",
         firstName: userData.firstName || "",
         lastName: userData.lastName || "",
-        archivedAt: new Date(),
-      });
+        // add any other fields that AccountsTable expects
+      };
+      // delete from archive collection
+      await setDoc(userRef, restoreData);
 
-      // delete from original collection
-      await deleteDoc(userDocRef);
+      await deleteDoc(archiveRef);
 
       toast.success(
-        `User ${user.firstName} ${user.lastName} archived successfully`
+        `User ${user.firstName} ${user.lastName} restored successfully`
       );
 
-      setUsers((currentUsers) => currentUsers.filter((u) => u.id !== user.id));
+      setArchivedUsers((currentUsers) =>
+        currentUsers.filter((u) => u.id !== user.id)
+      );
 
-      // refresh the users list
-      await fetchUsers();
+      // refresh the archive list
+      fetchArchivedUsers();
       return true;
     } catch (error) {
-      console.error("Error archiving user:", error);
-      toast.error(`Archive failed: ${error.message}`);
+      console.error("Error restoring user:", error);
+      toast.error(`Restore failed: ${error.message}`);
       return false;
     }
   };
 
-  const handleBatchArchive = async () => {
+  const handleBatchRestoreUser = async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
 
     if (selectedRows.length === 0) {
@@ -384,13 +185,13 @@ export default function AccountsTable() {
 
     // Show a loading toast
     const loadingToast = toast.loading(
-      `Archiving ${selectedRows.length} users...`
+      `Restoring ${selectedRows.length} users...`
     );
 
     // Process each selected user
     for (const row of selectedRows) {
       const user = row.original;
-      const success = await handleArchiveUser(user);
+      const success = await handleRestoreUser(user);
 
       if (success) {
         successCount++;
@@ -404,10 +205,10 @@ export default function AccountsTable() {
 
     // Show results
     if (successCount > 0) {
-      toast.success(`Successfully archived ${successCount} users`);
+      toast.success(`Successfully restored ${successCount} users`);
     }
     if (failCount > 0) {
-      toast.error(`Failed to archive ${failCount} users`);
+      toast.error(`Failed to restore ${failCount} users`);
     }
 
     // Clear selection
@@ -415,72 +216,349 @@ export default function AccountsTable() {
 
     // force re-fetch users to update the table
     if (successCount > 0) {
-      const remainingUsers = users.filter(
+      const remainingUsers = archivedUsers.filter(
         (user) => !selectedRows.some((row) => row.original.id === user.id)
       );
-      setUsers(remainingUsers);
+      setArchivedUsers(remainingUsers);
     }
   };
 
-  const fetchUsers = async () => {
+  const handleDeleteUser = async (user) => {
+    if (!user || !user.id || !user.role) {
+      toast.error("Invalid user data");
+      return false;
+    }
+    try {
+      // delete from archive collection
+      const archiveRef = doc(db, "archive", user.id);
+
+      await deleteDoc(archiveRef);
+
+      toast.success(
+        `User ${user.firstName} ${user.lastName} permanently deleted successfully`
+      );
+
+      // force re-fetch users to update the table
+      setArchivedUsers((currentUsers) =>
+        currentUsers.filter((u) => u.id !== user.id)
+      );
+
+      // refresh the archive list
+      fetchArchivedUsers();
+      return true;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(`Delete failed: ${error.message}`);
+      return false;
+    }
+  };
+
+  const handleBatchDeleteUser = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+
+    if (selectedRows.length === 0) {
+      toast.error("No users selected");
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    // Show a loading toast
+    const loadingToast = toast.loading(
+      `Permanently deleting ${selectedRows.length} users...`
+    );
+
+    // Process each selected user
+    for (const row of selectedRows) {
+      const user = row.original;
+      const success = await handleDeleteUser(user);
+
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    // Dismiss the loading toast
+    toast.dismiss(loadingToast);
+
+    // Show results
+    if (successCount > 0) {
+      toast.success(`Successfully deleted ${successCount} users`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to delete ${failCount} users`);
+    }
+
+    // Clear selection
+    table.resetRowSelection();
+  };
+
+  // data fetching
+  const fetchArchivedUsers = async () => {
     setLoading(true);
     setError(null);
     try {
-      const allUsers = [];
-      const roles = ["student", "teacher", "program_head", "academic_head"];
+      const archivedUsersArray = [];
 
-      for (const role of roles) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, `users/${role}/accounts`)
-          );
+      // Get archived users from the archive collection
+      const querySnapshot = await getDocs(collection(db, "archive"));
 
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            // Validate required fields
-            if (!userData.email) {
-              console.warn(
-                `User ${doc.id} in ${role} collection missing email`
-              );
-            }
-
-            allUsers.push({
-              id: doc.id,
-              role: role,
-              status: userData.status || "active",
-              email: userData.email || "",
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              ...userData,
-            });
-          });
-        } catch (roleError) {
-          console.error(`Error fetching ${role} users:`, roleError);
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        // validate required fields
+        if (!userData.email) {
+          console.warn(`Archived user ${doc.id} missing email`);
         }
-      }
 
-      if (allUsers.length === 0) {
-        setError("No users found in any collection.");
+        archivedUsersArray.push({
+          id: doc.id,
+          role: userData.role || "unknown",
+          status: "inactive",
+          email: userData.email || "",
+          firstName: userData.firstName || "",
+          lastName: userData.lastName || "",
+          ...userData,
+        });
+      });
+
+      if (archivedUsersArray.length === 0) {
+        setError("No archived users found.");
       } else {
-        setUsers(allUsers);
+        setArchivedUsers(archivedUsersArray);
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching archived users:", error);
       setError(
-        "Failed to load users. Please check your connection and try again."
+        "Failed to load archived users. Please check your connection and try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // initial data loading
   useEffect(() => {
-    fetchUsers();
+    fetchArchivedUsers();
   }, []);
 
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
+  // table columns definition
+  const columns = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+
+    // email column
+    {
+      accessorKey: "email",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Email
+            <ArrowUpDown />
+          </Button>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="lowercase">{row.getValue("email") || "N/A"}</div>
+      ),
+    },
+
+    // name column
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => {
+        const firstName = row.original.firstName || "";
+        const lastName = row.original.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim();
+        return <div className="capitalize">{fullName || "N/A"}</div>;
+      },
+    },
+
+    // role column
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ row }) => {
+        const role = row.getValue("role") || "N/A";
+        return <div className="capitalize">{role.replace("_", " ")}</div>;
+      },
+    },
+
+    // status column
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") || "active";
+        return (
+          <div
+            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              status === "active"
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {status === "active" ? "Active" : "Inactive"}
+          </div>
+        );
+      },
+    },
+    // actions column
+    {
+      header: "Actions",
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const user = row.original;
+        const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+        const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+
+        return (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCopyId(user.id)}
+                  className="cursor-pointer"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleViewUser(user)}
+                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4 text-green-600" />
+                  View
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowRestoreDialog(true)}
+                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
+                  Restore
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                  Delete Permanently
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Permanent Deletion</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to permanently delete the user "
+                    {user.firstName} {user.lastName}"? This action cannot be
+                    undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteDialog(false)}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleDeleteUser(user);
+                      setShowDeleteDialog(false);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Trash2 /> Delete Permanently
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Restore Confirmation Dialog */}
+            <Dialog
+              open={showRestoreDialog}
+              onOpenChange={setShowRestoreDialog}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirm Restore</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to restore the user "{user.firstName}{" "}
+                    {user.lastName}"? The user will be moved back to active
+                    accounts.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRestoreDialog(false)}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                    onClick={() => {
+                      handleRestoreUser(user);
+                      setShowRestoreDialog(false);
+                    }}
+                  >
+                    Restore
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        );
+      },
+    },
+  ];
+
+  // initialize table
   const table = useReactTable({
-    data: users,
+    data: archivedUsers,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -498,16 +576,16 @@ export default function AccountsTable() {
     },
   });
 
-  if (users.length === 0 && !loading) {
+  // error and loading states
+  if (archivedUsers.length === 0 && !loading) {
     return (
       <div className="w-full">
         {/* search and filters */}
         <div className="flex items-center gap-2 py-4">
-          <AddUserModal onUserAdded={fetchUsers} />
           {/* search */}
           <div className="relative max-w-sm flex-1">
             <Input
-              placeholder="Search users by email..."
+              placeholder="Search archived users by email..."
               value={table.getColumn("email")?.getFilterValue() ?? ""}
               onChange={(event) => {
                 const value = event.target.value;
@@ -576,14 +654,15 @@ export default function AccountsTable() {
                 >
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <div className="rounded-full bg-gray-50 p-3">
-                      <UsersRound className="h-12 w-12 text-gray-400" />
+                      <FolderArchive className="h-12 w-12 text-gray-400" />
                     </div>
                     <div className="text-center">
                       <p className="text-blue-900 text-lg font-medium">
-                        No users found
+                        No archived users found
                       </p>
                       <p className="text-gray-400 text-sm mt-2">
-                        Users will appear here once user data is added.
+                        Archived users will appear here once they are moved from
+                        active accounts.
                       </p>
                     </div>
                   </div>
@@ -603,6 +682,7 @@ export default function AccountsTable() {
     );
   }
 
+  // loading state
   if (loading) {
     return (
       <div className="w-full">
@@ -695,14 +775,14 @@ export default function AccountsTable() {
     );
   }
 
+  // Render main table
   return (
     <div className="w-full">
+      {/* Search and filters */}
       <div className="flex items-center gap-2 py-4">
-        {/* add new account button */}
-        <AddUserModal onUserAdded={fetchUsers} />
         {/* search */}
 
-        {/* archive selected button */}
+        {/* batch restore & delete selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
           <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 flex items-center justify-between">
             <div className="flex gap-2">
@@ -717,10 +797,18 @@ export default function AccountsTable() {
               <Button
                 variant="warning"
                 size="sm"
-                onClick={() => setShowBatchArchiveDialog(true)}
+                onClick={() => setShowBatchRestoreDialog(true)}
                 className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
               >
-                Batch Archive
+                Batch Restore
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowBatchDeleteDialog(true)}
+                className="bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+              >
+                Batch Delete
               </Button>
             </div>
           </div>
@@ -728,7 +816,7 @@ export default function AccountsTable() {
 
         <div className="relative max-w-sm flex-1">
           <Input
-            placeholder="Search users by email..."
+            placeholder="Search archived users by email..."
             value={table.getColumn("email")?.getFilterValue() ?? ""}
             onChange={(event) => {
               const value = event.target.value;
@@ -788,18 +876,16 @@ export default function AccountsTable() {
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -826,7 +912,7 @@ export default function AccountsTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  No archived users found.
                 </TableCell>
               </TableRow>
             )}
@@ -994,6 +1080,7 @@ export default function AccountsTable() {
                   }
                 />
               </PaginationItem>
+
               <PaginationItem>
                 <PaginationLast
                   onClick={() => table.setPageIndex(table.getPageCount() - 1)}
@@ -1008,37 +1095,71 @@ export default function AccountsTable() {
             </PaginationContent>
           </Pagination>
 
-          {/* Batch Archive Dialog */}
+          {/* batch restore dialog */}
           <Dialog
-            open={showBatchArchiveDialog}
-            onOpenChange={setShowBatchArchiveDialog}
+            open={showBatchRestoreDialog}
+            onOpenChange={setShowBatchRestoreDialog}
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirm Batch Archive</DialogTitle>
+                <DialogTitle>Confirm Batch Restore</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive{" "}
+                  Are you sure you want to restore{" "}
                   {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? This will set their account status to inactive.
+                  users? They will be moved back to active accounts.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setShowBatchArchiveDialog(false)}
+                  onClick={() => setShowBatchRestoreDialog(false)}
                   className="cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
-                  variant="warning"
+                  className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                   onClick={() => {
-                    handleBatchArchive();
-                    setShowBatchArchiveDialog(false);
+                    handleBatchRestoreUser();
+                    setShowBatchRestoreDialog(false);
                   }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
-                  <Archive /> Archive Users
+                  <RotateCcw /> Restore All
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* batch delete dialog */}
+          <Dialog
+            open={showBatchDeleteDialog}
+            onOpenChange={setShowBatchDeleteDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirm Batch Delete</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to permanently delete{" "}
+                  {table.getFilteredSelectedRowModel().rows.length} selected
+                  users? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowBatchDeleteDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                  onClick={() => {
+                    handleBatchDeleteUser();
+                    setShowBatchDeleteDialog(false);
+                  }}
+                >
+                  <Trash2 /> Delete All
                 </Button>
               </DialogFooter>
             </DialogContent>

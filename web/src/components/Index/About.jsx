@@ -10,7 +10,7 @@ export default function About() {
             data-aos="fade-down"
             data-aos-delay="50"
           >
-            <h1 className="text-4xl md:text-5xl font-semibold mb-4">About</h1>
+            <h1 className="text-4xl md:text-5xl font-semibold mb-4 ">About</h1>
             <div className="h-1 w-20 bg-blue-900 mx-auto mb-5"></div>
           </div>
 

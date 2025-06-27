@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "@/components/ui/sonner";
 import ErrorMessage from "@/utils/ErrorMessage";
 import PageNotFound from "@/utils/PageNotFound";
 import HomePage from "@/pages/Homepage/HomePage";
@@ -11,6 +12,7 @@ import AcademicHead from "@/pages/AcademicHead";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Accounts from "@/components/AdminComponents/Accounts";
+import Archive from "@/components/AdminComponents/Archive";
 import Departments from "@/components/AdminComponents/Departments";
 import Schedules from "@/components/AdminComponents/Schedules";
 import AuthProvider from "@/context/AuthContext";
@@ -20,6 +22,7 @@ import Attendance from "@/components/StudentComponents/Attendance";
 function App() {
   return (
     <>
+    <Toaster richColors />
       <ErrorMessage>
         <AuthProvider>
           <Router>
@@ -38,6 +41,7 @@ function App() {
               >
                 <Route index element={<AdminDashboard />} />
                 <Route path="accounts" element={<Accounts />} />
+                <Route path="archive" element={<Archive />} />
                 <Route path="departments" element={<Departments />} />
                 <Route path="schedules" element={<Schedules />} />
               </Route>
