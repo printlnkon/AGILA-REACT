@@ -56,7 +56,7 @@ export default function LoginPage() {
         {/* centered container */}
         <div className="flex-grow flex items-center justify-center">
           {/* login form container */}
-          <div className="max-w-md w-full mx-4 px-6 py-8 bg-white rounded-lg shadow-md">
+          <div className="max-w-md w-full mx-4 px-6 py-8 bg-white rounded-lg shadow-lg">
             {/* home icon */}
             <div className="flex justify-center mb-3">
               <Link
@@ -112,12 +112,12 @@ export default function LoginPage() {
                   >
                     Password
                   </label>
-                  <a
+                  {/* <a
                     href="#"
                     className="text-sm text-blue-900 hover:text-blue-700"
                   >
                     Forgot Password?
-                  </a>
+                  </a> */}
                 </div>
                 <input
                   type="password"
@@ -154,8 +154,8 @@ export default function LoginPage() {
                 className="w-full bg-blue-900 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 cursor-pointer disabled:bg-blue-300"
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <SpinnerCircle className="h-2 w-2"/>
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     <span>Logging in...</span>
                   </div>
                 ) : (
