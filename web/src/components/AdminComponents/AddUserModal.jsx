@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserRoundPlus, Info, ChevronDown, CircleAlert } from "lucide-react";
+import { UserRoundPlus, Info, CircleAlert, CalendarIcon, LoaderCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -375,7 +375,7 @@ export default function AddUserModal({ onUserAdded }) {
           {/* header */}
           <DialogHeader>
             <DialogTitle className="text-blue-900 text-xl">
-              Create User
+              Add User
             </DialogTitle>
             <DialogDescription className="mb-4">
               Add new user to the system. Fill in all required fields.
@@ -563,7 +563,7 @@ export default function AddUserModal({ onUserAdded }) {
                       }`}
                     >
                       {date ? date.toLocaleDateString() : "Select date"}
-                      <ChevronDown className="h-4 w-4 ml-2" />
+                      <CalendarIcon className="h-4 w-4 ml-2" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -819,16 +819,16 @@ export default function AddUserModal({ onUserAdded }) {
               </DialogClose>
               <Button
                 type="submit"
-                className="bg-blue-900 text-white hover:bg-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-blue-900 text-white hover:bg-blue-700 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating...
+                    <LoaderCircle className="animate-spin "/>
+                    Adding user...
                   </>
                 ) : (
-                  "Create User"
+                  "Add User"
                 )}
               </Button>
             </div>

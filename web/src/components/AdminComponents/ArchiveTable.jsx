@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -416,16 +417,16 @@ export default function ArchiveTable() {
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") || "active";
+        const isActive = status === "active";
         return (
-          <div
-            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              status === "active"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
+          <Badge
+            variant={isActive ? "default" : "destructive"}
+            className={
+              isActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
+            }
           >
-            {status === "active" ? "Active" : "Inactive"}
-          </div>
+            {isActive ? "Active" : "Inactive"}
+          </Badge>
         );
       },
     },
@@ -490,8 +491,10 @@ export default function ArchiveTable() {
                   <DialogTitle>Confirm Permanent Deletion</DialogTitle>
                   <DialogDescription>
                     Are you sure you want to permanently delete the user "
-                    {user.firstName} {user.lastName}"? This action cannot be
-                    undone.
+                    <strong>
+                      {user.firstName} {user.lastName}
+                    </strong>
+                    "? This action cannot be undone.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -525,9 +528,11 @@ export default function ArchiveTable() {
                 <DialogHeader>
                   <DialogTitle>Confirm Restore</DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to restore the user "{user.firstName}{" "}
-                    {user.lastName}"? The user will be moved back to active
-                    accounts.
+                    Are you sure you want to restore the user "
+                    <strong>
+                      {user.firstName} {user.lastName}
+                    </strong>
+                    "? The user will be moved back to active accounts.
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -686,21 +691,22 @@ export default function ArchiveTable() {
   if (loading) {
     return (
       <div className="w-full">
+        {/* header skeleton */}
+        <div className="mb-4">
+          <Skeleton className="h-10 w-64" />
+        </div>
         <div className="flex items-center gap-2 py-4">
-          {/* skeleton for add user button */}
-          <Skeleton className="h-9 w-28" />
-
           {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
+          <Skeleton className="relative h-9 max-w-sm flex-1" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          <Skeleton className="ml-auto h-9 w-36" />
         </div>
 
         {/* skeleton for table */}
         <div className="rounded-md border">
           <div className="bg-gray-50 px-4">
-            <div className="h-10 flex items-center">
+            <div className="flex h-10 items-center">
               {/* skeleton header row */}
               <div className="flex w-full space-x-4 py-3">
                 {Array(6)
@@ -743,7 +749,7 @@ export default function ArchiveTable() {
                           style={{
                             width:
                               colIndex === 0
-                                ? "5%"
+                                ? "2%"
                                 : colIndex === 5
                                 ? "10%"
                                 : colIndex === 1
@@ -761,14 +767,23 @@ export default function ArchiveTable() {
         </div>
 
         {/* skeleton for footer/pagination */}
-        <div className="flex justify-between items-center py-4">
+        <div className="flex items-center justify-between">
           <Skeleton className="h-4 w-40" />
-          <div className="flex space-x-2">
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
+
+          <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -778,42 +793,48 @@ export default function ArchiveTable() {
   // Render main table
   return (
     <div className="w-full">
-      {/* Search and filters */}
-      <div className="flex items-center gap-2 py-4">
-        {/* search */}
+      {/* header */}
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-blue-900">Manage Archive</h1>
+        </div>
+      </div>
 
+      <div className="flex items-center gap-2 py-4">
         {/* batch restore & delete selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 flex items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => table.resetRowSelection()}
-                className="text-amber-600 hover:text-amber-800 cursor-pointer"
-              >
-                Clear selection
-              </Button>
-              <Button
-                variant="warning"
-                size="sm"
-                onClick={() => setShowBatchRestoreDialog(true)}
-                className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-              >
-                Batch Restore
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowBatchDeleteDialog(true)}
-                className="bg-red-600 text-white hover:bg-red-700 cursor-pointer"
-              >
-                Batch Delete
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => table.resetRowSelection()}
+              className="text-amber-600 hover:text-amber-800 cursor-pointer"
+            >
+              <X />
+              Clear selection
+            </Button>
+            <Button
+              variant="warning"
+              size="sm"
+              onClick={() => setShowBatchRestoreDialog(true)}
+              className="bg-blue-900 text-white hover:bg-blue-700 cursor-pointer"
+            >
+              <RotateCcw />
+              Batch Restore
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowBatchDeleteDialog(true)}
+              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+            >
+              <Trash2 />
+              Batch Delete
+            </Button>
           </div>
         )}
 
+        {/* search */}
         <div className="relative max-w-sm flex-1">
           <Input
             placeholder="Search archived users by email..."
