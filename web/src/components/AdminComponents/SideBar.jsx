@@ -9,6 +9,11 @@ import {
   GalleryVerticalEnd,
   CircleUserRound,
   ChevronRight,
+  SquarePen,
+  Archive,
+  BookOpen,
+  CalendarDays,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   Sidebar,
@@ -58,32 +63,95 @@ const items = {
       url: "#",
       items: [
         {
-          title: "User Management",
+          title: "Academic Year",
+          url: "/admin/academic-year",
+          icon: BookOpen,
+        },
+        {
+          title: "Semester",
+          url: "/admin/semester",
+          icon: CalendarDays,
+        },
+        {
+          title: "Sections",
+          url: "#",
+          icon: LayoutTemplate,
+        },
+
+        {
+          title: "Manage Accounts",
           url: "#",
           icon: UsersRound,
           items: [
             {
-              title: "Accounts",
+              title: "View Accounts",
               url: "/admin/accounts",
               // icon: UsersRound,
             },
+          ],
+        },
+        // {
+        //   title: "Students",
+        //   url: "#",
+        //   icon: UsersRound,
+        //   items: [
+        //     {
+        //       title: "View Students",
+        //       url: "#",
+        //       // icon: UsersRound,
+        //     },
+        //     {
+        //       title: "Add Student",
+        //       url: "#",
+        //       // icon: UsersRound,
+        //     },
+        //   ],
+        // },
+        // {
+        //   title: " Faculty",
+        //   url: "#",
+        //   icon: UsersRound,
+        //   items: [
+        //     {
+        //       title: "View Faculties",
+        //       url: "#",
+        //       // icon: UsersRound,
+        //     },
+        //     {
+        //       title: "Add Faculty",
+        //       url: "#",
+        //       // icon: UsersRound,
+        //     },
+        //   ],
+        // },
+        {
+          title: " Archives",
+          url: "#",
+          icon: Archive,
+          items: [
             {
-              title: "Archive",
+              title: "View Archive Users",
               url: "/admin/archive",
-              // icon: Archive,
+              // icon: UsersRound,
             },
           ],
         },
-        {
-          title: "Departments",
-          url: "/admin/departments",
-          icon: Building,
-        },
-        {
-          title: "Schedules",
-          url: "/admin/schedules",
-          icon: Calendar,
-        },
+
+        // {
+        //   title: "Course and Section",
+        //   url: "/admin/course-section",
+        //   icon: SquarePen,
+        // },
+        // {
+        //   title: "Departments",
+        //   url: "/admin/departments",
+        //   icon: Building,
+        // },
+        // {
+        //   title: "Schedules",
+        //   url: "/admin/schedules",
+        //   icon: Calendar,
+        // },
       ],
     },
   ],

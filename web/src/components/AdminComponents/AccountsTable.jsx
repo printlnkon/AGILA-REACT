@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -117,7 +118,7 @@ const handleEditUser = (user) => {
   console.log("Edit user:", user);
 };
 
-export const createColumns = (handleArchiveUser, handleBatchArchive) => [
+export const createColumns = (handleArchiveUser) => [
   {
     id: "select",
     header: ({ table }) => (
@@ -155,8 +156,9 @@ export const createColumns = (handleArchiveUser, handleBatchArchive) => [
         </Button>
       );
     },
+
     cell: ({ row }) => (
-      <div className="lowercase">{row.getValue("email") || "N/A"}</div>
+      <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
     ),
   },
 
@@ -184,7 +186,7 @@ export const createColumns = (handleArchiveUser, handleBatchArchive) => [
 
   {
     accessorKey: "createdAt",
-    header: "Created",
+    header: "Date Created",
     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
@@ -201,23 +203,23 @@ export const createColumns = (handleArchiveUser, handleBatchArchive) => [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") || "active";
+      const isActive = status === "active";
       return (
-        <div
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            status === "active"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
+        <Badge
+          variant={isActive ? "default" : "destructive"}
+          className={
+            isActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }
         >
-          {status === "active" ? "Active" : "Inactive"}
-        </div>
+          {isActive ? "Active" : "Inactive"}
+        </Badge>
       );
     },
   },
   // actions column
   {
-    header: "Actions",
     id: "actions",
+    header: "Actions",
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original;
@@ -292,7 +294,7 @@ export const createColumns = (handleArchiveUser, handleBatchArchive) => [
                   }}
                   className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
-                  <Archive className="mr-2 h-4 w-4" /> Archive
+                  <Archive /> Archive
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -501,6 +503,9 @@ export default function AccountsTable() {
   if (users.length === 0 && !loading) {
     return (
       <div className="w-full">
+         <div className="mb-4">
+          <Skeleton className="h-8 w-64" />
+        </div>
         {/* search and filters */}
         <div className="flex items-center gap-2 py-4">
           <AddUserModal onUserAdded={fetchUsers} />
@@ -606,6 +611,9 @@ export default function AccountsTable() {
   if (loading) {
     return (
       <div className="w-full">
+         <div className="mb-4">
+          <Skeleton className="h-8 w-64" />
+        </div>
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
           <Skeleton className="h-9 w-28" />
@@ -681,14 +689,23 @@ export default function AccountsTable() {
         </div>
 
         {/* skeleton for footer/pagination */}
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center">
           <Skeleton className="h-4 w-40" />
-          <div className="flex space-x-2">
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
-            <Skeleton className="h-8 w-8" />
+          
+         <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -697,14 +714,18 @@ export default function AccountsTable() {
 
   return (
     <div className="w-full">
+      {/* header */}
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-blue-900">Manage Accounts</h1>
+        </div>
+      </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
         <AddUserModal onUserAdded={fetchUsers} />
-        {/* search */}
 
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 flex items-center justify-between">
             <div className="flex gap-2">
               <Button
                 variant="ghost"
@@ -712,6 +733,7 @@ export default function AccountsTable() {
                 onClick={() => table.resetRowSelection()}
                 className="text-amber-600 hover:text-amber-800 cursor-pointer"
               >
+                <X />
                 Clear selection
               </Button>
               <Button
@@ -720,12 +742,13 @@ export default function AccountsTable() {
                 onClick={() => setShowBatchArchiveDialog(true)}
                 className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
               >
+                <Archive />
                 Batch Archive
               </Button>
             </div>
-          </div>
         )}
 
+        {/* search */}
         <div className="relative max-w-sm flex-1">
           <Input
             placeholder="Search users by email..."
@@ -753,7 +776,7 @@ export default function AccountsTable() {
           </div>
         </div>
 
-        {/* columns toggle */}
+        {/* filter columns */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto cursor-pointer">

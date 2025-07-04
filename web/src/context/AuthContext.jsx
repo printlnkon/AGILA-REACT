@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import { auth, db } from "@/api/firebase";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { getDoc, doc, deleteDoc } from "firebase/firestore";
+import { getDoc, doc } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -61,12 +61,12 @@ export default function AuthProvider({ children }) {
 
       setUserRole(matched.role);
 
-      // Store in localStorage instead of sessionStorage for better persistence
-      localStorage.setItem("uid", user.uid);
-      localStorage.setItem("role", matched.role);
-      localStorage.setItem("email", matched.email);
-      localStorage.setItem("name", matched.name);
-      localStorage.setItem("firstName", matched.firstName);
+      // Store in sessionStorage for session-only access
+      sessionStorage.setItem("uid", user.uid);
+      sessionStorage.setItem("role", matched.role);
+      sessionStorage.setItem("email", matched.email);
+      sessionStorage.setItem("name", matched.name);
+      sessionStorage.setItem("firstName", matched.firstName);
 
       return matched.role; // return role for redirect purposes
     } catch (error) {
@@ -81,11 +81,11 @@ export default function AuthProvider({ children }) {
       await auth.signOut();
       alert("You have been logged out successfully.");
       // clear local storage
-      localStorage.removeItem("uid");
-      localStorage.removeItem("role");
-      localStorage.removeItem("email");
-      localStorage.removeItem("name");
-      localStorage.removeItem("firstName");
+      sessionStorage.removeItem("uid");
+      sessionStorage.removeItem("role");
+      sessionStorage.removeItem("email");
+      sessionStorage.removeItem("name");
+      sessionStorage.removeItem("firstName");
       setCurrentUser(null);
       setUserRole(null);
     } catch (error) {
@@ -96,26 +96,30 @@ export default function AuthProvider({ children }) {
   // set up auth state observer
   useEffect(() => {
     setLoading(true);
+    let isMounted = true; // to prevent state updates if component unmounts
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
           // user is signed in
-          const role = localStorage.getItem("role");
-          const name = localStorage.getItem("name");
-          const firstName = localStorage.getItem("firstName");
-          const email = localStorage.getItem("email");
+          const role = sessionStorage.getItem("role");
+          const email = sessionStorage.getItem("email");
+          const name = sessionStorage.getItem("name");
+          const firstName = sessionStorage.getItem("firstName");
 
           if (role && email) {
-            setCurrentUser({
-              uid: user.uid,
-              email,
-              name,
-              firstName,
-              role,
-            });
+            if (isMounted) {
+              setCurrentUser({
+                uid: user.uid,
+                email,
+                name,
+                firstName,
+                role,
+              });
+              setUserRole(role);
+            }
             setUserRole(role);
           } else {
-            // attempt to find user role if local storage is empty
+            // attempt to find user role if session storage is empty
             const roles = [
               "admin",
               "student",
@@ -126,46 +130,58 @@ export default function AuthProvider({ children }) {
             for (const r of roles) {
               const docRef = doc(db, `users/${r}/accounts`, user.uid);
               const docSnap = await getDoc(docRef);
-              if (docSnap.exists()) {
-                const userData = docSnap.data();
-                const userInfo = {
-                  uid: user.uid,
-                  email: userData.email,
-                  name: userData.name,
-                  firstName: userData.firstName || "",
-                  role: r,
-                };
-                setCurrentUser(userInfo);
-                setUserRole(r);
 
-                // Store in localStorage
-                localStorage.setItem("uid", user.uid);
-                localStorage.setItem("role", r);
-                localStorage.setItem("email", userData.email);
-                localStorage.setItem("name", userData.name);
-                if (userData.firstName) {
-                  localStorage.setItem("firstName", userData.firstName);
+              if (docSnap.exists()) {
+                if (isMounted) {
+                  const userData = docSnap.data();
+                  const userInfo = {
+                    uid: user.uid,
+                    email: userData.email,
+                    name: userData.name,
+                    firstName: userData.firstName || "",
+                    role: r,
+                  };
+                  setCurrentUser(userInfo);
+                  setUserRole(r);
+
+                  // Store in sessionStorage
+                  sessionStorage.setItem("uid", user.uid);
+                  sessionStorage.setItem("role", r);
+                  sessionStorage.setItem("email", userData.email);
+                  sessionStorage.setItem("name", userData.name);
+                  if (userData.firstName) {
+                    sessionStorage.setItem("firstName", userData.firstName);
+                  }
                 }
-                break;
+                break; // exit loop once found
               }
             }
           }
         } else {
           // user is signed out
+          if (isMounted) {
+            setCurrentUser(null);
+            setUserRole(null);
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error("Auth state error:", error);
           setCurrentUser(null);
           setUserRole(null);
         }
-      } catch (error) {
-        console.error("Auth state error:", error);
-        setCurrentUser(null);
-        setUserRole(null);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     });
 
     // cleanup subscription
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      isMounted = false;
+    };
   }, []);
 
   const value = {
