@@ -5,7 +5,7 @@ export default function Hero() {
     <>
       <section
         id="hero"
-        className="relative min-h-screen flex items-center text-center overflow-hidden"
+        className="relative min-h-screen flex items-center text-center overflow-hidden bg-gradient-to-b from-blue-50 to-blue-200"
       >
         {/* Hero Content */}
         <div className="container mx-auto px-4 relative z-10">

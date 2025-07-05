@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { House, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { House, AlertTriangle, LoaderCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import SpinnerCircle from "@/components/ui/spinner-09";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -23,6 +22,12 @@ export default function LoginPage() {
     try {
       console.log("Attempting to log in with:", { email });
       const userRole = await login(email, password);
+
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+      } else {
+        localStorage.removeItem("rememberedEmail");
+      }
 
       // navigate based on user role
       switch (userRole) {
@@ -50,13 +55,21 @@ export default function LoginPage() {
     }
   };
 
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
   return (
     <>
       <div className="min-h-screen bg-white flex flex-col">
         {/* centered container */}
         <div className="flex-grow flex items-center justify-center">
           {/* login form container */}
-          <div className="max-w-md w-full mx-4 px-6 py-8 bg-white rounded-lg shadow-md">
+          <div className="max-w-md w-full mx-4 px-6 py-8 bg-white rounded-lg shadow-lg">
             {/* home icon */}
             <div className="flex justify-center mb-3">
               <Link
@@ -112,12 +125,6 @@ export default function LoginPage() {
                   >
                     Password
                   </label>
-                  <a
-                    href="#"
-                    className="text-sm text-blue-900 hover:text-blue-700"
-                  >
-                    Forgot Password?
-                  </a>
                 </div>
                 <input
                   type="password"
@@ -137,7 +144,7 @@ export default function LoginPage() {
                   id="remember-me"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-blue-900 focus:ring-blue-700 border-gray-300 rounded"
+                  className="h-4 w-4 accent-blue-900 focus:ring-blue-700 border-gray-300 rounded"
                 />
                 <label
                   htmlFor="remember-me"
@@ -154,10 +161,12 @@ export default function LoginPage() {
                 className="w-full bg-blue-900 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 cursor-pointer disabled:bg-blue-300"
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <SpinnerCircle className="h-2 w-2"/>
-                    <span>Logging in...</span>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-center">
+                      <LoaderCircle className="animate-spin h-6 w-6 mr-2" />
+                      <span>Logging in...</span>
+                    </div>
+                  </>
                 ) : (
                   "Log in"
                 )}

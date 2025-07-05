@@ -45,7 +45,7 @@ const items = {
       ],
     },
     {
-      title: "Plaform",
+      title: "Platform",
       url: "#",
       items: [
         {
