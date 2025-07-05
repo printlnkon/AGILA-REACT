@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -66,6 +69,8 @@ import {
   Check,
   Trash2,
   CalendarDays,
+  Calendar as CalendarIcon,
+  LoaderCircle,
 } from "lucide-react";
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
 import {
@@ -76,13 +81,20 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 const createColumns = (
-  handleSetStatus, 
+  handleSetStatus,
   handleEditSemester,
-  handleDeleteSemester) => [
+  handleDeleteSemester,
+  activatingSemesterId,
+) => [
   // semester
   {
+    id: "Semester",
     accessorKey: "semesterName",
     header: ({ header }) => {
       return (
@@ -92,7 +104,7 @@ const createColumns = (
       );
     },
     cell: ({ row }) => (
-      <div className="ml-4 font-medium">{row.getValue("semesterName")}</div>
+      <div className="ml-4 font-medium">{row.getValue("Semester")}</div>
     ),
   },
 
@@ -107,7 +119,7 @@ const createColumns = (
 
       // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{date.toLocaleDateString()}</div>;
+      return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
   },
   // end date column
@@ -115,13 +127,13 @@ const createColumns = (
     id: "End Date",
     accessorKey: "endDate",
     header: "End Date",
-     cell: ({ row }) => {
+    cell: ({ row }) => {
       const timestamp = row.original.endDate;
       if (!timestamp) return <div>-</div>;
 
       // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{date.toLocaleDateString()}</div>;
+      return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
   },
   // status column
@@ -131,6 +143,18 @@ const createColumns = (
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status");
+      const sem = row.original;
+      const isActivating = activatingSemesterId === sem.id;
+
+      if (isActivating) {
+        return (
+          <div className="flex items-center">
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            <span>Activating...</span>
+          </div>
+        );
+      }
+
       const statusConfig = {
         Active: {
           variant: "default",
@@ -157,68 +181,102 @@ const createColumns = (
     },
   },
   // actions column
-   {
+  {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
       const sem = row.original;
       const isActive = sem.status === "Active";
+      const isActivating = activatingSemesterId === sem.id;
       const [showDeleteDialog, setShowDeleteDialog] = useState(false);
       const [showEditDialog, setShowEditDialog] = useState(false);
+      const [isStartDatePickerOpen, setStartDatePickerOpen] = useState(false);
+      const [isEndDatePickerOpen, setEndDatePickerOpen] = useState(false);
+
+      const toDate = (timestamp) => {
+        if (!timestamp) return null;
+        return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      };
+
       const [editedSemester, setEditedSemester] = useState({
         semesterName: sem.semesterName,
-        startDate: sem.startDate,
-        endDate: sem.endDate,
+        startDate: toDate(sem.startDate),
+        endDate: toDate(sem.endDate),
       });
 
-      const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setEditedSemester((prev) => ({ ...prev, [id]: value }));
+      const handleSelectChange = (value) => {
+        setEditedSemester((prev) => ({ ...prev, semesterName: value }));
       };
+
+      const handleDateChange = (date, field) => {
+        setEditedSemester((prev) => ({ ...prev, [field]: date }));
+        if (field === "startDate") {
+          setStartDatePickerOpen(false);
+        } else if (field === "endDate") {
+          setEndDatePickerOpen(false);
+        }
+      };
+
+      // Reset form when opening the dialog
+      useEffect(() => {
+        if (showEditDialog) {
+          setEditedSemester({
+            semesterName: sem.semesterName,
+            startDate: toDate(sem.startDate),
+            endDate: toDate(sem.endDate),
+          });
+        }
+      }, [showEditDialog, sem]);
 
       return (
         <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="h-8 w-8 p-0"
+                disabled={isActivating}
+              >
+                <span className="sr-only">Open menu</span>
+                {isActivating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
                   <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                  onClick={() => handleSetStatus(sem)}
-                  disabled={isActive}
-                >
-                  <Check className="mr-2 h-4 w-4 text-green-600" />
-                  Set as Active
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-                  onClick={() => setShowEditDialog(true)}
-                >
-                  <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                  disabled={isActive}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                  Delete Permanently
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                )
+              }
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                onClick={() => handleSetStatus(sem)}
+                disabled={isActive || isActivating}
+              >
+                <Check className="mr-2 h-4 w-4 text-green-600" />
+                Set as Active
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                onClick={() => setShowEditDialog(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                disabled={isActive}
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                Delete Permanently
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Delete Confirmation Dialog */}
-          <Dialog
-            open={showDeleteDialog}
-            onOpenChange={setShowDeleteDialog}
-          >
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Confirm Deletion</DialogTitle>
@@ -244,7 +302,7 @@ const createColumns = (
                   }}
                   className="cursor-pointer"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  <Trash2 /> Delete
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -252,48 +310,124 @@ const createColumns = (
 
           {/* Edit Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Edit Semester</DialogTitle>
+                <DialogTitle className="text-blue-900">
+                  Edit Semester
+                </DialogTitle>
                 <DialogDescription>
                   Make changes to the semester details.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="semesterName" className="text-right">
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label htmlFor="Semester" className="text-right">
                     Semester
                   </Label>
-                  <Input
-                    id="semesterName"
-                    value={editedSemester.semesterName}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Select
+                      onValueChange={handleSelectChange}
+                      value={editedSemester.semesterName}
+                    >
+                      <SelectTrigger id="semesterName">
+                        <SelectValue placeholder="Select a semester" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1st Semester">
+                          1st Semester
+                        </SelectItem>
+                        <SelectItem value="2nd Semester">
+                          2nd Semester
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="startDate" className="text-right">
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label htmlFor="startDate" className="text-right pt-2">
                     Start Date
                   </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={editedSemester.startDate}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Popover
+                      open={isStartDatePickerOpen}
+                      onOpenChange={setStartDatePickerOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="startDate"
+                          className={`w-full justify-start text-left font-normal ${
+                            !editedSemester.startDate
+                              ? "text-muted-foreground"
+                              : ""
+                          }`}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {editedSemester.startDate ? (
+                            format(editedSemester.startDate, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={editedSemester.startDate}
+                          captionLayout="dropdown"
+                          onSelect={(date) =>
+                            handleDateChange(date, "startDate")
+                          }
+                          disabled={(date) =>
+                            editedSemester.endDate &&
+                            date > editedSemester.endDate
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="endDate" className="text-right">
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label htmlFor="endDate" className="text-right pt-2">
                     End Date
                   </Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={editedSemester.endDate}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Popover
+                      open={isEndDatePickerOpen}
+                      onOpenChange={setEndDatePickerOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="endDate"
+                          className={`w-full justify-start text-left font-normal ${
+                            !editedSemester.endDate
+                              ? "text-muted-foreground"
+                              : ""
+                          }`}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {editedSemester.endDate ? (
+                            format(editedSemester.endDate, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={editedSemester.endDate}
+                          captionLayout="dropdown"
+                          onSelect={(date) => handleDateChange(date, "endDate")}
+                          disabled={(date) =>
+                            editedSemester.startDate &&
+                            date < editedSemester.startDate
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -326,6 +460,7 @@ export default function Semester() {
   const [activeAcadYear, setActiveAcadYear] = useState(null);
   const [semesters, setSemesters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activatingSemesterId, setActivatingSemesterId] = useState(null);
   const [sorting, setSorting] = useState([]);
   const [columnFilters, setColumnFilters] = useState([]);
 
@@ -366,6 +501,14 @@ export default function Semester() {
         id: doc.id,
         ...doc.data(),
       }));
+
+      // active status stays on top
+      semesterList.sort((a, b) => {
+        if (a.status === "Active") return -1;
+        if (b.status === "Active") return 1;
+        return 
+      })
+
       setSemesters(semesterList);
     } catch (error) {
       console.error("Error fetching semesters: ", error);
@@ -383,10 +526,10 @@ export default function Semester() {
     fetchSemesters();
   }, [fetchSemesters]);
 
-
   const handleSetStatus = async (semesterToActivate) => {
     if (!activeAcadYear) return;
 
+    setActivatingSemesterId(semesterToActivate.id);
     const batch = writeBatch(db);
     semesters.forEach((sem) => {
       const semRef = doc(
@@ -405,22 +548,25 @@ export default function Semester() {
 
     try {
       await batch.commit();
-      toast.success(`"${semesterToActivate.name}" is now the active semester.`);
+      toast.success(`"${semesterToActivate.semesterName}" is now the active semester.`);
       fetchSemesters(); // Refresh the list
     } catch (error) {
       console.error("Error updating semester status: ", error);
       toast.error("Failed to update semester status.");
       setLoading(false);
+    } finally {
+      setActivatingSemesterId(null);
     }
   };
 
   const handleEditSemester = async (semesterToEdit, newData) => {
-    if (
-      !newData.semesterName ||
-      !newData.startDate ||
-      !newData.endDate
-    ) {
+    if (!newData.semesterName || !newData.startDate || !newData.endDate) {
       toast.error("Please fill out all fields.");
+      return;
+    }
+
+    if (new Date(newData.startDate) >= new Date(newData.endDate)) {
+      toast.error("End date must be after the start date.");
       return;
     }
 
@@ -433,9 +579,13 @@ export default function Semester() {
     );
 
     try {
-      await updateDoc(semRef, newData);
+      await updateDoc(semRef, {
+        ...newData,
+        startDate: format(newData.startDate, "yyyy-MM-dd"),
+        endDate: format(newData.endDate, "yyyy-MM-dd"),
+      });
       toast.success("Semester updated successfully.");
-      fetchSemesters();
+      fetchSemesters(); // Refresh the list
     } catch (error) {
       console.error("Error updating semester: ", error);
       toast.error("Failed to update semester.");
@@ -469,7 +619,8 @@ export default function Semester() {
   const columns = createColumns(
     handleSetStatus,
     handleEditSemester,
-    handleDeleteSemester
+    handleDeleteSemester,
+    activatingSemesterId,
   );
 
   const table = useReactTable({
@@ -486,6 +637,133 @@ export default function Semester() {
       columnFilters,
     },
   });
+
+  if (semesters.length === 0 && !loading) {
+    return (
+      <div className="w-full p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-blue-900">
+              Manage Semester
+            </h1>
+            {activeAcadYear ? (
+              <p className="text-md text-gray-600">
+                For Academic Year:{" "}
+                <span className="font-semibold">{activeAcadYear.acadYear}</span>
+              </p>
+            ) : (
+              <p className="text-md text-red-600">
+                No active academic year found. Please set one first.
+              </p>
+            )}
+          </div>
+        </div>
+        {/* search and filters */}
+        <div className="flex items-center gap-2 py-4">
+          <AddSemesterModal
+            activeAcadYear={activeAcadYear}
+            onSemesterAdded={fetchSemesters}
+          />
+          {/* search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by semester name..."
+              value={table.getColumn("Semester")?.getFilterValue() ?? ""}
+              onChange={(event) =>
+                table
+                  .getColumn("Semester")
+                  ?.setFilterValue(event.target.value)
+              }
+              className="pl-10 max-w-sm"
+              disabled={!activeAcadYear}
+            />
+          </div>
+
+          {/* columns toggle */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="ml-auto cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* empty table with message inside */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-64 text-center py-12"
+                >
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <div className="rounded-full bg-gray-50 p-3">
+                      <CalendarDays className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-blue-900 text-lg font-medium">
+                        No semesters found
+                      </p>
+                      <p className="text-gray-400 text-sm mt-2">
+                        {activeAcadYear
+                          ? "Add a new semester to get started."
+                          : "Please set an active academic year first."}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Empty pagination area for consistent layout */}
+        <div className="flex justify-between items-center py-4">
+          <div className="text-sm text-muted-foreground">
+            0 of 0 row(s) selected.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -603,11 +881,9 @@ export default function Semester() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by semester name..."
-            value={table.getColumn("semesterName")?.getFilterValue() ?? ""}
+            value={table.getColumn("Semester")?.getFilterValue() ?? ""}
             onChange={(event) =>
-              table
-                .getColumn("semesterName")
-                ?.setFilterValue(event.target.value)
+              table.getColumn("Semester")?.setFilterValue(event.target.value)
             }
             className="pl-10 max-w-sm"
           />
@@ -664,7 +940,7 @@ export default function Semester() {
             ))}
           </TableHeader>
           <TableBody>
-           {loading ? (
+            {loading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
@@ -742,7 +1018,7 @@ export default function Semester() {
             >
               <SelectTrigger
                 size="sm"
-                className="h-8 w-18 border-gray-200 cursor-pointer"
+                className="h-6 w-18 cursor-pointer"
                 id="rows-per-page"
               >
                 <SelectValue
