@@ -4,8 +4,8 @@
 
 - **Frontend**: React.js, Tailwind CSS
 - **Animation**: AOS (Animate On Scroll)
-- **Icons**: - Lucide Icons
-- **Routing**: - React Router
+- **Icons**: Lucide Icons
+- **Routing**: React Router
 
 ## Getting Started
 
@@ -24,7 +24,7 @@
 
 2. Install dependencies
    ```bash
-   cd frontend
+   cd web
    npm install
    ```
 

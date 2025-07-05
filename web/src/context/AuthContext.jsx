@@ -13,6 +13,7 @@ export default function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // function to log in a user
   const login = async (email, password) => {
@@ -60,7 +61,8 @@ export default function AuthProvider({ children }) {
 
       setUserRole(matched.role);
 
-      // store in session storage for persistence
+      // Store in sessionStorage for session-only access
+      sessionStorage.setItem("uid", user.uid);
       sessionStorage.setItem("role", matched.role);
       sessionStorage.setItem("email", matched.email);
       sessionStorage.setItem("name", matched.name);
@@ -78,7 +80,7 @@ export default function AuthProvider({ children }) {
     try {
       await auth.signOut();
       alert("You have been logged out successfully.");
-      // clear session storage
+      // clear local storage
       sessionStorage.removeItem("uid");
       sessionStorage.removeItem("role");
       sessionStorage.removeItem("email");
@@ -93,63 +95,100 @@ export default function AuthProvider({ children }) {
 
   // set up auth state observer
   useEffect(() => {
+    setLoading(true);
+    let isMounted = true; // to prevent state updates if component unmounts
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // user is signed in
-        const role = sessionStorage.getItem("role");
-        const name = sessionStorage.getItem("name");
-        const firstName = sessionStorage.getItem("firstName");
-        const email = sessionStorage.getItem("email");
+      try {
+        if (user) {
+          // user is signed in
+          const role = sessionStorage.getItem("role");
+          const email = sessionStorage.getItem("email");
+          const name = sessionStorage.getItem("name");
+          const firstName = sessionStorage.getItem("firstName");
 
-        if (role && email) {
-          setCurrentUser({
-            uid: user.uid,
-            email,
-            name,
-            firstName,
-            role,
-          });
-          setUserRole(role);
-        } else {
-          // attempt to find user role if session storage is empty
-          const roles = [
-            "admin",
-            "student",
-            "teacher",
-            "program_head",
-            "academic_head",
-          ];
-          for (const r of roles) {
-            const docRef = doc(db, `users/${r}/accounts`, user.uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              const userData = docSnap.data();
+          if (role && email) {
+            if (isMounted) {
               setCurrentUser({
                 uid: user.uid,
-                email: userData.email,
-                name: userData.name,
-                role: r,
+                email,
+                name,
+                firstName,
+                role,
               });
-              setUserRole(r);
-              break;
+              setUserRole(role);
+            }
+            setUserRole(role);
+          } else {
+            // attempt to find user role if session storage is empty
+            const roles = [
+              "admin",
+              "student",
+              "teacher",
+              "program_head",
+              "academic_head",
+            ];
+            for (const r of roles) {
+              const docRef = doc(db, `users/${r}/accounts`, user.uid);
+              const docSnap = await getDoc(docRef);
+
+              if (docSnap.exists()) {
+                if (isMounted) {
+                  const userData = docSnap.data();
+                  const userInfo = {
+                    uid: user.uid,
+                    email: userData.email,
+                    name: userData.name,
+                    firstName: userData.firstName || "",
+                    role: r,
+                  };
+                  setCurrentUser(userInfo);
+                  setUserRole(r);
+
+                  // Store in sessionStorage
+                  sessionStorage.setItem("uid", user.uid);
+                  sessionStorage.setItem("role", r);
+                  sessionStorage.setItem("email", userData.email);
+                  sessionStorage.setItem("name", userData.name);
+                  if (userData.firstName) {
+                    sessionStorage.setItem("firstName", userData.firstName);
+                  }
+                }
+                break; // exit loop once found
+              }
             }
           }
+        } else {
+          // user is signed out
+          if (isMounted) {
+            setCurrentUser(null);
+            setUserRole(null);
+          }
         }
-      } else {
-        // user is signed out
-        setCurrentUser(null);
-        setUserRole(null);
+      } catch (error) {
+        if (isMounted) {
+          console.error("Auth state error:", error);
+          setCurrentUser(null);
+          setUserRole(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     });
 
     // cleanup subscription
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      isMounted = false;
+    };
   }, []);
 
   const value = {
     currentUser,
     userRole,
     error,
+    loading,
     login,
     logout,
   };
