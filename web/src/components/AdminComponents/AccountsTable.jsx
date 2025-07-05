@@ -627,7 +627,7 @@ export default function AccountsTable() {
 
         {/* skeleton for table */}
         <div className="rounded-md border">
-          <div className="bg-gray-50 px-4">
+          <div className="px-4">
             <div className="h-10 flex items-center">
               {/* skeleton header row */}
               <div className="flex w-full space-x-4 py-3">

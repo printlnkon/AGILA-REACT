@@ -705,7 +705,7 @@ export default function ArchiveTable() {
 
         {/* skeleton for table */}
         <div className="rounded-md border">
-          <div className="bg-gray-50 px-4">
+          <div className="px-4">
             <div className="flex h-10 items-center">
               {/* skeleton header row */}
               <div className="flex w-full space-x-4 py-3">

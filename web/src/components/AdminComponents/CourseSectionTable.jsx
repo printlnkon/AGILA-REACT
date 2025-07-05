@@ -93,10 +93,11 @@ export const createColumns = (handleOpenModal) => [
   //   enableHiding: false,
   // },
   {
+    id: "Student Number",
     accessorKey: "studentNumber",
     header: "Student Number",
     cell: ({ row }) => (
-      <div className="pl-4">{row.getValue("studentNumber") || "N/A"}</div>
+      <div className="ml-4">{row.getValue("Student Number") || "N/A"}</div>
     ),
   },
   {
@@ -128,9 +129,10 @@ export const createColumns = (handleOpenModal) => [
     cell: ({ row }) => <div>{row.getValue("course") || "N/A"}</div>,
   },
   {
+    id: "Year Level",
     accessorKey: "yearLevel",
     header: "Year Level",
-    cell: ({ row }) => <div>{row.getValue("yearLevel") || "N/A"}</div>,
+    cell: ({ row }) => <div>{row.getValue("Year Level") || "N/A"}</div>,
   },
   {
     accessorKey: "section",
@@ -328,19 +330,19 @@ export default function CourseSectionTable() {
         <div className="relative max-w-sm flex-1">
           <Input
             placeholder="Search by student number..."
-            value={table.getColumn("studentNumber")?.getFilterValue() ?? ""}
+            value={table.getColumn("Student Number")?.getFilterValue() ?? ""}
             onChange={(event) =>
               table
-                .getColumn("studentNumber")
+                .getColumn("Student Number")
                 ?.setFilterValue(event.target.value)
             }
             className="pr-10"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {table.getColumn("studentNumber")?.getFilterValue() && (
+            {table.getColumn("Student Number")?.getFilterValue() && (
               <button
                 onClick={() =>
-                  table.getColumn("studentNumber")?.setFilterValue("")
+                  table.getColumn("Student Number")?.setFilterValue("")
                 }
                 className="p-1 hover:bg-gray-100 rounded-full"
               >

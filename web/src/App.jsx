@@ -18,7 +18,7 @@ import AcademicHead from "@/pages/AcademicHead";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Accounts from "@/components/AdminComponents/Accounts";
-import Archive from "@/components/AdminComponents/Archive";
+import Archives from "@/components/AdminComponents/Archives";
 import Departments from "@/components/AdminComponents/Departments";
 import Schedules from "@/components/AdminComponents/Schedules";
 import AuthProvider from "@/context/AuthContext";
@@ -67,7 +67,7 @@ function AppContent() {
         <Route path="academic-year" element={<AcademicYear />} />
         <Route path="semester" element={<Semester />} />
         <Route path="accounts" element={<Accounts />} />
-        <Route path="archive" element={<Archive />} />
+        <Route path="archives" element={<Archives />} />
         <Route path="course-section" element={<CourseSection />} />
         <Route path="departments" element={<Departments />} />
         <Route path="schedules" element={<Schedules />} />

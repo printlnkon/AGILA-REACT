@@ -4,16 +4,14 @@ import {
   Settings,
   ChevronUp,
   UsersRound,
-  Building,
   LogOut,
   GalleryVerticalEnd,
   CircleUserRound,
   ChevronRight,
-  SquarePen,
   Archive,
   BookOpen,
-  CalendarDays,
   LayoutTemplate,
+  LibraryBig,
 } from "lucide-react";
 import {
   Sidebar,
@@ -59,89 +57,57 @@ const items = {
       ],
     },
     {
-      title: "Platform",
+      title: "Academic",
       url: "#",
       items: [
         {
           title: "Academic Year",
-          url: "/admin/academic-year",
+          url: "#",
           icon: BookOpen,
+          items: [
+            {
+              title: "View Academic Years",
+              url: "/admin/academic-year",
+              // icon: UsersRound,
+            },
+          ],
         },
         {
           title: "Semester",
-          url: "/admin/semester",
-          icon: CalendarDays,
-        },
-        {
-          title: "Sections",
-          url: "#",
-          icon: LayoutTemplate,
-        },
-
-        {
-          title: "Manage Accounts",
           url: "#",
           icon: UsersRound,
           items: [
             {
-              title: "View Accounts",
-              url: "/admin/accounts",
+              title: "View Semesters",
+              url: "/admin/semester",
               // icon: UsersRound,
             },
           ],
         },
-        // {
-        //   title: "Students",
-        //   url: "#",
-        //   icon: UsersRound,
-        //   items: [
-        //     {
-        //       title: "View Students",
-        //       url: "#",
-        //       // icon: UsersRound,
-        //     },
-        //     {
-        //       title: "Add Student",
-        //       url: "#",
-        //       // icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-        //   title: " Faculty",
-        //   url: "#",
-        //   icon: UsersRound,
-        //   items: [
-        //     {
-        //       title: "View Faculties",
-        //       url: "#",
-        //       // icon: UsersRound,
-        //     },
-        //     {
-        //       title: "Add Faculty",
-        //       url: "#",
-        //       // icon: UsersRound,
-        //     },
-        //   ],
-        // },
         {
-          title: " Archives",
+          title: "Course",
           url: "#",
-          icon: Archive,
+          icon: LibraryBig,
           items: [
             {
-              title: "View Archive Users",
-              url: "/admin/archive",
+              title: "View Courses",
+              url: "#",
               // icon: UsersRound,
             },
           ],
         },
-
-        // {
-        //   title: "Course and Section",
-        //   url: "/admin/course-section",
-        //   icon: SquarePen,
-        // },
+        {
+          title: "Section",
+          url: "#",
+          icon: LayoutTemplate,
+          items: [
+            {
+              title: "View Sections",
+              url: "#",
+              // icon: UsersRound,
+            },
+          ],
+        },
         // {
         //   title: "Departments",
         //   url: "/admin/departments",
@@ -152,6 +118,36 @@ const items = {
         //   url: "/admin/schedules",
         //   icon: Calendar,
         // },
+      ],
+    },
+    {
+      title: "Accounts",
+      url: "#",
+      items: [
+        {
+          title: "Accounts",
+          url: "#",
+          icon: UsersRound,
+          items: [
+            {
+              title: "View Accounts",
+              url: "/admin/accounts",
+              // icon: UsersRound,
+            },
+          ],
+        },
+        {
+          title: "Archives",
+          url: "#",
+          icon: Archive,
+          items: [
+            {
+              title: "View Archive Users",
+              url: "/admin/archives",
+              // icon: UsersRound,
+            },
+          ],
+        },
       ],
     },
   ],
@@ -200,7 +196,7 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-blue-900">AGILA</span>
+                    <span className="font-bold text-muted-background">AGILA</span>
                     <span className="">v1.0.0</span>
                   </div>
                 </Link>
@@ -237,7 +233,7 @@ export default function SideBar() {
                                   menuItem.items.some((subItem) =>
                                     isActive(subItem.url)
                                   )
-                                    ? "font-medium text-blue-900"
+                                    ? "font-medium bg-accent"
                                     : ""
                                 }
                               `}

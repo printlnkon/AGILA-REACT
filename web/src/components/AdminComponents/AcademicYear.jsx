@@ -48,6 +48,7 @@ import {
   Pencil,
   Check,
   Trash2,
+  LoaderCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,11 +78,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
 
 const createColumns = (
   handleSetAsActive,
   handleDeleteAcademicYear,
-  handleEditAcademicYear
+  handleEditAcademicYear,
+  activatingYearId
 ) => [
   // academic year column
   {
@@ -114,7 +117,7 @@ const createColumns = (
 
       // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{date.toLocaleDateString()}</div>;
+      return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
   },
 
@@ -129,7 +132,7 @@ const createColumns = (
 
       // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{date.toLocaleDateString()}</div>;
+      return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
   },
 
@@ -137,8 +140,21 @@ const createColumns = (
   {
     accessorKey: "status",
     header: "Status",
+
     cell: ({ row }) => {
       const status = row.getValue("status");
+      const year = row.original;
+      const isActivating = activatingYearId === year.id;
+
+      if (isActivating) {
+        return (
+          <div className="flex items-center">
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            <span>Activating...</span>
+          </div>
+        );
+      }
+
       const statusConfig = {
         Active: {
           variant: "default",
@@ -171,24 +187,33 @@ const createColumns = (
     cell: ({ row }) => {
       const year = row.original;
       const isActive = year.status === "Active";
+      const isActivating = activatingYearId === year.id;
       const [showDeleteDialog, setShowDeleteDialog] = useState(false);
       const [showEditDialog, setShowEditDialog] = useState(false);
       const [editedAcadYear, setEditedAcadYear] = useState(year.acadYear);
-
+      
       return (
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                disabled={isActivating}
+              >
                 <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
+                {isActivating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
                 onClick={() => handleSetAsActive(year)}
-                disabled={isActive}
+                disabled={isActive || isActivating}
               >
                 <Check className="mr-2 h-4 w-4 text-green-600" />
                 Set as Active
@@ -251,7 +276,7 @@ const createColumns = (
 
           {/* Edit Confirmation Dialog */}
           <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle className="text-blue-900">
                   Edit Academic Year
@@ -297,6 +322,7 @@ const createColumns = (
 export default function AcademicYear() {
   const [academicYears, setAcademicYears] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activatingYearId, setActivatingYearId] = useState(null);
   const [sorting, setSorting] = useState([
     { id: "status", desc: false },
     { id: "Academic Year", desc: true },
@@ -429,6 +455,7 @@ export default function AcademicYear() {
       return;
     }
 
+    setActivatingYearId(yearToActivate.id);
     const batch = writeBatch(db);
     const currentActiveYear = academicYears.find(
       (year) => year.status === "Active"
@@ -451,13 +478,16 @@ export default function AcademicYear() {
     } catch (error) {
       console.error("Error setting active year: ", error);
       toast.error("Failed to set active year. Please try again.");
+    } finally {
+      setActivatingYearId(null);
     }
   };
 
   const columns = createColumns(
     handleSetAsActive,
     handleDeleteAcademicYear,
-    handleEditAcademicYear
+    handleEditAcademicYear,
+    activatingYearId
   );
 
   const table = useReactTable({
@@ -571,7 +601,7 @@ export default function AcademicYear() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search year by academic year..."
+            placeholder="Search by academic year..."
             value={table.getColumn("Academic Year")?.getFilterValue() ?? ""}
             onChange={(event) =>
               table

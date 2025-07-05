@@ -144,7 +144,7 @@ export default function LoginPage() {
                   id="remember-me"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-blue-900 border-gray-300 rounded"
+                  className="h-4 w-4 accent-blue-900 focus:ring-blue-700 border-gray-300 rounded"
                 />
                 <label
                   htmlFor="remember-me"

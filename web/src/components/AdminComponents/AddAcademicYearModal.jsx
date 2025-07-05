@@ -81,20 +81,19 @@ export default function AddAcademicYearModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer bg-blue-900 hover:bg-blue-700">
+        <Button className="cursor-pointer bg-primary text-accent-foreground">
           <Plus />
           Add New Year
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-blue-900">
+          <DialogTitle className="text-foreground">
             Add New Academic Year
           </DialogTitle>
         </DialogHeader>
         <DialogDescription>
-          Create one session per academic year. This will be used to manage
-          student enrollments, course offerings, and other academic activities.
+          Create one session per academic year.
         </DialogDescription>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -122,7 +121,7 @@ export default function AddAcademicYearModal() {
             <Button
               type="submit"
               disabled={loading}
-              className="cursor-pointer bg-blue-900 hover:bg-blue-700"
+              className="cursor-pointer bg-primary text-foreground"
             >
               {loading ? (
                 <>
