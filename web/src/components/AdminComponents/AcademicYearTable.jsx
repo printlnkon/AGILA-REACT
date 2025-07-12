@@ -1,59 +1,16 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import AddUserModal from "@/components/AdminComponents/AddUserModal";
 import {
   collection,
-  getDocs,
+  onSnapshot,
   doc,
-  deleteDoc,
-  getDoc,
-  setDoc,
+  writeBatch,
+  updateDoc,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import {
-  flexRender,
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-} from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  MoreHorizontal,
-  Pencil,
-  Columns2,
-  Eye,
-  Copy,
-  Search,
-  X,
-  Archive,
-  UsersRound,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -63,12 +20,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import AddAcademicYearModal from "@/components/AdminComponents/AddAcademicYearModal";
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  ArrowUpDown,
+  Columns2,
+  Search,
+  ChevronDown,
+  MoreHorizontal,
+  Pencil,
+  Check,
+  Trash2,
+  LoaderCircle,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -80,140 +69,44 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { format } from "date-fns";
 
-// Action handlers
-const handleCopyStudentNumber = (studentNumber) => {
-  if (!studentNumber) {
-    toast.error("Student Number not found");
-    return;
-  }
-  navigator.clipboard
-    .writeText(studentNumber)
-    .then(() => {
-      toast.success("Student Number copied to clipboard");
-    })
-    .catch(() => {
-      toast.error("Failed to copy Student Number");
-    });
-};
-
-const handleViewUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement a view modal here or navigate to a details page
-  toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement an edit modal here
-  toast.info(
-    `Edit functionality for ${user.firstName} ${user.lastName} - Coming soon`
-  );
-  console.log("Edit user:", user);
-};
-
-// table global filter for search
-const searchGlobalFilter = (row, columnId, filterValue) => {
-  const studentNumber = row.original.studentNumber?.toLowerCase() || "";
-  const email = row.original.email?.toLowerCase() || "";
-  const firstName = row.original.firstName?.toLowerCase() || "";
-  const lastName = row.original.lastName?.toLowerCase() || "";
-  const fullName = `${firstName} ${lastName}`.trim();
-
-  const search = filterValue.toLowerCase();
-
-  return (
-    studentNumber.includes(search) ||
-    email.includes(search) ||
-    fullName.includes(search)
-  );
-};
-
-const createColumns = (handleArchiveUser) => [
+const createColumns = (
+  handleSetAsActive,
+  handleDeleteAcademicYear,
+  handleEditAcademicYear,
+  activatingYearId
+) => [
+  // academic year column
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-
-  // student no. column
-  {
-    id: "Student No.",
-    accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => {
-      const studentNo = row.original.studentNumber;
-      return <div className="capitalize">{studentNo || "N/A"}</div>;
-    },
-  },
-
-  // name column
-  {
-    accessorKey: "name",
-    header: "Name",
-    cell: ({ row }) => {
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="capitalize">{fullName || "N/A"}</div>;
-    },
-  },
-
-  // email column
-  {
-    accessorKey: "email",
+    id: "Academic Year",
+    accessorKey: "acadYear",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          Academic Year
           <ArrowUpDown />
         </Button>
       );
     },
-
-    cell: ({ row }) => (
-      <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
-    ),
-  },
-
-  // role column
-  {
-    accessorKey: "role",
-    header: "Role",
     cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
+      return <div className="ml-4">{row.getValue("Academic Year")}</div>;
     },
   },
 
-  // date created
+  // date created column
   {
     id: "Date Created",
     accessorKey: "createdAt",
@@ -222,13 +115,13 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
+      // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
       return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
   },
 
-  // last updated
+  // date updated column
   {
     id: "Last Updated",
     accessorKey: "updatedAt",
@@ -237,7 +130,7 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
+      // Convert Firebase timestamp to date
       const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
       return <div>{format(date, "MMMM do, yyyy")}</div>;
     },
@@ -247,100 +140,175 @@ const createColumns = (handleArchiveUser) => [
   {
     accessorKey: "status",
     header: "Status",
+
     cell: ({ row }) => {
-      const status = row.getValue("status") || "active";
-      const isActive = status === "active";
+      const status = row.getValue("status");
+      const year = row.original;
+      const isActivating = activatingYearId === year.id;
+
+      if (isActivating) {
+        return (
+          <div className="flex items-center">
+            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            <span>Activating...</span>
+          </div>
+        );
+      }
+
+      const statusConfig = {
+        Active: {
+          variant: "default",
+          className: "bg-green-600 text-white",
+        },
+        Archived: {
+          variant: "destructive",
+          // className: "bg-red-600 text-white",
+        },
+        Upcoming: {
+          variant: "outline",
+          className: "bg-blue-900 text-white",
+        },
+      };
+
+      // Get the config for the current status, or fallback to 'upcoming'
+      const config = statusConfig[status] || statusConfig.Upcoming;
+
       return (
-        <Badge
-          variant={isActive ? "default" : "destructive"}
-          className={
-            isActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }
-        >
-          {isActive ? "Active" : "Inactive"}
+        <Badge variant={config.variant} className={config.className}>
+          {status}
         </Badge>
       );
     },
   },
-  // actions column
+
   {
     id: "actions",
     header: "Actions",
-    enableHiding: false,
     cell: ({ row }) => {
-      const user = row.original;
-      const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+      const year = row.original;
+      const isActive = year.status === "Active";
+      const isActivating = activatingYearId === year.id;
+      const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+      const [showEditDialog, setShowEditDialog] = useState(false);
+      const [editedAcadYear, setEditedAcadYear] = useState(year.acadYear);
 
       return (
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                disabled={isActivating}
+              >
                 <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
+                {isActivating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => handleCopyStudentNumber(user.studentNumber)}
-                className="cursor-pointer"
+                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                onClick={() => handleSetAsActive(year)}
+                disabled={isActive || isActivating}
               >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
+                <Check className="mr-2 h-4 w-4 text-green-600" />
+                Set as Active
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
                 className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                onClick={() => {
+                  setEditedAcadYear(year.acadYear);
+                  setShowEditDialog(true);
+                }}
               >
                 <Pencil className="mr-2 h-4 w-4 text-blue-600" />
                 Edit
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                disabled={isActive}
               >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                Delete Permanently
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Archive Confirmation Dialog */}
-          <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+          {/* Delete Confirmation Dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirm Archive</DialogTitle>
+                <DialogTitle>Confirm Permanent Deletion</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user "{user.firstName}{" "}
-                  {user.lastName}"? This will set their account status to
-                  inactive.
+                  Are you sure you want to permanently delete this academic year
+                  "<strong>{year.acadYear}</strong>"? This action cannot be
+                  undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setShowArchiveDialog(false)}
+                  onClick={() => setShowDeleteDialog(false)}
                   className="cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
-                  variant="warning"
+                  variant="destructive"
                   onClick={() => {
-                    handleArchiveUser(user);
-                    setShowArchiveDialog(false);
+                    handleDeleteAcademicYear(year);
+                    setShowDeleteDialog(false);
                   }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+                  className="cursor-pointer"
                 >
-                  <Archive /> Archive
+                  <Trash2 /> Delete Permanently
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Confirmation Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="text-blue-900">
+                  Edit Academic Year
+                </DialogTitle>
+                <DialogDescription>
+                  Make changes to the academic year. Click save when you're
+                  done.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Input
+                  value={editedAcadYear}
+                  onChange={(e) => setEditedAcadYear(e.target.value)}
+                  placeholder="e.g., S.Y - 202X-202X"
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleEditAcademicYear(year, editedAcadYear);
+                    setShowEditDialog(false);
+                  }}
+                  className="cursor-pointer bg-primary"
+                >
+                  <Check /> Save Changes
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -351,185 +319,179 @@ const createColumns = (handleArchiveUser) => [
   },
 ];
 
-export const pagination = {};
-
-export default function AccountsTable() {
-  const [users, setUsers] = useState([]);
-  const [sorting, setSorting] = useState([]);
-  const [rowSelection, setRowSelection] = useState({});
+export default function AcademicYearTable() {
+  const [academicYears, setAcademicYears] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activatingYearId, setActivatingYearId] = useState(null);
+  const [sorting, setSorting] = useState([
+    { id: "status", desc: false },
+    { id: "Academic Year", desc: true },
+  ]);
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
 
-  const handleArchiveUser = async (user) => {
-    if (!user || !user.id || !user.role) {
-      toast.error("Invalid user data");
-      console.error("Missing required user data:", user);
-      return false;
-    }
-
-    try {
-      // matches the collection path in firestore
-      const rolePath = user.role.toLowerCase().replace(" ", "_");
-      // reference to the user document
-      const userPath = `users/${rolePath}/accounts`;
-      console.log("Looking for user document at path:", userPath);
-
-      const userDocRef = doc(db, userPath, user.id);
-      const userSnap = await getDoc(userDocRef);
-      if (!userSnap.exists()) {
-        console.error("User document not found at:", userPath, user.id);
-        toast.error("User data not found.");
-        return false;
+  useEffect(() => {
+    const q = query(collection(db, "academic_years"));
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const years = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setAcademicYears(years);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching academic years:", error);
+        toast.error("Failed to load academic years. Check permissions.");
+        setLoading(false);
       }
+    );
 
-      const userData = userSnap.data();
+    return () => unsubscribe();
+  }, []);
 
-      // create archive document
-      const archiveRef = doc(db, "archive", user.id);
-      await setDoc(archiveRef, {
-        ...userData,
-        role: user.role,
-        id: user.id,
-        status: "inactive",
-        email: userData.email || "",
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        archivedAt: new Date(),
+  const handleDeleteAcademicYear = async (yearToDelete) => {
+    if (!yearToDelete || !yearToDelete.id) {
+      toast.error("Invalid academic year data.");
+      return;
+    }
+    if (yearToDelete.status === "Active") {
+      toast.error(
+        "Cannot delete an active academic year. Set another year as active first."
+      );
+      return;
+    }
+    try {
+      const batch = writeBatch(db);
+
+      // get and delete all semesters in the subcollection
+      const semestersColRef = collection(
+        db,
+        "academic_years",
+        yearToDelete.id,
+        "semesters"
+      );
+      const semestersSnapshot = await getDocs(semestersColRef);
+      semestersSnapshot.forEach((semesterDoc) => {
+        batch.delete(semesterDoc.ref);
       });
 
-      // delete from original collection
-      await deleteDoc(userDocRef);
+      // delete the academic year document itself
+      const yearRef = doc(db, "academic_years", yearToDelete.id);
+      batch.delete(yearRef);
+
+      // commit the batch
+      await batch.commit();
 
       toast.success(
-        `User ${user.firstName} ${user.lastName} archived successfully`
+        `Academic Year "${yearToDelete.acadYear}" and all its semesters have been permanently deleted.`
       );
-
-      setUsers((currentUsers) => currentUsers.filter((u) => u.id !== user.id));
-
-      // refresh the users list
-      await fetchUsers();
-      return true;
     } catch (error) {
-      console.error("Error archiving user:", error);
-      toast.error(`Archive failed: ${error.message}`);
-      return false;
+      console.error("Error deleting academic year:", error);
+      toast.error(`Delete failed: ${error.message}`);
     }
   };
 
-  const handleBatchArchive = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-
-    if (selectedRows.length === 0) {
-      toast.error("No users selected");
+  const handleEditAcademicYear = async (yearToEdit, newAcadYear) => {
+    if (!yearToEdit || !yearToEdit.id) {
+      toast.error("Invalid academic year data.");
+      return;
+    }
+    if (!newAcadYear || newAcadYear.trim() === "") {
+      toast.error("Academic year cannot be empty.");
       return;
     }
 
-    let successCount = 0;
-    let failCount = 0;
+    const yearFormat = /^S\.Y - \d{4}-\d{4}$/;
+    if (!yearFormat.test(newAcadYear)) {
+      toast.error("Invalid format. Please use the format 'S.Y - YYYY-YYYY'.");
+      return;
+    }
 
-    // Show a loading toast
-    const loadingToast = toast.loading(
-      `Archiving ${selectedRows.length} users...`
+    const years = newAcadYear.split(" - ")[1].split("-");
+    const startYear = parseInt(years[0]);
+    const endYear = parseInt(years[1]);
+
+    if (endYear !== startYear + 1) {
+      toast.error(
+        "Invalid year range. The end year must be one year after the start year (e.g., S.Y - 2025-2026)."
+      );
+      return;
+    }
+
+    // check if the academic year already exists
+    const checkExistingYear = query(
+      collection(db, "academic_years"),
+      where("acadYear", "==", newAcadYear)
+    );
+    const querySnapshot = await getDocs(checkExistingYear);
+    if (!querySnapshot.empty) {
+      const existingDoc = querySnapshot.docs[0];
+      if (existingDoc.id !== yearToEdit.id) {
+        toast.error("An academic year with this name already exists.");
+        return;
+      }
+    }
+
+    const yearRef = doc(db, "academic_years", yearToEdit.id);
+
+    try {
+      await updateDoc(yearRef, {
+        acadYear: newAcadYear,
+        updatedAt: new Date(),
+      });
+      toast.success(`Academic Year updated to "${newAcadYear}".`);
+    } catch (error) {
+      console.error("Error updating academic year:", error);
+      toast.error(`Update failed: ${error.message}`);
+    }
+  };
+
+  const handleSetAsActive = async (yearToActivate) => {
+    if (yearToActivate.status === "Active") {
+      toast.info("This academic year is already active.");
+      return;
+    }
+
+    setActivatingYearId(yearToActivate.id);
+    const batch = writeBatch(db);
+    const currentActiveYear = academicYears.find(
+      (year) => year.status === "Active"
     );
 
-    // Process each selected user
-    for (const row of selectedRows) {
-      const user = row.original;
-      const success = await handleArchiveUser(user);
-
-      if (success) {
-        successCount++;
-      } else {
-        failCount++;
-      }
+    if (currentActiveYear) {
+      const prevActiveRef = doc(db, "academic_years", currentActiveYear.id);
+      batch.update(prevActiveRef, {
+        status: "Archived",
+        updatedAt: new Date(),
+      });
     }
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
+    const newActiveRef = doc(db, "academic_years", yearToActivate.id);
+    batch.update(newActiveRef, { status: "Active", updatedAt: new Date() });
 
-    // Show results
-    if (successCount > 0) {
-      toast.success(`Successfully archived ${successCount} users`);
-    }
-    if (failCount > 0) {
-      toast.error(`Failed to archive ${failCount} users`);
-    }
-
-    // Clear selection
-    table.resetRowSelection();
-
-    // force re-fetch users to update the table
-    if (successCount > 0) {
-      const remainingUsers = users.filter(
-        (user) => !selectedRows.some((row) => row.original.id === user.id)
-      );
-      setUsers(remainingUsers);
-    }
-  };
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      const allUsers = [];
-      const roles = ["student", "teacher", "program_head", "academic_head"];
-
-      for (const role of roles) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, `users/${role}/accounts`)
-          );
-
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            // Validate required fields
-            if (!userData.email) {
-              console.warn(
-                `User ${doc.id} in ${role} collection missing email`
-              );
-            }
-
-            allUsers.push({
-              id: doc.id,
-              role: role,
-              status: userData.status || "active",
-              email: userData.email || "",
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              ...userData,
-            });
-          });
-        } catch (roleError) {
-          console.error(`Error fetching ${role} users:`, roleError);
-        }
-      }
-
-      if (allUsers.length === 0) {
-        setError("No users found in any collection.");
-      } else {
-        setUsers(allUsers);
-      }
+      await batch.commit();
+      toast.success(`Academic Year ${yearToActivate.acadYear} is now active.`);
     } catch (error) {
-      console.error("Error fetching users:", error);
-      setError(
-        "Failed to load users. Please check your connection and try again."
-      );
+      console.error("Error setting active year: ", error);
+      toast.error("Failed to set active year. Please try again.");
     } finally {
-      setLoading(false);
+      setActivatingYearId(null);
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const columns = createColumns(
+    handleSetAsActive,
+    handleDeleteAcademicYear,
+    handleEditAcademicYear,
+    activatingYearId
+  );
 
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
-    data: users,
+    data: academicYears,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -537,40 +499,39 @@ export default function AccountsTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: searchGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
+    enableSortingRemoval: false,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
-      globalFilter,
     },
   });
 
-  if (users.length === 0 && !loading) {
+  if (academicYears.length === 0 && !loading) {
     return (
-      <div className="w-full">
-        <div className="mb-4">
-          <Skeleton className="h-8 w-64" />
+      <div className="w-full p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-blue-900">
+            Manage Academic Year
+          </h1>
         </div>
         {/* search and filters */}
-        <div className="flex items-center gap-4 py-4">
-          {/* <AddUserModal onUserAdded={fetchUsers} /> */}
-
+        <div className="flex items-center gap-2 py-4">
+          <AddAcademicYearModal />
           {/* search */}
-          <div className="relative max-w-sm flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users by student no or email"
-              value={globalFilter ?? ""}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="pr-16"
+              placeholder="Search by school year..."
+              value={table.getColumn("Academic Year")?.getFilterValue() ?? ""}
+              onChange={(event) =>
+                table
+                  .getColumn("Academic Year")
+                  ?.setFilterValue(event.target.value)
+              }
+              className="pl-10 max-w-sm"
             />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-              <Search className="h-4 w-4 text-gray-400 pointer-events-none" />
-            </div>
           </div>
 
           {/* columns toggle */}
@@ -629,14 +590,14 @@ export default function AccountsTable() {
                 >
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <div className="rounded-full bg-gray-50 p-3">
-                      <UsersRound className="h-12 w-12 text-gray-400" />
+                      <CalendarDays className="h-12 w-12 text-gray-400" />
                     </div>
                     <div className="text-center">
                       <p className="text-blue-900 text-lg font-medium">
-                        No users found
+                        No academic years found
                       </p>
                       <p className="text-gray-400 text-sm mt-2">
-                        Users will appear here once user data is added.
+                        Add a new academic year to get started.
                       </p>
                     </div>
                   </div>
@@ -661,10 +622,11 @@ export default function AccountsTable() {
       <div className="w-full">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
+          <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
-          {/* <Skeleton className="h-9 w-28" /> */}
+          <Skeleton className="h-9 w-28" />
 
           {/* skeleton for search box */}
           <Skeleton className="relative max-w-sm flex-1 h-9" />
@@ -737,9 +699,7 @@ export default function AccountsTable() {
         </div>
 
         {/* skeleton for footer/pagination */}
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-4 w-40" />
-
+        <div className="flex justify-end items-center">
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
               <div className="flex items-center gap-2">
@@ -760,67 +720,28 @@ export default function AccountsTable() {
     );
   }
 
-  // main content
   return (
     <div className="w-full">
-      {/* header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Manage Accounts</h1>
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Manage Academic Year</h1>
       </div>
-      <div className="flex items-center gap-2 py-4">
-        {/* add new account button */}
-        {/* <AddUserModal onUserAdded={fetchUsers} /> */}
 
-        {/* archive selected button */}
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer"
-            >
-              <X />
-              Clear selection
-            </Button>
-            <Button
-              variant="warning"
-              size="sm"
-              onClick={() => setShowBatchArchiveDialog(true)}
-              className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-            >
-              <Archive />
-              Batch Archive
-            </Button>
-          </div>
-        )}
-
+      <div className="flex items-center py-4 gap-2">
+        <AddAcademicYearModal className="cursor-pointer" />
         {/* search */}
-        <div className="relative max-w-sm flex-1">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search users by student no and email"
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pr-16"
+            placeholder="Search by school year..."
+            value={table.getColumn("Academic Year")?.getFilterValue() ?? ""}
+            onChange={(event) =>
+              table
+                .getColumn("Academic Year")
+                ?.setFilterValue(event.target.value)
+            }
+            className="pl-10 max-w-sm"
           />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {/* clear button */}
-            {globalFilter && (
-              <button
-                onClick={() => setGlobalFilter("")}
-                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4 text-primary" />
-              </button>
-            )}
-            {/* search icon */}
-            <Search className="h-4 w-4 pointer-events-none" />
-          </div>
         </div>
-
         {/* filter columns */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -892,19 +813,9 @@ export default function AccountsTable() {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-64 text-center"
+                  className="h-24 text-center"
                 >
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full ">
-                      <UsersRound className="h-12 w-12 " />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-medium">No students found</p>
-                      <p className="text-muted-foreground text-sm mt-2">
-                        Student data will appear here.
-                      </p>
-                    </div>
-                  </div>
+                  No results.
                 </TableCell>
               </TableRow>
             )}
@@ -913,11 +824,12 @@ export default function AccountsTable() {
       </div>
 
       {/* pagination */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
-        <div className="text-sm text-muted-foreground whitespace-nowrap">
+      {/* if ever gagamitin ko pa tong sa babang code, i-change ko dapat yung justify-end to justify-between */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4 py-4">
+        {/* <div className="text-sm text-muted-foreground whitespace-nowrap">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
+          {table.getFilteredRowModel().rows.length} results
+        </div> */}
 
         {/* rows per page */}
         <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
@@ -1085,42 +997,6 @@ export default function AccountsTable() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-
-          {/* Batch Archive Dialog */}
-          <Dialog
-            open={showBatchArchiveDialog}
-            onOpenChange={setShowBatchArchiveDialog}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm Batch Archive</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to archive{" "}
-                  {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? This will set their account status to inactive.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowBatchArchiveDialog(false)}
-                  className="cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="warning"
-                  onClick={() => {
-                    handleBatchArchive();
-                    setShowBatchArchiveDialog(false);
-                  }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-                >
-                  <Archive /> Archive Users
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     </div>
