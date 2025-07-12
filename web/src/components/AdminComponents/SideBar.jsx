@@ -2,7 +2,6 @@ import {
   Calendar,
   LayoutDashboard,
   Settings,
-  ChevronUp,
   UsersRound,
   LogOut,
   GalleryVerticalEnd,
@@ -12,6 +11,8 @@ import {
   BookOpen,
   LayoutTemplate,
   LibraryBig,
+  ChevronsUpDown,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,11 +28,15 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -39,9 +44,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchForm } from "@/components/ui/search-form";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { Separator } from "@/components/ui/separator";
+import { useState, useEffect, useMemo } from "react";
 
 const items = {
   navMain: [
@@ -62,52 +76,64 @@ const items = {
       items: [
         {
           title: "Academic Year",
-          url: "#",
+          url: "/admin/academic-year",
           icon: BookOpen,
-          items: [
-            {
-              title: "View Academic Years",
-              url: "/admin/academic-year",
-              // icon: UsersRound,
-            },
-          ],
+          // items: [
+          //   {
+          //     title: "View Academic Years",
+          //     url: "/admin/academic-year",
+          //     icon: UsersRound,
+          //   },
+          // ],
         },
         {
           title: "Semester",
-          url: "#",
-          icon: UsersRound,
-          items: [
-            {
-              title: "View Semesters",
-              url: "/admin/semester",
-              // icon: UsersRound,
-            },
-          ],
+          url: "/admin/semester",
+          icon: Calendar,
+          // items: [
+          //   {
+          //     title: "View Semesters",
+          //     url: "/admin/semester",
+          //     icon: UsersRound,
+          //   },
+          // ],
         },
         {
-          title: "Course",
-          url: "#",
+          title: "Year Level",
+          url: "/admin/year-level",
           icon: LibraryBig,
-          items: [
-            {
-              title: "View Courses",
-              url: "#",
-              // icon: UsersRound,
-            },
-          ],
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
         },
         {
-          title: "Section",
-          url: "#",
-          icon: LayoutTemplate,
-          items: [
-            {
-              title: "View Sections",
-              url: "#",
-              // icon: UsersRound,
-            },
-          ],
+          title: "Course and Section",
+          url: "/admin/course-section",
+          icon: LibraryBig,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
         },
+        // {
+          //   title: "Section",
+          //   url: "#",
+        //   icon: LayoutTemplate,
+        //   items: [
+        //     {
+        //       title: "View Sections",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         // {
         //   title: "Departments",
         //   url: "/admin/departments",
@@ -126,27 +152,42 @@ const items = {
       items: [
         {
           title: "Accounts",
-          url: "#",
+          url: "/admin/accounts",
           icon: UsersRound,
           items: [
             {
-              title: "View Accounts",
-              url: "/admin/accounts",
+              title: "Academic Heads",
+              url: "/admin/academic-heads",
+              // icon: UsersRound,
+            },
+            {
+              title: "Program Heads",
+              url: "/admin/program-heads",
+              // icon: UsersRound,
+            },
+            {
+              title: "Teachers",
+              url: "/admin/teachers",
+              // icon: UsersRound,
+            },
+            {
+              title: "Students",
+              url: "/admin/students",
               // icon: UsersRound,
             },
           ],
         },
         {
           title: "Archives",
-          url: "#",
+          url: "/admin/archives",
           icon: Archive,
-          items: [
-            {
-              title: "View Archive Users",
-              url: "/admin/archives",
-              // icon: UsersRound,
-            },
-          ],
+          // items: [
+          //   {
+          //     title: "View Archive Users",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
         },
       ],
     },
@@ -155,8 +196,85 @@ const items = {
 
 export default function SideBar() {
   const { currentUser, logout } = useAuth();
+
+  // sidebar
+  const { isMobile, state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  // router
   const navigate = useNavigate();
   const location = useLocation();
+
+  // search
+  const [inputValue, setInputValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [inputValue]);
+
+  // filtering logic
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) {
+      return items.navMain;
+    }
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+
+    return items.navMain
+      .map((category) => {
+        const filteredCategoryItems = category.items
+          .map((item) => {
+            // filter for sub-items
+            if (item.items) {
+              const filteredSubItems = item.items.filter((subItem) =>
+                subItem.title.toLowerCase().includes(lowerCaseQuery)
+              );
+              if (
+                item.title.toLowerCase().includes(lowerCaseQuery) ||
+                filteredSubItems.length > 0
+              ) {
+                // if parent title doesn't match, show matching sub-items
+                if (!item.title.toLowerCase().includes(lowerCaseQuery)) {
+                  return { ...item, items: filteredSubItems };
+                }
+                // otherwise, show parent and all sub-items
+                return item;
+              }
+            }
+            // For items without sub-items
+            if (item.title.toLowerCase().includes(lowerCaseQuery)) {
+              return item;
+            }
+            return null;
+          })
+          .filter(Boolean); // Remove null entries
+
+        if (filteredCategoryItems.length > 0) {
+          return { ...category, items: filteredCategoryItems };
+        }
+        return null;
+      })
+      .filter(Boolean); // Remove empty categories
+  }, [searchQuery]);
+
+  const getInitials = (firstName = "", lastName = "") => {
+    const firstInitial = firstName ? firstName.charAt(0) : "";
+    const lastInitial = lastName ? lastName.charAt(0) : "";
+    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+  };
+
+  const userInitials = getInitials(
+    currentUser?.firstName,
+    currentUser?.lastName
+  );
 
   const handleLogout = async () => {
     try {
@@ -179,6 +297,12 @@ export default function SideBar() {
   };
 
   const isMenuExpanded = (menuItem) => {
+    if (searchQuery && menuItem.items) {
+      return menuItem.items.some((subItem) =>
+        subItem.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
     if (!menuItem.items) return false;
     return menuItem.items.some((subItem) => isActive(subItem.url));
   };
@@ -196,7 +320,9 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-muted-background">AGILA</span>
+                    <span className="font-bold text-muted-background">
+                      AGILA
+                    </span>
                     <span className="">v1.0.0</span>
                   </div>
                 </Link>
@@ -208,43 +334,54 @@ export default function SideBar() {
         {/* content */}
         <SidebarContent>
           {/* search */}
-          <SearchForm />
-          {items.navMain.map((category) => (
+          <SearchForm searchQuery={inputValue} setSearchQuery={setInputValue} />
+          {filteredItems.map((category) => (
             <SidebarGroup key={category.title}>
               <SidebarGroupLabel>{category.title}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {category.items.map((menuItem) =>
                     menuItem.items ? (
-                      // Render collapsible menu item with sub-items
+                      // collapsible menu item with sub-items
                       <Collapsible
                         key={menuItem.title}
                         asChild
                         defaultOpen={isMenuExpanded(menuItem)}
                         className="group/collapsible"
                       >
+                        {/* main items */}
                         <SidebarMenuItem>
-                          {/* user management */}
-                          <CollapsibleTrigger asChild>
-                            <SidebarMenuButton
-                              className={`
+                          <SidebarMenuButton
+                            tooltip={isCollapsed ? menuItem.title : undefined}
+                            className={`
                                 transition-all duration-200 ease-in-out
                                 ${
+                                  isActive(menuItem.url) ||
                                   menuItem.items.some((subItem) =>
                                     isActive(subItem.url)
                                   )
-                                    ? "font-medium bg-accent"
+                                    ? "font-bold bg-accent"
                                     : ""
                                 }
-                              `}
+                                `}
+                          >
+                            {/* main items */}
+                            <Link
+                              to={menuItem.url}
+                              className="flex items-center flex-grow"
                             >
                               {menuItem.icon && (
                                 <menuItem.icon className="mr-2 h-4 w-4 " />
                               )}
                               <span>{menuItem.title}</span>
+                            </Link>
+
+                            {/* trigger for sub-items */}
+                            <CollapsibleTrigger asChild>
                               <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                            </SidebarMenuButton>
-                          </CollapsibleTrigger>
+                            </CollapsibleTrigger>
+                          </SidebarMenuButton>
+
                           {/* sub items */}
                           <CollapsibleContent>
                             <SidebarMenuSub>
@@ -256,12 +393,13 @@ export default function SideBar() {
                                     transition-all duration-200 ease-in-out
                                     ${
                                       isActive(subItem.url)
-                                        ? "bg-blue-900 text-white font-medium"
+                                        ? "bg-sidebar-primary text-white font-bold"
                                         : ""
                                     }
                                   `}
                                   >
                                     <Link to={subItem.url}>
+                                      {/* icons for sub items */}
                                       {/* {subItem.icon && (
                                       <subItem.icon 
                                         color={isActive(subItem.url) ? "white" : "blue-900"} 
@@ -278,23 +416,24 @@ export default function SideBar() {
                         </SidebarMenuItem>
                       </Collapsible>
                     ) : (
-                      // Render regular menu item without sub-items
+                      // menu item without sub-items
                       <SidebarMenuItem key={menuItem.title}>
                         <SidebarMenuButton
                           asChild
+                          tooltip={isCollapsed ? menuItem.title : undefined}
                           className={`
                             transition-all duration-200 ease-in-out
                             ${
                               // make the icon color white
                               isActive(menuItem.url)
-                                ? "bg-blue-900 text-white font-medium "
+                                ? "bg-sidebar-primary text-white font-bold"
                                 : ""
                             }
                           `}
                         >
                           <Link to={menuItem.url}>
                             {menuItem.icon && (
-                              <menuItem.icon className="mr-2 h-4 w-4" />
+                              <menuItem.icon className="h-4 w-4" />
                             )}
                             <span>{menuItem.title}</span>
                           </Link>
@@ -308,27 +447,93 @@ export default function SideBar() {
           ))}
         </SidebarContent>
 
+        <Separator className="my-2" />
+
         {/* footer */}
         <SidebarFooter className="mt-auto">
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton>
-                    <CircleUserRound className="mr-2 h-4 w-4" />
-                    <span>{currentUser?.firstName || "User"}</span>
-                    <ChevronUp className="ml-auto h-4 w-4" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                          size="lg"
+                          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+                        >
+                          <Avatar className="h-8 w-8 rounded-lg">
+                            <AvatarImage
+                              // will be changed once finalized the user creation
+                              src={"https://github.com/shadcn.png"}
+                              alt={currentUser?.name}
+                            />
+                            <AvatarFallback className="rounded-lg">
+                              {userInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-medium">
+                              {currentUser?.name}
+                            </span>
+                          </div>
+                          <ChevronsUpDown className="ml-auto size-4" />
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    {isCollapsed && (
+                      <TooltipContent side="right">
+                        <p>Profile</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenuContent
-                  side="top"
-                  className="w-[--radix-popper-anchor-width]"
+                  className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                  side={isMobile ? "bottom" : "right"}
+                  align="end"
+                  sideOffset={4}
                 >
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" /> <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" /> <span>Sign out</span>
+                  <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarImage
+                          src={"https://github.com/shadcn.png"}
+                          alt={currentUser?.name}
+                        />
+                        <AvatarFallback className="rounded-lg">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* inside the avatar */}
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-medium">
+                          {currentUser?.name}
+                        </span>
+                        <span className="truncate text-xs">
+                          {currentUser?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Settings />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Bell />
+                      Notifications
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                  >
+                    <LogOut />
+                    Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

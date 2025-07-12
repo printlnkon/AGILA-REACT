@@ -81,7 +81,7 @@ export default function AddAcademicYearModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer bg-primary text-accent-foreground">
+        <Button className="cursor-pointer bg-primary text-white">
           <Plus />
           Add New Year
         </Button>
@@ -121,7 +121,7 @@ export default function AddAcademicYearModal() {
             <Button
               type="submit"
               disabled={loading}
-              className="cursor-pointer bg-primary text-foreground"
+              className="cursor-pointer bg-primary"
             >
               {loading ? (
                 <>
