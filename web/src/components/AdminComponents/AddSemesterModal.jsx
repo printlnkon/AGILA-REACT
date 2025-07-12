@@ -79,6 +79,8 @@ export default function AddSemesterModal({
   onSemesterAdded,
   loading,
 }) {
+  const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
+  const [endDatePopoverOpen, setEndDatePopoverOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -119,6 +121,11 @@ export default function AddSemesterModal({
       setFormData((prev) => ({ ...prev, [field]: date }));
       if (formErrors[field]) {
         setFormErrors((prev) => ({ ...prev, [field]: null }));
+      }
+      if (field === "startDate") {
+        setStartDatePopoverOpen(false);
+      } else if (field === "endDate") {
+        setEndDatePopoverOpen(false);
       }
     },
     [formErrors]
@@ -169,11 +176,7 @@ export default function AddSemesterModal({
           disabled={loading}
           onClick={() => setDialogOpen(true)}
         >
-          {loading ? (
-            <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Plus />
-          )}
+          <Plus />
           Add Semester
         </Button>
       </DialogTrigger>
@@ -184,10 +187,13 @@ export default function AddSemesterModal({
             Add a new semester for the active academic year.
           </DialogDescription>
         </DialogHeader>
+
+        {/* form */}
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          {/* semester */}
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="semesterName" className="text-right pt-2">
-              Semester
+            <Label htmlFor="semesterName" className="flex items-center pt-2">
+              Semester <span className="text-red-500">*</span>
             </Label>
             <div className="col-span-3">
               <Select
@@ -198,7 +204,9 @@ export default function AddSemesterModal({
               >
                 <SelectTrigger
                   id="semesterName"
-                  className={formErrors.semesterName ? "border-red-500" : ""}
+                  className={`w-full justify-between ${
+                    formErrors.semesterName ? "border-red-500" : ""
+                  }`}
                 >
                   <SelectValue placeholder="Select a semester" />
                 </SelectTrigger>
@@ -216,32 +224,38 @@ export default function AddSemesterModal({
             </div>
           </div>
 
+          {/* start date */}
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="startDate" className="text-right pt-2">
-              Start Date
+            <Label htmlFor="startDate" className="flex items-center gap-1 pt-2">
+              Start Date <span className="text-red-500">*</span>
             </Label>
             <div className="col-span-3">
-              <Popover>
+              <Popover
+                open={startDatePopoverOpen}
+                onOpenChange={setStartDatePopoverOpen}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     id="startDate"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.startDate ? "text-muted-foreground" : ""
-                    } ${formErrors.startDate ? "border-red-500" : ""}`}
+                    className={`w-full justify-between 
+                      ${!formData.startDate ? "text-muted-foreground" : ""} ${
+                      formErrors.startDate ? "border-red-500" : ""
+                    }`}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.startDate ? (
                       format(formData.startDate, "PPP")
                     ) : (
-                      <span>Pick a date</span>
+                      <span>Start date</span>
                     )}
+                    <CalendarIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.startDate}
+                    className="text-primary"
                     captionLayout="dropdown"
                     onSelect={(date) => handleDateChange(date, "startDate")}
                   />
@@ -256,32 +270,38 @@ export default function AddSemesterModal({
             </div>
           </div>
 
+          {/* end date */}
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="endDate" className="text-right pt-2">
-              End Date
+            <Label htmlFor="endDate" className="flex items-center gap-1 pt-2">
+              End Date <span className="text-red-500">*</span>
             </Label>
             <div className="col-span-3">
-              <Popover>
+              <Popover
+                open={endDatePopoverOpen}
+                onOpenChange={setEndDatePopoverOpen}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     id="endDate"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.endDate ? "text-muted-foreground" : ""
-                    } ${formErrors.endDate ? "border-red-500" : ""}`}
+                    className={`w-full justify-between 
+                      ${!formData.endDate ? "text-muted-foreground" : ""} ${
+                      formErrors.endDate ? "border-red-500" : ""
+                    }`}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData.endDate ? (
                       format(formData.endDate, "PPP")
                     ) : (
-                      <span>Pick a date</span>
+                      <span>End date</span>
                     )}
+                    <CalendarIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.endDate}
+                    className="text-primary"
                     captionLayout="dropdown"
                     onSelect={(date) => handleDateChange(date, "endDate")}
                   />
@@ -302,6 +322,8 @@ export default function AddSemesterModal({
             </div>
           )}
         </form>
+
+        {/* footer */}
         <DialogFooter>
           <DialogClose asChild>
             <Button

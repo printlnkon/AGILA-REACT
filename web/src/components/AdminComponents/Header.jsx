@@ -16,6 +16,20 @@ export default function Header() {
   const location = useLocation();
   const pathnames = location.pathname.split("/").filter((x) => x);
 
+  const customBreadcrumbNames = {
+    // admin paths
+    "academic-year": "Academic Year",
+    "semester": "Semester",
+    "accounts": "Accounts",
+    "archives": "Archives",
+    "year-level": "Year Level",
+    "course-section": "Course and Section",
+    "academic-heads": "Academic Head",
+    "program-heads": "Program Head",
+    "teachers": "Teachers",
+    "students": "Students",
+  };
+
   // A simple function to capitalize the first letter.
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -40,7 +54,7 @@ export default function Header() {
               const isLast = index === pathnames.length - 1;
               // Create the path for the link.
               const to = `/${pathnames.slice(0, index + 1).join("/")}`;
-              const name = capitalize(value.replace(/-/g, " "));
+              const name = customBreadcrumbNames[value] || capitalize(value.replace(/-/g, " "));
 
               // Don't render the 'admin' path segment itself, as 'Home' covers it.
               if (value.toLowerCase() === "admin" && index === 0) {

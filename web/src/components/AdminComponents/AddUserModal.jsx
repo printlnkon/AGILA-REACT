@@ -364,7 +364,7 @@ export default function AddUserModal({ onUserAdded }) {
         <DialogTrigger asChild>
           {/* add user button */}
           <Button
-            className="bg-blue-900 text-white hover:bg-blue-700 cursor-pointer"
+            className="bg-primary cursor-pointer text-white "
             onClick={handleDialogOpen}
           >
             <UserRoundPlus className="h-4 w-4" />
@@ -414,7 +414,7 @@ export default function AddUserModal({ onUserAdded }) {
                   <Input
                     id="firstName"
                     type="text"
-                    className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                    className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                       formErrors.firstName
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                         : ""
@@ -444,7 +444,7 @@ export default function AddUserModal({ onUserAdded }) {
                   <Input
                     id="middleName"
                     type="text"
-                    className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                    className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                       formErrors.middleName
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                         : ""
@@ -469,7 +469,7 @@ export default function AddUserModal({ onUserAdded }) {
                   <Input
                     id="lastName"
                     type="text"
-                    className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                    className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                       formErrors.lastName
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                         : ""
@@ -495,7 +495,7 @@ export default function AddUserModal({ onUserAdded }) {
                   <Input
                     id="suffix"
                     type="text"
-                    className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                    className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                       formErrors.suffix
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                         : ""
@@ -526,7 +526,7 @@ export default function AddUserModal({ onUserAdded }) {
                 >
                   <SelectTrigger
                     id="gender"
-                    className={`w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                    className={`w-full  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                       formErrors.gender
                         ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                         : ""
@@ -611,7 +611,7 @@ export default function AddUserModal({ onUserAdded }) {
                   id="email"
                   type="email"
                   placeholder="example@caloocan.sti.edu.ph"
-                  className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                  className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                     formErrors.email
                       ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                       : ""
@@ -652,7 +652,7 @@ export default function AddUserModal({ onUserAdded }) {
                       id="password"
                       type="password"
                       placeholder="Password"
-                      className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                      className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                         formErrors.password
                           ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                           : ""
@@ -683,7 +683,7 @@ export default function AddUserModal({ onUserAdded }) {
                       id="confirmPassword"
                       type="password"
                       placeholder="Confirm Password"
-                      className={`border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                      className={` focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                         formErrors.confirmPassword
                           ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                           : ""
@@ -730,7 +730,7 @@ export default function AddUserModal({ onUserAdded }) {
                   >
                     <SelectTrigger
                       id="role"
-                      className={`w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                      className={`w-full  focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                         formErrors.role
                           ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                           : ""
@@ -781,7 +781,7 @@ export default function AddUserModal({ onUserAdded }) {
                   >
                     <SelectTrigger
                       id="department"
-                      className={`w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                      className={`w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
                         formErrors.department
                           ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                           : ""
@@ -819,7 +819,7 @@ export default function AddUserModal({ onUserAdded }) {
               </DialogClose>
               <Button
                 type="submit"
-                className="bg-blue-900 text-white hover:bg-blue-700 focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-primary text-white focus:ring-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
