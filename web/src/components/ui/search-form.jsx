@@ -7,7 +7,7 @@ import {
   SidebarInput,
 } from "@/components/ui/sidebar";
 
-export function SearchForm() {
+export function SearchForm({ searchQuery, setSearchQuery }) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -26,6 +26,8 @@ export function SearchForm() {
           ) : (
             <>
               <SidebarInput
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 id="search"
                 placeholder="Search..."
                 className="pl-8"
