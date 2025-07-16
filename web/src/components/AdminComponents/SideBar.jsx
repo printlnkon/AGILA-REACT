@@ -7,12 +7,13 @@ import {
   GalleryVerticalEnd,
   CircleUserRound,
   ChevronRight,
-  Archive,
+  FolderArchive,
   BookOpen,
   LayoutTemplate,
   LibraryBig,
   ChevronsUpDown,
   Bell,
+  Layers,
 } from "lucide-react";
 import {
   Sidebar,
@@ -101,7 +102,7 @@ const items = {
         {
           title: "Year Level",
           url: "/admin/year-level",
-          icon: LibraryBig,
+          icon: Layers,
           // items: [
           //   {
           //     title: "View Courses",
@@ -111,8 +112,8 @@ const items = {
           // ],
         },
         {
-          title: "Course and Section",
-          url: "/admin/course-section",
+          title: "Section",
+          url: "/admin/section",
           icon: LibraryBig,
           // items: [
           //   {
@@ -122,6 +123,30 @@ const items = {
           //   },
           // ],
         },
+        // {
+        //   title: "Course",
+        //   url: "/admin/course-section",
+        //   icon: LibraryBig,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
+        // {
+        //   title: "Course and Section",
+        //   url: "/admin/course-section",
+        //   icon: LibraryBig,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         // {
           //   title: "Section",
           //   url: "#",
@@ -180,7 +205,7 @@ const items = {
         {
           title: "Archives",
           url: "/admin/archives",
-          icon: Archive,
+          icon: FolderArchive,
           // items: [
           //   {
           //     title: "View Archive Users",

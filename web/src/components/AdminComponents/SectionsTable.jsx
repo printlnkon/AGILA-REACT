@@ -19,11 +19,12 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
 } from "@tanstack/react-table";
-import AddYearLevelModal from "@/components/AdminComponents/AddYearLevelModal";
-import AddYearLevelCard from "@/components/AdminComponents/AddYearLevelCard";
+import AddSectionModal from "@/components/AdminComponents/AddSectionModal";
+import AddSectionCard from "@/components/AdminComponents/AddSectionCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,7 @@ import {
   Check,
   Info,
   AlertTriangle,
-  Layers,
+  LibraryBig,
 } from "lucide-react";
 import {
   Pagination,
@@ -66,13 +67,150 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
-const createColumns = (handleEditYearLevel, handleDeleteYearLevel) => [];
+const createColumns = (handleEditYearLevel, handleDeleteYearLevel) => [
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => {
+      const yearLevel = row.original;
+      const [showEditDialog, setShowEditDialog] = useState(false);
+      const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+      const [editedName, setEditedName] = useState(yearLevel.name);
 
-export default function YearLevelsTable() {
+      return (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditedName(yearLevel.yearLevelName);
+                  setShowEditDialog(true);
+                }}
+                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+              >
+                <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                <span>Edit</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                <span>Delete Permanently</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Edit Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Year Level</DialogTitle>
+                <DialogDescription>
+                  Make changes to the year level name.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Year Name
+                  </Label>
+                  <Select
+                    value={editedName}
+                    onValueChange={(value) => {
+                      setEditedName(value);
+                    }}
+                    placeholder="e.g., 1st Year"
+                  >
+                    <SelectTrigger
+                      id="yearLevelEditedSelect"
+                      className="col-span-3 w-full"
+                    >
+                      <SelectValue placeholder="Select a year level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEAR_LEVELS.map((level) => (
+                        <SelectItem key={level} value={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleEditYearLevel(yearLevel, editedName);
+                    setShowEditDialog(false);
+                  }}
+                  className="bg-primary cursor-pointer"
+                >
+                  <Check />
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete the year level "
+                  <strong>{yearLevel.yearLevelName}</strong>"? This action
+                  cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    handleDeleteYearLevel(yearLevel);
+                    setShowDeleteDialog(false);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Trash2 />
+                  Delete Permanently
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    },
+  },
+];
+
+export default function SectionsTable() {
   const [yearLevels, setYearLevels] = useState([]);
   const [activeSession, setActiveSession] = useState(null); // state to hold active academic year info
   const [loading, setLoading] = useState(true);
@@ -163,8 +301,9 @@ export default function YearLevelsTable() {
               const levels = yearLevelsSnapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data(),
+                //  make editing/deleting easier
                 academicYearId: academicYearData.id,
-                semesterId: semesterId,
+                semesterId: semesterId
               }));
 
               const sortOrder = [
@@ -206,72 +345,67 @@ export default function YearLevelsTable() {
   }, []);
 
   const handleEditYearLevel = async (yearLevel, newName) => {
-    if (!newName.trim()) {
-      toast.error("Year level name cannot be empty.");
-      return;
-    }
+  if (!newName.trim()) {
+    toast.error("Year level name cannot be empty.");
+    return;
+  }
 
-    if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
-      toast.error("Missing required references to update year level.");
-      return;
-    }
+  if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
+    toast.error("Missing required references to update year level.");
+    return;
+  }
 
-    // Path to the specific year level using the hierarchical structure
-    const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
+  // Path to the specific year level using the hierarchical structure
+  const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
+  
+  // Check if the new name already exists in this semester
+  const yearLevelsRef = collection(db, yearLevelPath);
+  const q = query(
+    yearLevelsRef,
+    where("yearLevelName", "==", newName.trim())
+  );
+  const querySnapshot = await getDocs(q);
 
-    // Check if the new name already exists in this semester
-    const yearLevelsRef = collection(db, yearLevelPath);
-    const q = query(
-      yearLevelsRef,
-      where("yearLevelName", "==", newName.trim())
-    );
-    const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty && querySnapshot.docs[0].id !== yearLevel.id) {
+    toast.error(`Year level "${newName.trim()}" already exists in this semester.`);
+    return;
+  }
 
-    if (!querySnapshot.empty && querySnapshot.docs[0].id !== yearLevel.id) {
-      toast.error(
-        `Year level "${newName.trim()}" already exists in this semester.`
-      );
-      return;
-    }
-
-    // Reference to the specific year level document
-    const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
-
-    try {
-      await updateDoc(yearLevelRef, {
-        yearLevelName: newName.trim(),
-        updatedAt: serverTimestamp(),
-      });
-      toast.success("Year level updated successfully.");
-    } catch (error) {
-      console.error("Error updating year level:", error);
-      toast.error("Failed to update year level.");
-    }
-  };
+  // Reference to the specific year level document
+  const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
+  
+  try {
+    await updateDoc(yearLevelRef, {
+      yearLevelName: newName.trim(),
+      updatedAt: serverTimestamp(),
+    });
+    toast.success("Year level updated successfully.");
+  } catch (error) {
+    console.error("Error updating year level:", error);
+    toast.error("Failed to update year level.");
+  }
+};
 
   const handleDeleteYearLevel = async (yearLevel) => {
-    if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
-      toast.error("Missing required references to delete year level.");
-      return;
-    }
+  if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
+    toast.error("Missing required references to delete year level.");
+    return;
+  }
 
-    // Path to the specific year level using the hierarchical structure
-    const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
-
-    // Reference to the specific year level document
-    const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
-
-    try {
-      await deleteDoc(yearLevelRef);
-      toast.success(
-        `Year level "${yearLevel.yearLevelName}" deleted successfully.`
-      );
-    } catch (error) {
-      console.error("Error deleting year level:", error);
-      toast.error("Failed to delete year level.");
-    }
-  };
-
+  // Path to the specific year level using the hierarchical structure
+  const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
+  
+  // Reference to the specific year level document
+  const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
+  
+  try {
+    await deleteDoc(yearLevelRef);
+    toast.success(`Year level "${yearLevel.yearLevelName}" deleted successfully.`);
+  } catch (error) {
+    console.error("Error deleting year level:", error);
+    toast.error("Failed to delete year level.");
+  }
+};
   const columns = createColumns(handleEditYearLevel, handleDeleteYearLevel);
 
   const table = useReactTable({
@@ -305,13 +439,13 @@ export default function YearLevelsTable() {
 
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
-          <Skeleton className="h-9 w-28" />
+          {/* <Skeleton className="h-9 w-28" /> */}
 
           {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
+          {/* <Skeleton className="relative max-w-sm flex-1 h-9" /> */}
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          {/* <Skeleton className="h-9 w-36 ml-auto" /> */}
         </div>
 
         {/* skeleton for card grid */}
@@ -367,9 +501,9 @@ export default function YearLevelsTable() {
     <div className="w-full">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Year Levels</h1>
+          <h1 className="text-2xl font-bold">Manage Sections</h1>
           <p className="text-muted-foreground">
-            Add, edit, or delete year levels available in the system.
+            Add, edit, or delete sections available in the system.
           </p>
         </div>
       </div>
@@ -402,8 +536,8 @@ export default function YearLevelsTable() {
             <CardContent className="p-4 flex items-start gap-3">
               <Info className="h-8 w-8 mt-2 flex-shrink-0 text-sidebar-ring" />
               <div>
-                <p className="font-semibold ">
-                  Year Levels for Active Academic Year and Semester
+                <p className="font-normal ">
+                  Sections for Active Academic Year and Semester
                 </p>
                 <p className="text-sm font-bold text-primary">
                   {activeSession.acadYear} | {activeSession.semesterName}
@@ -414,23 +548,22 @@ export default function YearLevelsTable() {
         )}
       </div>
 
-      <div className="flex items-center py-4 gap-2">
-        {/* add year level */}
-        <AddYearLevelModal
+      {/* <div className="flex items-center py-4 gap-2">
+        add year level */}
+      {/* <AddSectionModal
           activeSession={activeSession}
           disabled={isNoActiveSession}
         />
-      </div>
+      </div> */}
 
       <div className="w-full">
         {yearLevels.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {yearLevels.map((yearLevel) => (
-              <AddYearLevelCard
+              <AddSectionCard
                 key={yearLevel.id}
                 yearLevel={yearLevel}
-                onEdit={handleEditYearLevel}
-                onDelete={handleDeleteYearLevel}
+                activeSession={activeSession}
               />
             ))}
           </div>
@@ -438,10 +571,10 @@ export default function YearLevelsTable() {
           // Empty state - when no year levels
           <Card className="py-12">
             <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
-              <Layers className="h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium">No year levels found.</p>
+              <LibraryBig className="h-12 w-12 text-muted-foreground" />
+              <p className="text-lg font-medium">No sections found.</p>
               <p className="text-sm text-muted-foreground">
-                Click "Add Year Level" to get started.
+                Year levels should be added first to manage sections.
               </p>
             </CardContent>
           </Card>

@@ -10,6 +10,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,8 +72,10 @@ import {
   CalendarDays,
   Calendar as CalendarIcon,
   LoaderCircle,
+  X,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
-import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
 import {
   flexRender,
   getCoreRowModel,
@@ -86,6 +89,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
+
 const createColumns = (
   handleSetStatus,
   handleEditSemester,
@@ -234,7 +239,7 @@ const createColumns = (
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 w-8 p-0"
+                className="h-12 w-12 p-0 cursor-pointer"
                 disabled={isActivating}
               >
                 <span className="sr-only">Open menu</span>
@@ -268,7 +273,7 @@ const createColumns = (
                 className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
                 disabled={isActive}
               >
-                <Trash2 className="mr-2 h-4 w-4 bg-destructive" />
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
                 Delete Permanently
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -287,7 +292,7 @@ const createColumns = (
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowDeleteDialog(false)}
                   className="cursor-pointer"
                 >
@@ -375,7 +380,9 @@ const createColumns = (
                           mode="single"
                           selected={editedSemester.startDate}
                           captionLayout="dropdown"
-                          onSelect={(date) => handleDateChange(date, "startDate")}
+                          onSelect={(date) =>
+                            handleDateChange(date, "startDate")
+                          }
                           className="text-primary"
                         />
                       </PopoverContent>
@@ -426,7 +433,7 @@ const createColumns = (
               {/* cancel and save btn */}
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowEditDialog(false)}
                   className="cursor-pointer"
                 >
@@ -480,6 +487,7 @@ export default function Semester() {
   const fetchSemesters = useCallback(async () => {
     if (!activeAcadYear) {
       setSemesters([]);
+      setLoading(false);
       return;
     }
     try {
@@ -576,9 +584,9 @@ export default function Semester() {
 
     try {
       await updateDoc(semRef, {
-        ...newData,
-        startDate: format(newData.startDate, "yyyy-MM-dd"),
-        endDate: format(newData.endDate, "yyyy-MM-dd"),
+        semesterName: newData.semesterName,
+        startDate: newData.startDate, // Keep as a Date object
+        endDate: newData.endDate, // Keep as a Date object
       });
       toast.success("Semester updated successfully.");
       fetchSemesters(); // Refresh the list
@@ -634,138 +642,16 @@ export default function Semester() {
     },
   });
 
-  // will show if there's no semesters
-  // if (semesters.length === 0 && !loading) {
-  //   return (
-  //     <div className="w-full p-6">
-  //       <div className="mb-4 flex items-center justify-between">
-  //         <div>
-  //           <h1 className="text-2xl font-bold text-blue-900">
-  //             Manage Semester
-  //           </h1>
-  //           {activeAcadYear ? (
-  //             <p className="text-md text-muted-foreground">
-  //               For Academic Year:{" "}
-  //               <span className="font-bold">{activeAcadYear.acadYear}</span>
-  //             </p>
-  //           ) : (
-  //             <p className="text-md text-red-600">
-  //               No active academic year found. Please set one first.
-  //             </p>
-  //           )}
-  //         </div>
-  //       </div>
-  //       {/* search and filters */}
-  //       <div className="flex items-center gap-2 py-4">
-  //         <AddSemesterModal
-  //           activeAcadYear={activeAcadYear}
-  //           onSemesterAdded={fetchSemesters}
-  //         />
-  //         {/* search */}
-  //         <div className="relative flex-1">
-  //           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-  //           <Input
-  //             placeholder="Search by semester name..."
-  //             value={table.getColumn("Semester")?.getFilterValue() ?? ""}
-  //             onChange={(event) =>
-  //               table.getColumn("Semester")?.setFilterValue(event.target.value)
-  //             }
-  //             className="pl-10 max-w-sm"
-  //             disabled={!activeAcadYear}
-  //           />
-  //         </div>
-
-  //         {/* columns toggle */}
-  //         <DropdownMenu>
-  //           <DropdownMenuTrigger asChild>
-  //             <Button variant="outline" className="ml-auto cursor-pointer">
-  //               <Columns2 /> Filter Columns <ChevronDown />
-  //             </Button>
-  //           </DropdownMenuTrigger>
-  //           <DropdownMenuContent align="end">
-  //             {table
-  //               .getAllColumns()
-  //               .filter((column) => column.getCanHide())
-  //               .map((column) => {
-  //                 return (
-  //                   <DropdownMenuCheckboxItem
-  //                     key={column.id}
-  //                     className="capitalize"
-  //                     checked={column.getIsVisible()}
-  //                     onCheckedChange={(value) =>
-  //                       column.toggleVisibility(!!value)
-  //                     }
-  //                   >
-  //                     {column.id}
-  //                   </DropdownMenuCheckboxItem>
-  //                 );
-  //               })}
-  //           </DropdownMenuContent>
-  //         </DropdownMenu>
-  //       </div>
-
-  //       {/* empty table with message inside */}
-  //       <div className="rounded-md border">
-  //         <Table>
-  //           <TableHeader>
-  //             {table.getHeaderGroups().map((headerGroup) => (
-  //               <TableRow key={headerGroup.id}>
-  //                 {headerGroup.headers.map((header) => (
-  //                   <TableHead key={header.id}>
-  //                     {header.isPlaceholder
-  //                       ? null
-  //                       : flexRender(
-  //                           header.column.columnDef.header,
-  //                           header.getContext()
-  //                         )}
-  //                   </TableHead>
-  //                 ))}
-  //               </TableRow>
-  //             ))}
-  //           </TableHeader>
-  //           <TableBody>
-  //             <TableRow>
-  //               <TableCell
-  //                 colSpan={columns.length}
-  //                 className="h-64 text-center py-12"
-  //               >
-  //                 <div className="flex flex-col items-center justify-center space-y-3">
-  //                   <div className="rounded-full bg-gray-50 p-3">
-  //                     <CalendarDays className="h-12 w-12 text-gray-400" />
-  //                   </div>
-  //                   <div className="text-center">
-  //                     <p className="text-blue-900 text-lg font-medium">
-  //                       No semesters found
-  //                     </p>
-  //                     <p className="text-gray-400 text-sm mt-2">
-  //                       {activeAcadYear
-  //                         ? "Add a new semester to get started."
-  //                         : "Please set an active academic year first."}
-  //                     </p>
-  //                   </div>
-  //                 </div>
-  //               </TableCell>
-  //             </TableRow>
-  //           </TableBody>
-  //         </Table>
-  //       </div>
-
-  //       {/* Empty pagination area for consistent layout */}
-  //       <div className="flex justify-between items-center py-4">
-  //         <div className="text-sm text-muted-foreground">
-  //           0 of 0 row(s) selected.
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
   if (loading) {
     return (
       <div className="w-full">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
+        </div>
+        {/* skeleton for year levels active session */}
+        <div>
+          <Skeleton className="h-18 w-full" />
         </div>
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
@@ -775,7 +661,7 @@ export default function Semester() {
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
         {/* skeleton for table */}
@@ -868,26 +754,59 @@ export default function Semester() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Semester</h1>
-          {activeAcadYear ? (
-            <p className="text-md text-muted-foreground">
-              For Academic Year:{" "}
-              <span className="font-bold">{activeAcadYear.acadYear}</span>
-            </p>
-          ) : (
-            <p className="text-md text-red-600">
-              No active academic year found. Please set one first.
-            </p>
-          )}
+          <p className="text-muted-foreground">
+            Add, edit, or delete semesters available in the system.
+          </p>
         </div>
       </div>
 
-      {/* search */}
+      {/* year levels active session */}
+      <div className="mb-4">
+        {loading ? (
+          <div className="flex items-center space-x-4 p-4 border rounded-md">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </div>
+        ) : !activeAcadYear ? (
+          <Card>
+            <CardContent className="p-4 flex items-start gap-3">
+              <AlertTriangle className="h-8 w-8 mt-2 text-yellow-600" />
+              <div>
+                <p className="font-semibold">No Active Academic Year</p>
+                <p className="text-sm text-yellow-700">
+                  Please go to the Academic Year module and set an active
+                  session to manage year levels.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-4 flex items-start gap-3">
+              <Info className="h-8 w-8 mt-2 flex-shrink-0 text-sidebar-ring" />
+              <div>
+                <p className="font-semibold ">
+                  Semesters for Active Academic Year
+                </p>
+                <p className="text-sm font-bold text-primary">
+                  {activeAcadYear.acadYear}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <div className="flex items-center py-4 gap-2">
         <AddSemesterModal
           activeAcadYear={activeAcadYear}
           onSemesterAdded={fetchSemesters}
         />
-        <div className="relative flex-1">
+        {/* search */}
+        <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by semester name..."
@@ -897,12 +816,22 @@ export default function Semester() {
             }
             className="pl-10 max-w-sm"
           />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+            {table.getColumn("Semester")?.getFilterValue() && (
+              <button
+                onClick={() => table.getColumn("Semester")?.setFilterValue("")}
+                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
+              >
+                <X className="h-4 w-4 text-primary" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* filter columns */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto cursor-pointer">
+            <Button variant="outline" className="ml-2 cursor-pointer">
               <Columns2 /> Filter Columns <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -991,14 +920,21 @@ export default function Semester() {
                 </TableRow>
               ))
             ) : (
+              // will show if no data
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-48 text-center"
                 >
-                  {activeAcadYear
-                    ? "No semesters found. Add one to get started."
-                    : "No active academic year selected."}
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <CalendarIcon className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-lg font-medium">No semesters found.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {activeAcadYear
+                        ? 'Click "Add Semester" to get started or refine your search.'
+                        : "No active academic year selected."}
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
