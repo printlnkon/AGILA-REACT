@@ -81,9 +81,9 @@ export default function AddAcademicYearModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer bg-primary text-white">
+        <Button className="cursor-pointer bg-primary mr-2">
           <Plus />
-          Add New Year
+          Add Academic Year
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

@@ -49,6 +49,8 @@ import {
   Check,
   Trash2,
   LoaderCircle,
+  X,
+  BookOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -198,7 +200,7 @@ const createColumns = (
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-8 w-8 p-0"
+                className="h-12 w-12 p-0 cursor-pointer"
                 disabled={isActivating}
               >
                 <span className="sr-only">Open menu</span>
@@ -508,120 +510,13 @@ export default function AcademicYearTable() {
     },
   });
 
-  if (academicYears.length === 0 && !loading) {
-    return (
-      <div className="w-full p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-blue-900">
-            Manage Academic Year
-          </h1>
-        </div>
-        {/* search and filters */}
-        <div className="flex items-center gap-2 py-4">
-          <AddAcademicYearModal />
-          {/* search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by school year..."
-              value={table.getColumn("Academic Year")?.getFilterValue() ?? ""}
-              onChange={(event) =>
-                table
-                  .getColumn("Academic Year")
-                  ?.setFilterValue(event.target.value)
-              }
-              className="pl-10 max-w-sm"
-            />
-          </div>
-
-          {/* columns toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto cursor-pointer">
-                <Columns2 /> Filter Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* empty table with message inside */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-64 text-center py-12"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full bg-gray-50 p-3">
-                      <CalendarDays className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-blue-900 text-lg font-medium">
-                        No academic years found
-                      </p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        Add a new academic year to get started.
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Empty pagination area for consistent layout */}
-        <div className="flex justify-between items-center py-4">
-          <div className="text-sm text-muted-foreground">
-            0 of 0 row(s) selected.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="w-full">
         <div className="mb-4">
+          {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
+          {/* skeleton for subtitle */}
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
@@ -632,7 +527,7 @@ export default function AcademicYearTable() {
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
         {/* skeleton for table */}
@@ -723,16 +618,21 @@ export default function AcademicYearTable() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Manage Academic Year</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Manage Academic Year</h1>
+          <p className="text-muted-foreground">
+            Add, edit, or delete academic years available in the system.
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center py-4 gap-2">
-        <AddAcademicYearModal className="cursor-pointer" />
+        <AddAcademicYearModal />
         {/* search */}
-        <div className="relative flex-1">
+        <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by school year..."
+            placeholder="Search by academic year..."
             value={table.getColumn("Academic Year")?.getFilterValue() ?? ""}
             onChange={(event) =>
               table
@@ -741,11 +641,24 @@ export default function AcademicYearTable() {
             }
             className="pl-10 max-w-sm"
           />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+            {table.getColumn("Academic Year")?.getFilterValue() && (
+              <button
+                onClick={() =>
+                  table.getColumn("Academic Year")?.setFilterValue("")
+                }
+                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
+              >
+                <X className="h-4 w-4 text-primary" />
+              </button>
+            )}
+          </div>
         </div>
+
         {/* filter columns */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto cursor-pointer">
+            <Button variant="outline" className="ml-2 cursor-pointer">
               <Columns2 /> Filter Columns <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -810,12 +723,19 @@ export default function AcademicYearTable() {
                 </TableRow>
               ))
             ) : (
+              // will show if no data
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-48 text-center"
                 >
-                  No results.
+                   <div className="flex flex-col items-center justify-center space-y-2">
+                    <BookOpen className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-lg font-medium">No academic years found.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Click "Add Academic Year" to get started or refine your search.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

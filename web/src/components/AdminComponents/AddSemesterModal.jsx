@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { db } from "@/api/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
@@ -151,6 +151,8 @@ export default function AddSemesterModal({
         "semesters"
       );
       await addDoc(semestersColRef, {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         semesterName: formData.semesterName,
         startDate: format(formData.startDate, "yyyy-MM-dd"),
         endDate: format(formData.endDate, "yyyy-MM-dd"),
@@ -172,7 +174,7 @@ export default function AddSemesterModal({
     <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
       <DialogTrigger asChild>
         <Button
-          className="cursor-pointer bg-primary"
+          className="cursor-pointer bg-primary mr-2"
           disabled={loading}
           onClick={() => setDialogOpen(true)}
         >
@@ -328,7 +330,7 @@ export default function AddSemesterModal({
           <DialogClose asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               disabled={isSubmitting}
               className=" cursor-pointer"
             >
