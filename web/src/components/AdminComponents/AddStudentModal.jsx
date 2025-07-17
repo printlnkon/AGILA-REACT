@@ -10,7 +10,6 @@ import {
   CalendarIcon,
   LoaderCircle,
 } from "lucide-react";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,10 +43,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// ============================================================================
-// Constants
-// ============================================================================
-
 const DEPARTMENTS = {
   IT: "Information Technology",
   CS: "Computer Science",
@@ -71,10 +66,6 @@ const INITIAL_FORM_DATA = {
 const MIN_AGE = 15;
 const MAX_AGE = 70;
 
-// ============================================================================
-// Helper Components
-// ============================================================================
-
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
@@ -85,10 +76,7 @@ const FormError = ({ message }) => {
   );
 };
 
-// ============================================================================
-// Validation & Utility Functions
-// ============================================================================
-
+// validation functions
 const validateName = (name, fieldName) => {
   if (!name || name.trim().length < 2) {
     return `${fieldName} must be at least 2 characters long`;
@@ -152,10 +140,6 @@ const validateForm = (formData, date) => {
 
   return errors;
 };
-
-// ============================================================================
-// Main Component
-// ============================================================================
 
 export default function AddStudentModal({ onUserAdded }) {
   const today = new Date();
@@ -268,7 +252,7 @@ export default function AddStudentModal({ onUserAdded }) {
         gender: formData.gender,
         dateOfBirth: date.toISOString().split("T")[0],
         email,
-        password, // Note: Storing plain text passwords in Firestore is not recommended.
+        password, 
         department: formData.department,
         status: "active",
         role: formData.role,
@@ -317,8 +301,8 @@ export default function AddStudentModal({ onUserAdded }) {
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <UserRoundPlus className="h-4 w-4 mr-2" />
+        <Button className="cursor-pointer mr-2">
+          <UserRoundPlus />
           Add Student
         </Button>
       </DialogTrigger>
@@ -478,7 +462,7 @@ export default function AddStudentModal({ onUserAdded }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ROLES.STUDENT}>
-                      {ROLES.STUDENT}
+                      Student
                     </SelectItem>
                   </SelectContent>
                 </Select>

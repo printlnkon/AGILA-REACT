@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where } from "firebase/firestore";
 import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   flexRender,
   getCoreRowModel,
@@ -68,87 +69,13 @@ import {
   PaginationLast,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
+import AddCourseSectionModal from "@/components/AdminComponents/AddCourseSectionModal";
 
 export const createColumns = (handleOpenModal) => [
-  // student no. column
-  {
-    id: "Student No.",
-    accessorKey: "studentNumber",
-    header: <div className="ml-4">Student No.</div>,
-    cell: ({ row }) => {
-      const studentNo = row.original.studentNumber;
-      return <div className="ml-4 capitalize">{studentNo || "N/A"}</div>;
-    },
-  },
-  // name column
-  {
-    accessorKey: "name",
-    header: "Name",
-    cell: ({ row }) => {
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="capitalize">{fullName || "N/A"}</div>;
-    },
-  },
-  // email column
-  {
-    accessorKey: "email",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Email
-        <ArrowUpDown />
-      </Button>
-    ),
-    cell: ({ row }) => (
-      <div className="lowercase ml-3">{row.getValue("email")}</div>
-    ),
-  },
 
-  // course column
-  {
-    accessorKey: "course",
-    header: "Course",
-    cell: ({ row }) => <div>{row.getValue("course") || "N/A"}</div>,
-  },
-  // year level column
-  {
-    id: "Year Level",
-    accessorKey: "yearLevel",
-    header: "Year Level",
-    cell: ({ row }) => <div>{row.getValue("Year Level") || "N/A"}</div>,
-  },
-  // section column
-  {
-    accessorKey: "section",
-    header: "Section",
-    cell: ({ row }) => <div>{row.getValue("section") || "N/A"}</div>,
-  },
-  // status column
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const status = row.getValue("status") || "active";
-      const isActive = status === "active";
-      return (
-        <Badge
-          variant={isActive ? "default" : "destructive"}
-          className={
-            isActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }
-        >
-          {isActive ? "Active" : "Inactive"}
-        </Badge>
-      );
-    },
-  },
   // actions column
   {
-    header: "Actions",
+    header: "Actions",  
     id: "actions",
     cell: ({ row }) => {
       const student = row.original;
@@ -169,6 +96,7 @@ export const createColumns = (handleOpenModal) => [
 export default function CourseSectionTable() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSession, setActiveSession] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [assignmentData, setAssignmentData] = useState({
@@ -181,6 +109,45 @@ export default function CourseSectionTable() {
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [rowSelection, setRowSelection] = useState({});
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      const acadYearQuery = query(
+        collection(db, "academic_years"),
+        where("status", "==", "Active")
+      );
+      const acadYearSnapshot = await getDocs(acadYearQuery);
+
+      if (acadYearSnapshot.empty) {
+        setActiveSession(null);
+        return;
+      }
+
+      const acadYearDoc = acadYearSnapshot.docs[0];
+      const acadYearData = { id: acadYearDoc.id, ...acadYearDoc.data() };
+
+      const semesterQuery = query(
+        collection(db, "academic_years", acadYearData.id, "semesters"),
+        where("status", "==", "Active")
+      );
+      const semesterSnapshot = await getDocs(semesterQuery);
+
+      if (semesterSnapshot.empty) {
+        setActiveSession({ ...acadYearData, semesterId: null });
+        return;
+      }
+
+      const semesterDoc = semesterSnapshot.docs[0];
+      setActiveSession({
+        ...acadYearData,
+        semesterId: semesterDoc.id,
+        ...semesterDoc.data(),
+      });
+    } catch (error) {
+      console.error("Error fetching active session:", error);
+      toast.error("Failed to fetch active session.");
+    }
+  }, []);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -202,7 +169,8 @@ export default function CourseSectionTable() {
 
   useEffect(() => {
     fetchStudents();
-  }, [fetchStudents]);
+    fetchActiveSession();
+  }, [fetchStudents, fetchActiveSession]);
 
   const handleOpenModal = (student) => {
     setSelectedStudent(student);
@@ -273,13 +241,13 @@ export default function CourseSectionTable() {
         </div>
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
-          {/* <Skeleton className="h-9 w-28" /> */}
+          <Skeleton className="h-9 w-28" />
 
           {/* skeleton for search box */}
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
         {/* skeleton for table */}
@@ -376,30 +344,20 @@ export default function CourseSectionTable() {
           <h1 className="text-2xl font-bold">Manage Course and Section</h1>
         </div>
       </div>
+
       <div className="flex items-center gap-2 py-4">
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              handleOpenModal(
-                table.getFilteredSelectedRowModel().rows[0].original
-              )
-            }
-            disabled={table.getFilteredSelectedRowModel().rows.length !== 1}
-          >
-            <SquarePen className="mr-2 h-4 w-4" />
-            Assign Course
-          </Button>
-        )}
+        {/* search */}
+          <AddCourseSectionModal activeSession={activeSession} />
         <div className="relative max-w-sm flex-1">
+          {/* search icon */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by student no..."
             value={table.getColumn("Student No.")?.getFilterValue() ?? ""}
             onChange={(event) =>
               table.getColumn("Student No.")?.setFilterValue(event.target.value)
             }
-            className="pr-10"
+            className="pl-10 max-w-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {table.getColumn("Student No.")?.getFilterValue() && (
@@ -407,20 +365,20 @@ export default function CourseSectionTable() {
                 onClick={() =>
                   table.getColumn("Student No.")?.setFilterValue("")
                 }
-                className="p-1 mr-2 rounded-full cursor-pointer"
+                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
               >
                 <X className="h-4 w-4 text-primary" />
               </button>
             )}
-            {/* search icon */}
-            <Search className="h-4 w-4 pointer-events-none" />
           </div>
+
+          {/* filter columns */}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto cursor-pointer">
-              <Columns2  /> Filter Columns
-              <ChevronDown  />
+            <Button variant="outline" className="ml-2 cursor-pointer">
+              <Columns2 /> Filter Columns
+              <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -441,71 +399,13 @@ export default function CourseSectionTable() {
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-64 text-center"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full ">
-                      <UsersRound className="h-12 w-12 " />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-medium">No students found</p>
-                      <p className="text-muted-foreground text-sm mt-2">
-                        Student data will appear here.
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
         <div className="text-sm text-muted-foreground whitespace-nowrap">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
 
+        {/* rows per page */}
         <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">
@@ -536,11 +436,24 @@ export default function CourseSectionTable() {
             </Select>
           </div>
 
+          {/* pagination */}
           <Pagination className="flex items-center">
             <PaginationContent className="flex flex-wrap justify-center gap-1">
               <PaginationItem>
                 <PaginationFirst
                   onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                  className={
+                    !table.getCanPreviousPage()
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
                   className={
                     !table.getCanPreviousPage()
@@ -661,98 +574,7 @@ export default function CourseSectionTable() {
         </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        {selectedStudent && (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                Assign Course and Section to {selectedStudent.firstName}{" "}
-                {selectedStudent.lastName}
-              </DialogTitle>
-              <DialogDescription>
-                Please select the course, year level, and section for this
-                student.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="course" className="text-right">
-                  Course
-                </Label>
-                <Select
-                  onValueChange={(value) => handleSelectChange("course", value)}
-                  defaultValue={assignmentData.course}
-                >
-                  <SelectTrigger id="course" className="col-span-3 w-full">
-                    <SelectValue placeholder="Select Course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BSIT">
-                      Bachelor of Science in Information Technology
-                    </SelectItem>
-                    <SelectItem value="BSCS">
-                      Bachelor of Science in Computer Science
-                    </SelectItem>
-                    <SelectItem value="BSCPE">
-                      Bachelor of Science in Computer Engineering
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="yearLevel" className="text-right">
-                  Year Level
-                </Label>
-                <Select
-                  onValueChange={(value) =>
-                    handleSelectChange("yearLevel", value)
-                  }
-                  defaultValue={assignmentData.yearLevel}
-                >
-                  <SelectTrigger id="yearLevel" className="col-span-3 w-full">
-                    <SelectValue placeholder="Select Year Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1st Year">1st Year</SelectItem>
-                    <SelectItem value="2nd Year">2nd Year</SelectItem>
-                    <SelectItem value="3rd Year">3rd Year</SelectItem>
-                    <SelectItem value="4th Year">4th Year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="section" className="text-right">
-                  Section
-                </Label>
-                <Select
-                  onValueChange={(value) =>
-                    handleSelectChange("section", value)
-                  }
-                  defaultValue={assignmentData.section}
-                >
-                  <SelectTrigger id="section" className="col-span-3 w-full">
-                    <SelectValue placeholder="Select Section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">Section A</SelectItem>
-                    <SelectItem value="B">Section B</SelectItem>
-                    <SelectItem value="C">Section C</SelectItem>
-                    <SelectItem value="D">Section D</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button onClick={handleAssign}>Save</Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
+      
     </div>
   );
 }

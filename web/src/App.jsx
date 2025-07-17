@@ -14,7 +14,6 @@ import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Accounts from "@/components/AdminComponents/Accounts";
 import Archives from "@/components/AdminComponents/Archives";
-import Departments from "@/components/AdminComponents/Departments";
 import Schedules from "@/components/AdminComponents/Schedules";
 import AuthProvider from "@/context/AuthContext";
 import ProtectedRoute from "@/routes/ProtectedRoute";
@@ -26,7 +25,9 @@ import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
 import Students from "@/components/AdminComponents/Students";
+import Departments from "@/components/AdminComponents/Departments";
 import YearLevels from "@/components/AdminComponents/YearLevels";
+import Sections from "@/components/AdminComponents/Sections";
 
 const routeTitles = {
   "/login": "AGILA | Login",
@@ -36,16 +37,15 @@ const routeTitles = {
   "/admin/academic-year": "AGILA | Admin - Academic Year",
   "/admin/semester": "AGILA | Admin - Semester",
   "/admin/accounts": "AGILA | Admin - Accounts",
+  "/admin/departments": "AGILA | Admin - Department",
   "/admin/year-level": "AGILA | Admin - Year Level",
+  "/admin/section": "AGILA | Admin - Section",
   "/admin/course-section": "AGILA | Admin - Course and Section",
   "/admin/academic-heads": "AGILA | Admin - Academic Head",
   "/admin/program-heads": "AGILA | Admin - Program Head",
   "/admin/teachers": "AGILA | Admin - Teachers",
   "/admin/students": "AGILA | Admin - Students",
   "/admin/archives": "AGILA | Admin - Archives",
-  // student titles
-  "/student": "AGILA | Student - Dashboard",
-  "/student/attendance": "AGILA | Student - Attendance",
 };
 
 function AppContent() {
@@ -81,7 +81,9 @@ function AppContent() {
         <Route path="students" element={<Students />} />
         <Route path="archives" element={<Archives />} />
         <Route path="course-section" element={<CourseSection />} />
+        <Route path="deparments" element={<Departments />} />
         <Route path="year-level" element={<YearLevels />} />
+        <Route path="section" element={<Sections />} />
         <Route path="departments" element={<Departments />} />
         <Route path="schedules" element={<Schedules />} />
       </Route>

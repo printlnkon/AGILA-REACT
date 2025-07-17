@@ -357,6 +357,7 @@ export default function ArchiveTable() {
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
+          className="ml-4"
         />
       ),
       cell: ({ row }) => (
@@ -364,6 +365,7 @@ export default function ArchiveTable() {
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
+          className="ml-4"
         />
       ),
       enableSorting: false,
@@ -385,19 +387,30 @@ export default function ArchiveTable() {
         );
       },
       cell: ({ row }) => (
-        <div className="lowercase">{row.getValue("email") || "N/A"}</div>
+        <div className="ml-3 lowercase">{row.getValue("email") || "N/A"}</div>
       ),
     },
 
     // name column
     {
       accessorKey: "name",
-      header: "Name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="mr-12"
+          >
+            Name
+            <ArrowUpDown />
+          </Button>
+        );
+      },
       cell: ({ row }) => {
         const firstName = row.original.firstName || "";
         const lastName = row.original.lastName || "";
         const fullName = `${firstName} ${lastName}`.trim();
-        return <div className="capitalize">{fullName || "N/A"}</div>;
+        return <div className="ml-3 capitalize">{fullName || "N/A"}</div>
       },
     },
 
@@ -441,7 +454,7 @@ export default function ArchiveTable() {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+                <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal />
                 </Button>
@@ -496,7 +509,7 @@ export default function ArchiveTable() {
                 </DialogHeader>
                 <DialogFooter>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setShowDeleteDialog(false)}
                     className="cursor-pointer"
                   >
@@ -534,20 +547,20 @@ export default function ArchiveTable() {
                 </DialogHeader>
                 <DialogFooter>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setShowRestoreDialog(false)}
                     className="cursor-pointer"
                   >
                     Cancel
                   </Button>
                   <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                    className="bg-blue-600 hover:bg-blue-700 focus:bg-blue-700  text-white cursor-pointer"
                     onClick={() => {
                       handleRestoreUser(user);
                       setShowRestoreDialog(false);
                     }}
                   >
-                    Restore
+                    <RotateCcw /> Restore
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -578,132 +591,32 @@ export default function ArchiveTable() {
     },
   });
 
-  // error and loading states
-  if (archivedUsers.length === 0 && !loading) {
-    return (
-      <div className="w-full">
-        {/* search and filters */}
-        <div className="flex items-center gap-2 py-4">
-          {/* search */}
-          <div className="relative max-w-sm flex-1">
-            <Input
-              placeholder="Search archived users by email..."
-              value={table.getColumn("email")?.getFilterValue() ?? ""}
-              onChange={(event) => {
-                const value = event.target.value;
-                table.getColumn("email")?.setFilterValue(value);
-              }}
-              className="pr-16"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-              <Search className="h-4 w-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* columns toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto cursor-pointer">
-                <Columns2 /> Filter Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* empty table with message inside */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-64 text-center py-12"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full bg-gray-50 p-3">
-                      <FolderArchive className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-blue-900 text-lg font-medium">
-                        No archived users found
-                      </p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        Archived users will appear here once they are moved from
-                        active accounts.
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Empty pagination area for consistent layout */}
-        <div className="flex justify-between items-center py-4">
-          <div className="text-sm text-muted-foreground">
-            0 of 0 row(s) selected.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // loading state
   if (loading) {
     return (
       <div className="w-full">
-        {/* header skeleton */}
         <div className="mb-4">
-          <Skeleton className="h-10 w-64" />
+          {/* skeleton for title */}
+          <Skeleton className="h-8 w-64" />
+          {/* skeleton for subtitle */}
+          <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
+          {/* skeleton for add user button */}
+          {/* <Skeleton className="h-9 w-28" /> */}
+
           {/* skeleton for search box */}
-          <Skeleton className="relative h-9 max-w-sm flex-1" />
+          <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="ml-auto h-9 w-36" />
+          <Skeleton className="h-9 w-36 ml-2" />
+          <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
         {/* skeleton for table */}
         <div className="rounded-md border">
           <div className="px-4">
-            <div className="flex h-10 items-center">
+            <div className="h-10 flex items-center">
               {/* skeleton header row */}
               <div className="flex w-full space-x-4 py-3">
                 {Array(6)
@@ -746,7 +659,7 @@ export default function ArchiveTable() {
                           style={{
                             width:
                               colIndex === 0
-                                ? "2%"
+                                ? "5%"
                                 : colIndex === 5
                                 ? "10%"
                                 : colIndex === 1
@@ -764,7 +677,7 @@ export default function ArchiveTable() {
         </div>
 
         {/* skeleton for footer/pagination */}
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <Skeleton className="h-4 w-40" />
 
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
@@ -793,7 +706,10 @@ export default function ArchiveTable() {
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Archive</h1>
+          <h1 className="text-2xl font-bold">Manage Archives</h1>
+          <p className="text-muted-foreground">
+            Restore or delete permanently archives available in the system.
+          </p>
         </div>
       </div>
 
@@ -833,6 +749,8 @@ export default function ArchiveTable() {
 
         {/* search */}
         <div className="relative max-w-sm flex-1">
+          {/* search icon */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search archived users by email..."
             value={table.getColumn("email")?.getFilterValue() ?? ""}
@@ -840,29 +758,66 @@ export default function ArchiveTable() {
               const value = event.target.value;
               table.getColumn("email")?.setFilterValue(value);
             }}
-            className="pr-16"
+            className="pl-10 max-w-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {/* clear button */}
             {table.getColumn("email")?.getFilterValue() && (
               <button
                 onClick={() => table.getColumn("email")?.setFilterValue("")}
-                className="p-1 hover:bg-gray-100 rounded-sm mr-1 cursor-pointer"
-                type="button"
+                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
                 aria-label="Clear search"
               >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                <X className="h-4 w-4 text-primary" />
               </button>
             )}
-            {/* search icon */}
-            <Search className="h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
         </div>
 
-        {/* columns toggle */}
+        {/* filter by role */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto cursor-pointer">
+            <Button variant="outline" className="cursor-pointer ml-2">
+              <Search /> Filter By Role <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={table.getColumn("role")?.getFilterValue() === undefined}
+              onCheckedChange={() => {
+                table.getColumn("role")?.setFilterValue(undefined);
+              }}
+            >
+              All Roles
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            {["student", "teacher", "program_head", "academic_head"].map(
+              (role) => (
+                <DropdownMenuCheckboxItem
+                  key={role}
+                  checked={table.getColumn("role")?.getFilterValue() === role}
+                  onCheckedChange={() => {
+                    table
+                      .getColumn("role")
+                      ?.setFilterValue(
+                        table.getColumn("role")?.getFilterValue() === role
+                          ? undefined
+                          : role
+                      );
+                  }}
+                  className="capitalize"
+                >
+                  {role.replace("_", " ")}
+                </DropdownMenuCheckboxItem>
+              )
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* filter columns */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-2 cursor-pointer">
               <Columns2 /> Filter Columns <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -925,12 +880,19 @@ export default function ArchiveTable() {
                 </TableRow>
               ))
             ) : (
+              // will show if no data
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-48 text-center"
                 >
-                  No archived users found.
+                   <div className="flex flex-col items-center justify-center space-y-2">
+                    <FolderArchive className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-lg font-medium">No archives found.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Try adjusting your search or filters to find archives.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -959,7 +921,7 @@ export default function ArchiveTable() {
             >
               <SelectTrigger
                 size="sm"
-                className="h-8 w-18 border-gray-200 cursor-pointer"
+                className="h-8 w-18 cursor-pointer"
                 id="rows-per-page"
               >
                 <SelectValue

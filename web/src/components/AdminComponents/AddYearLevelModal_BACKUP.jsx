@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  doc,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +31,7 @@ import { Plus, LoaderCircle } from "lucide-react";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
-export default function AddYearLevelModal({ activeSession, disabled, onYearLevelAdded }) {
+export default function AddYearLevelModal({ activeSession, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [yearLevelName, setYearLevelName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,76 +59,30 @@ export default function AddYearLevelModal({ activeSession, disabled, onYearLevel
     setIsSubmitting(true);
 
     try {
-      // Extract academic year and semester from activeSession
-      const academicYear = activeSession.acadYear;
-      const semester = activeSession.semesterName;
+      const yearLevelsRef = collection(db, "year_levels");
 
-      if (!academicYear || !semester) {
-        console.error("Active session data:", activeSession);
-        toast.error("Academic year or semester information is missing.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Create hierarchical path: academic_years/{academicYearId}/semesters/{semesterId}/year_levels
-      const academicYearRef = doc(db, "academic_years", activeSession.id);
-      const semestersRef = collection(academicYearRef, "semesters");
-      const semesterQuery = query(semestersRef, where("semesterName", "==", semester));
-      const semesterSnapshot = await getDocs(semesterQuery);
-
-      let semesterId;
-
-      if (semesterSnapshot.empty) {
-        // Create the semester if it doesn't exist
-        const newSemesterRef = await addDoc(semestersRef, {
-          semesterName: semester,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        semesterId = newSemesterRef.id;
-      } else {
-        semesterId = semesterSnapshot.docs[0].id;
-      }
-
-      // Reference to the year_levels collection under this specific semester
-      const yearLevelsRef = collection(
-        db,
-        `academic_years/${activeSession.id}/semesters/${semesterId}/year_levels`
-      );
-
-      // Check if year level already exists in this semester
       const q = query(
         yearLevelsRef,
-        where("yearLevelName", "==", yearLevelName.trim())
+        where("yearLevelName", "==", yearLevelName.trim()),
+        where("academicYearId", "==", activeSession.id)
       );
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        toast.error(
-          `Year level "${yearLevelName.trim()}" already exists in this semester.`
-        );
+        toast.error(`Year level "${yearLevelName.trim()}" already exists.`);
         setIsSubmitting(false);
         return;
       }
 
-      // Add the year level to the nested collection
-      await addDoc(yearLevelsRef, {
-        academicYearId: activeSession.id,
-        semesterId: semesterId,
+      await addDoc(collection(db, "year_levels"), {
         yearLevelName: yearLevelName.trim(),
+        academicYearId: activeSession.id,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         status: "active",
       });
 
-      toast.success(
-        `Year level "${yearLevelName.trim()}" has been added to ${academicYear}, ${semester}.`
-      );
-
-      if (onYearLevelAdded) {
-        onYearLevelAdded();
-      }
-
+      toast.success(`Year level "${yearLevelName.trim()}" has been added.`);
       setYearLevelName("");
       handleOpenChange(false);
     } catch (error) {

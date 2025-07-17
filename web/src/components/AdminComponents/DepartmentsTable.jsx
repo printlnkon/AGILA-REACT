@@ -2,23 +2,20 @@ import { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
 import {
   collection,
-  doc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
   query,
   where,
   getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 import { toast } from "sonner";
-import AddYearLevelModal from "@/components/AdminComponents/AddYearLevelModal";
-import AddYearLevelCard from "@/components/AdminComponents/AddYearLevelCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, AlertTriangle, Layers } from "lucide-react";
+import { Info, AlertTriangle, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import AddDepartmentModal from "@/components/AdminComponents/AddDepartmentModal";
+import AddDepartmentCard from "@/components/AdminComponents/AddDepartmentCard";
 
-export default function YearLevelsTable() {
-  const [yearLevels, setYearLevels] = useState([]);
+export default function DepartmentsTable() {
+  const [departments, setDepartments] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +33,10 @@ export default function YearLevelsTable() {
 
       if (yearSnapshot.empty) {
         toast.error(
-          "No active academic year found. Please set one to manage year levels."
+          "No active academic year found. Please set one to manage departments."
         );
         setActiveSession({ id: null, name: "No Active Session" });
-        setYearLevels([]);
+        setDepartments([]);
         return false;
       }
 
@@ -92,40 +89,44 @@ export default function YearLevelsTable() {
     }
   }, []);
 
-  // Fetch year levels for the active session
-  const fetchYearLevels = useCallback(async () => {
+  const fetchDepartments = useCallback(() => {
     if (!activeSession || !activeSession.id || !activeSession.semesterId) {
-      setYearLevels([]);
+      setDepartments([]);
       setLoading(false);
       return;
     }
 
     try {
-      const yearLevelsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels`;
-      const yearLevelsRef = collection(db, yearLevelsPath);
-      const yearLevelsSnapshot = await getDocs(yearLevelsRef);
+      const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+      const departmentsRef = collection(db, departmentsPath);
 
-      const levels = yearLevelsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        academicYearId: activeSession.id,
-        semesterId: activeSession.semesterId,
-      }));
+      // Return the unsubscribe function so we can clean up the listener
+      return onSnapshot(
+        departmentsRef,
+        (snapshot) => {
+          const depts = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            academicYearId: activeSession.id,
+            semesterId: activeSession.semesterId,
+          }));
 
-      const sortOrder = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
-      levels.sort((a, b) => {
-        const indexA = sortOrder.indexOf(a.yearLevelName);
-        const indexB = sortOrder.indexOf(b.yearLevelName);
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-      });
-
-      setYearLevels(levels);
+          // Sort departments alphabetically by name
+          depts.sort((a, b) =>
+            a.departmentName.localeCompare(b.departmentName)
+          );
+          setDepartments(depts);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error in departments listener:", error);
+          toast.error("Failed to listen for department updates.");
+          setLoading(false);
+        }
+      );
     } catch (error) {
-      console.error("Error fetching year levels:", error);
-      toast.error("Failed to fetch year levels.");
-    } finally {
+      console.error("Error setting up departments listener:", error);
+      toast.error("Failed to fetch departments.");
       setLoading(false);
     }
   }, [activeSession]);
@@ -136,7 +137,7 @@ export default function YearLevelsTable() {
       setLoading(true);
       const hasActiveSession = await fetchActiveSession();
 
-      // If we have an active session, fetchYearLevels will be triggered by its own useEffect
+      // If we have an active session, fetchDepartments will be triggered by its own useEffect
       // If not, we should set loading to false here
       if (!hasActiveSession) {
         setLoading(false);
@@ -146,81 +147,18 @@ export default function YearLevelsTable() {
     loadData();
   }, [fetchActiveSession]);
 
-  // Fetch year levels whenever the active session changes
   useEffect(() => {
+    let unsubscribe;
+
     if (activeSession && activeSession.id && activeSession.semesterId) {
-      fetchYearLevels();
-    }
-  }, [fetchYearLevels, activeSession]);
-
-  const handleEditYearLevel = async (yearLevel, newName) => {
-    if (!newName.trim()) {
-      toast.error("Year level name cannot be empty.");
-      return;
+      unsubscribe = fetchDepartments();
     }
 
-    if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
-      toast.error("Missing required references to update year level.");
-      return;
-    }
-
-    // Path to the specific year level using the hierarchical structure
-    const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
-
-    // Check if the new name already exists in this semester
-    const yearLevelsRef = collection(db, yearLevelPath);
-    const q = query(
-      yearLevelsRef,
-      where("yearLevelName", "==", newName.trim())
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty && querySnapshot.docs[0].id !== yearLevel.id) {
-      toast.error(
-        `Year level "${newName.trim()}" already exists in this semester.`
-      );
-      return;
-    }
-
-    // Reference to the specific year level document
-    const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
-
-    try {
-      await updateDoc(yearLevelRef, {
-        yearLevelName: newName.trim(),
-        updatedAt: serverTimestamp(),
-      });
-      toast.success("Year level updated successfully.");
-      fetchYearLevels();
-    } catch (error) {
-      console.error("Error updating year level:", error);
-      toast.error("Failed to update year level.");
-    }
-  };
-
-  const handleDeleteYearLevel = async (yearLevel) => {
-    if (!activeSession || !activeSession.id || !yearLevel.semesterId) {
-      toast.error("Missing required references to delete year level.");
-      return;
-    }
-
-    // Path to the specific year level using the hierarchical structure
-    const yearLevelPath = `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels`;
-
-    // Reference to the specific year level document
-    const yearLevelRef = doc(db, yearLevelPath, yearLevel.id);
-
-    try {
-      await deleteDoc(yearLevelRef);
-      toast.success(
-        `Year level "${yearLevel.yearLevelName}" deleted successfully.`
-      );
-      fetchYearLevels();
-    } catch (error) {
-      console.error("Error deleting year level:", error);
-      toast.error("Failed to delete year level.");
-    }
-  };
+    // Clean up the listener when component unmounts or dependencies change
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchDepartments, activeSession]);
 
   if (loading) {
     return (
@@ -229,12 +167,12 @@ export default function YearLevelsTable() {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        {/* skeleton for year levels active session */}
+        {/* skeleton for departments active session */}
         <div>
           <Skeleton className="h-18 w-full" />
         </div>
         <div className="flex items-center gap-2 py-4">
-          {/* skeleton for add user button */}
+          {/* skeleton for add department button */}
           <Skeleton className="h-9 w-28" />
         </div>
 
@@ -272,14 +210,14 @@ export default function YearLevelsTable() {
     <div className="flex h-full w-full flex-col">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Year Levels</h1>
+          <h1 className="text-2xl font-bold">Manage Departments</h1>
           <p className="text-muted-foreground">
-            Add, edit, or delete year levels available in the system.
+            Add, edit, or delete departments available in the system.
           </p>
         </div>
       </div>
 
-      {/* year levels active session - display after loading completes */}
+      {/* departments active session - display after loading completes */}
       <div className="mb-4">
         <Card>
           <CardContent className="p-4 flex items-start gap-3">
@@ -291,7 +229,7 @@ export default function YearLevelsTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Year Levels for Active Academic Year and Semester"
+                  ? "Departments for Active Academic Year and Semester"
                   : "No Active Academic Year"}
               </p>
               {!isNoActiveSession ? (
@@ -301,7 +239,7 @@ export default function YearLevelsTable() {
               ) : (
                 <p className="text-sm text-yellow-700">
                   Please go to the Academic Year module and set an active
-                  session to manage year levels.
+                  session to manage departments.
                 </p>
               )}
             </div>
@@ -309,37 +247,34 @@ export default function YearLevelsTable() {
         </Card>
       </div>
 
-      {/* Only show the add year level button and content if there's an active academic year and semester */}
+      {/* Only show the add department button and content if there's an active academic year and semester */}
       {!isNoActiveSession ? (
         <>
           <div className="flex items-center py-4 gap-2">
-            <AddYearLevelModal
+            <AddDepartmentModal
               activeSession={activeSession}
-              onYearLevelAdded={fetchYearLevels}
               disabled={isNoActiveSession}
             />
           </div>
 
           {/* Card Grid Layout */}
-          {yearLevels.length > 0 ? (
+          {departments.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {yearLevels.map((yearLevel) => (
-                <AddYearLevelCard
-                  key={yearLevel.id}
-                  yearLevel={yearLevel}
-                  onEdit={handleEditYearLevel}
-                  onDelete={handleDeleteYearLevel}
+              {departments.map((department) => (
+                <AddDepartmentCard
+                  key={department.id}
+                  department={department}
                 />
               ))}
             </div>
           ) : (
-            // Empty state - when no year levels
+            // Empty state - when no departments
             <Card className="py-12">
               <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
-                <Layers className="h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium">No year levels found.</p>
+                <Building2 className="h-12 w-12 text-muted-foreground" />
+                <p className="text-lg font-medium">No departments found.</p>
                 <p className="text-sm text-muted-foreground">
-                  Click "Add Year Level" to get started.
+                  Click "Add Department" to get started.
                 </p>
               </CardContent>
             </Card>
