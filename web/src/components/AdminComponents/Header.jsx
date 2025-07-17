@@ -22,6 +22,7 @@ export default function Header() {
     "semester": "Semester",
     "accounts": "Accounts",
     "archives": "Archives",
+    "departments": "Departments",
     "year-level": "Year Level",
     "section": "Section",
     "course-section": "Course and Section",

@@ -195,7 +195,7 @@ export default function AddSemesterModal({
           {/* semester */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="semesterName" className="flex items-center pt-2">
-              Semester <span className="text-red-500">*</span>
+              Semester 
             </Label>
             <div className="col-span-3">
               <Select
@@ -229,7 +229,7 @@ export default function AddSemesterModal({
           {/* start date */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="startDate" className="flex items-center gap-1 pt-2">
-              Start Date <span className="text-red-500">*</span>
+              Start Date 
             </Label>
             <div className="col-span-3">
               <Popover
@@ -275,7 +275,7 @@ export default function AddSemesterModal({
           {/* end date */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="endDate" className="flex items-center gap-1 pt-2">
-              End Date <span className="text-red-500">*</span>
+              End Date 
             </Label>
             <div className="col-span-3">
               <Popover

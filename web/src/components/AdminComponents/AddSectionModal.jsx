@@ -51,8 +51,6 @@ export default function AddSectionModal({
       return;
     }
 
-     console.log("Year level received:", yearLevel);
-
     if (!yearLevel || !yearLevel.id) {
       toast.error("Year level must be selected to add a section.");
       return;
@@ -66,11 +64,9 @@ export default function AddSectionModal({
     setIsSubmitting(true);
 
     try {
-      // Use hierarchical path to reference sections
-      // academic_years/{academicYearId}/semesters/{semesterId}/year_levels/{yearLevelId}/sections
       const sectionsRef = collection(
         db,
-        `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels/${yearLevel.id}/sections`
+        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
       );
 
       // Check if section with the same name already exists for this year level
@@ -93,6 +89,7 @@ export default function AddSectionModal({
       // Add section to year level
       await addDoc(sectionsRef, {
         sectionName: sectionName.trim(),
+        yearLevelId: yearLevel.id,
         yearLevelName: yearLevel.yearLevelName,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -157,9 +154,7 @@ export default function AddSectionModal({
             disabled={isSubmitting}
             className="bg-primary cursor-pointer"
           >
-            {isSubmitting ? (
-              <LoaderCircle className="animate-spin" />
-            ) : null}
+            {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
             {isSubmitting ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
