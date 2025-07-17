@@ -1,43 +1,33 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  onSnapshot,
-} from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, AlertTriangle, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import AddDepartmentModal from "@/components/AdminComponents/AddDepartmentModal";
-import AddDepartmentCard from "@/components/AdminComponents/AddDepartmentCard";
+import { Info, AlertTriangle, LibraryBig } from "lucide-react";
+import AddCourseCard from "@/components/AdminComponents/AddCourseCard";
 
-export default function DepartmentsTable() {
+export default function CourseTable() {
   const [departments, setDepartments] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch active academic year
   const fetchActiveSession = useCallback(async () => {
     try {
-      // Find the active academic year first
       const academicYearsRef = collection(db, "academic_years");
       const qAcademicYear = query(
         academicYearsRef,
         where("status", "==", "Active")
       );
-
       const yearSnapshot = await getDocs(qAcademicYear);
 
       if (yearSnapshot.empty) {
         toast.error(
-          "No active academic year found. Please set one to manage departments."
+          "No active academic year found. Please set one to manage courses."
         );
         setActiveSession({ id: null, name: "No Active Session" });
         setDepartments([]);
-        return false;
+        return null;
       }
 
       const academicYearDoc = yearSnapshot.docs[0];
@@ -46,7 +36,6 @@ export default function DepartmentsTable() {
         ...academicYearDoc.data(),
       };
 
-      // Find the active semester within that academic year's sub-collection
       const semestersRef = collection(
         db,
         "academic_years",
@@ -54,7 +43,6 @@ export default function DepartmentsTable() {
         "semesters"
       );
       const qSemester = query(semestersRef, where("status", "==", "Active"));
-
       const semesterSnapshot = await getDocs(qSemester);
 
       if (semesterSnapshot.empty) {
@@ -65,100 +53,69 @@ export default function DepartmentsTable() {
           ...academicYearData,
           semesterName: "No Active Semester",
         });
-        return false;
+        setDepartments([]);
+        return null;
       }
 
       const semesterDoc = semesterSnapshot.docs[0];
       const semesterData = semesterDoc.data();
-      const semesterId = semesterDoc.id;
-
-      // Combine data from both documents into the activeSession state
       const sessionInfo = {
         id: academicYearData.id,
         acadYear: academicYearData.acadYear,
         semesterName: semesterData.semesterName,
-        semesterId: semesterId,
+        semesterId: semesterDoc.id,
       };
 
       setActiveSession(sessionInfo);
-      return true;
+      return sessionInfo;
     } catch (error) {
       console.error("Error fetching active session:", error);
       toast.error("Failed to determine the active session.");
-      return false;
+      setActiveSession({ id: null, name: "No Active Session" });
+      setDepartments([]);
+      return null;
     }
   }, []);
 
-  const fetchDepartments = useCallback(() => {
-    if (!activeSession || !activeSession.id || !activeSession.semesterId) {
+  const fetchDepartments = useCallback(async (session) => {
+    if (!session || !session.id || !session.semesterId) {
       setDepartments([]);
-      setLoading(false);
       return;
     }
 
     try {
-      const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+      const departmentsPath = `academic_years/${session.id}/semesters/${session.semesterId}/departments`;
       const departmentsRef = collection(db, departmentsPath);
+      const departmentsSnapshot = await getDocs(departmentsRef);
 
-      // Return the unsubscribe function so we can clean up the listener
-      return onSnapshot(
-        departmentsRef,
-        (snapshot) => {
-          const depts = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            academicYearId: activeSession.id,
-            semesterId: activeSession.semesterId,
-          }));
+      const depts = departmentsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        academicYearId: session.id,
+        semesterId: session.semesterId,
+      }));
 
-          // Sort departments alphabetically by name
-          depts.sort((a, b) =>
-            a.departmentName.localeCompare(b.departmentName)
-          );
-          setDepartments(depts);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error in departments listener:", error);
-          toast.error("Failed to listen for department updates.");
-          setLoading(false);
-        }
-      );
+      depts.sort((a, b) => a.departmentName.localeCompare(b.departmentName));
+
+      setDepartments(depts);
     } catch (error) {
-      console.error("Error setting up departments listener:", error);
+      console.error("Error fetching departments:", error);
       toast.error("Failed to fetch departments.");
-      setLoading(false);
     }
-  }, [activeSession]);
+  }, []);
 
-  // Load data in sequence to improve UX
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const hasActiveSession = await fetchActiveSession();
-
-      // If we have an active session, fetchDepartments will be triggered by its own useEffect
-      // If not, we should set loading to false here
-      if (!hasActiveSession) {
-        setLoading(false);
+      const session = await fetchActiveSession();
+      if (session) {
+        await fetchDepartments(session);
       }
+      setLoading(false);
     };
 
     loadData();
-  }, [fetchActiveSession]);
-
-  useEffect(() => {
-    let unsubscribe;
-
-    if (activeSession && activeSession.id && activeSession.semesterId) {
-      unsubscribe = fetchDepartments();
-    }
-
-    // Clean up the listener when component unmounts or dependencies change
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [fetchDepartments, activeSession]);
+  }, [fetchActiveSession, fetchDepartments]);
 
   if (loading) {
     return (
@@ -167,18 +124,14 @@ export default function DepartmentsTable() {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        {/* skeleton for departments active session */}
         <div>
           <Skeleton className="h-18 w-full" />
         </div>
-        <div className="flex items-center gap-2 py-4">
-          {/* skeleton for add department button */}
-          <Skeleton className="h-9 w-28" />
-        </div>
 
-        {/* skeleton for cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-          {Array(4)
+        <div className="flex items-center gap-2 py-4"></div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array(8)
             .fill(0)
             .map((_, i) => (
               <div key={i} className="border rounded-lg p-4 space-y-2">
@@ -210,14 +163,13 @@ export default function DepartmentsTable() {
     <div className="flex h-full w-full flex-col">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Departments</h1>
+          <h1 className="text-2xl font-bold">Manage Courses</h1>
           <p className="text-muted-foreground">
-            Add, edit, or delete departments available in the system.
+            Add, edit, or delete courses for each department.
           </p>
         </div>
       </div>
 
-      {/* departments active session - display after loading completes */}
       <div className="mb-4">
         <Card>
           <CardContent className="p-4 flex items-start gap-3">
@@ -229,7 +181,7 @@ export default function DepartmentsTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Departments for Active Academic Year and Semester"
+                  ? "Courses for Active Academic Year and Semester"
                   : "No Active Academic Year"}
               </p>
               {!isNoActiveSession ? (
@@ -239,7 +191,7 @@ export default function DepartmentsTable() {
               ) : (
                 <p className="text-sm text-destructive">
                   Please go to the Academic Year module and set an active
-                  session to manage departments.
+                  session to manage courses.
                 </p>
               )}
             </div>
@@ -247,40 +199,31 @@ export default function DepartmentsTable() {
         </Card>
       </div>
 
-      {/* Only show the add department button and content if there's an active academic year and semester */}
-      {!isNoActiveSession ? (
-        <>
-          <div className="flex items-center py-4 gap-2">
-            <AddDepartmentModal
-              activeSession={activeSession}
-              disabled={isNoActiveSession}
-            />
-          </div>
-
-          {/* Card Grid Layout */}
+      {!isNoActiveSession && (
+        <div className="w-full">
           {departments.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               {departments.map((department) => (
-                <AddDepartmentCard
+                <AddCourseCard
                   key={department.id}
                   department={department}
+                  activeSession={activeSession}
                 />
               ))}
             </div>
           ) : (
-            // Empty state - when no departments
             <Card className="py-12">
               <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
-                <Building2 className="h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium">No departments found.</p>
+                <LibraryBig className="h-12 w-12 text-muted-foreground" />
+                <p className="text-lg font-medium">No Departments Found</p>
                 <p className="text-sm text-muted-foreground">
-                  Click "Add Department" to get started.
+                  Please add departments first before managing courses.
                 </p>
               </CardContent>
             </Card>
           )}
-        </>
-      ) : null}
+        </div>
+      )}
     </div>
   );
 }
