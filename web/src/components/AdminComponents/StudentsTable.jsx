@@ -147,6 +147,7 @@ const createColumns = (handleArchiveUser) => [
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        className="ml-4"
       />
     ),
     cell: ({ row }) => (
@@ -154,6 +155,7 @@ const createColumns = (handleArchiveUser) => [
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        className="ml-4"
       />
     ),
     enableSorting: false,
@@ -173,13 +175,25 @@ const createColumns = (handleArchiveUser) => [
 
   // name column
   {
-    accessorKey: "name",
-    header: "Name",
+    id: "name",
+    accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="mr-12"
+        >
+          Name
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="capitalize">{fullName || "N/A"}</div>;
+      return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
     },
   },
 
@@ -276,7 +290,7 @@ const createColumns = (handleArchiveUser) => [
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal />
               </Button>
@@ -533,117 +547,14 @@ export default function StudentsTable() {
     },
   });
 
-  if (users.length === 0 && !loading) {
-    return (
-      <div className="w-full">
-        <div className="mb-4">
-          <Skeleton className="h-8 w-64" />
-        </div>
-        {/* search and filters */}
-        <div className="flex items-center gap-2 py-4">
-          <AddStudentModal onUserAdded={fetchUsers} />
-          {/* search */}
-          <div className="relative max-w-sm flex-1">
-            {/* TO BE CHANGED */}
-            <Input
-              placeholder="Search users by student no and email"
-              value={globalFilter ?? ""}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="pr-16"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-              <Search className="h-4 w-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* columns toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto cursor-pointer">
-                <Columns2 /> Filter Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* empty table with message inside */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-64 text-center py-12"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full bg-gray-50 p-3">
-                      <UsersRound className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-blue-900 text-lg font-medium">
-                        No users found
-                      </p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        Users will appear here once user data is added.
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Empty pagination area for consistent layout */}
-        <div className="flex justify-between items-center py-4">
-          <div className="text-sm text-muted-foreground">
-            0 of 0 row(s) selected.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="w-full">
         <div className="mb-4">
+          {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
+          {/* skeleton for subtitle */}
+          <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
@@ -653,7 +564,8 @@ export default function StudentsTable() {
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-auto" />
+          <Skeleton className="h-9 w-36 ml-2" />
+          <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
         {/* skeleton for table */}
@@ -750,6 +662,9 @@ export default function StudentsTable() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Students</h1>
+          <p className="text-muted-foreground">
+            Add, edit, or archive students available in the system.
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-2 py-4">
@@ -782,11 +697,13 @@ export default function StudentsTable() {
 
         {/* search */}
         <div className="relative max-w-sm flex-1">
+          {/* search icon */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
           <Input
             placeholder="Search users by student no and email"
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pr-16"
+            className="pl-10 max-w-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {/* clear button */}
@@ -799,15 +716,53 @@ export default function StudentsTable() {
                 <X className="h-4 w-4 text-primary" />
               </button>
             )}
-            {/* search icon */}
-            <Search className="h-4 w-4 pointer-events-none" />
           </div>
         </div>
 
-        {/* filter columns */}
+        {/* filter by role */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto cursor-pointer">
+            <Button variant="outline" className="cursor-pointer ml-2">
+              <Search /> Filter By Role <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={table.getColumn("role")?.getFilterValue() === undefined}
+              onCheckedChange={() => {
+                table.getColumn("role")?.setFilterValue(undefined);
+              }}
+            >
+              All Roles
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            {["academic_head", "program_head", "teacher", "student"].map(
+              (role) => (
+                <DropdownMenuCheckboxItem
+                  key={role}
+                  checked={table.getColumn("role")?.getFilterValue() === role}
+                  onCheckedChange={() => {
+                    table
+                      .getColumn("role")
+                      ?.setFilterValue(
+                        table.getColumn("role")?.getFilterValue() === role
+                          ? undefined
+                          : role
+                      );
+                  }}
+                  className="capitalize"
+                >
+                  {role.replace("_", " ")}
+                </DropdownMenuCheckboxItem>
+              )
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* flter columns */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-2 cursor-pointer">
               <Columns2 /> Filter Columns <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -875,18 +830,16 @@ export default function StudentsTable() {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-64 text-center"
+                  className="h-48 text-center"
                 >
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <div className="rounded-full">
                       <UsersRound className="h-12 w-12 " />
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-medium">
-                        No students found
-                      </p>
+                      <p className="text-lg font-medium">No students found.</p>
                       <p className="text-muted-foreground  text-sm mt-2">
-                        Student data will appear here.
+                        Try adjusting your search or filters to find students.
                       </p>
                     </div>
                   </div>

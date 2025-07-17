@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { db } from "@/api/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
@@ -151,6 +151,8 @@ export default function AddSemesterModal({
         "semesters"
       );
       await addDoc(semestersColRef, {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         semesterName: formData.semesterName,
         startDate: format(formData.startDate, "yyyy-MM-dd"),
         endDate: format(formData.endDate, "yyyy-MM-dd"),
@@ -172,7 +174,7 @@ export default function AddSemesterModal({
     <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
       <DialogTrigger asChild>
         <Button
-          className="cursor-pointer bg-primary"
+          className="cursor-pointer bg-primary mr-2"
           disabled={loading}
           onClick={() => setDialogOpen(true)}
         >
@@ -193,7 +195,7 @@ export default function AddSemesterModal({
           {/* semester */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="semesterName" className="flex items-center pt-2">
-              Semester <span className="text-red-500">*</span>
+              Semester 
             </Label>
             <div className="col-span-3">
               <Select
@@ -227,7 +229,7 @@ export default function AddSemesterModal({
           {/* start date */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="startDate" className="flex items-center gap-1 pt-2">
-              Start Date <span className="text-red-500">*</span>
+              Start Date 
             </Label>
             <div className="col-span-3">
               <Popover
@@ -273,7 +275,7 @@ export default function AddSemesterModal({
           {/* end date */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="endDate" className="flex items-center gap-1 pt-2">
-              End Date <span className="text-red-500">*</span>
+              End Date 
             </Label>
             <div className="col-span-3">
               <Popover
@@ -328,7 +330,7 @@ export default function AddSemesterModal({
           <DialogClose asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               disabled={isSubmitting}
               className=" cursor-pointer"
             >

@@ -5,14 +5,14 @@ import {
   UsersRound,
   LogOut,
   GalleryVerticalEnd,
-  CircleUserRound,
   ChevronRight,
-  Archive,
+  FolderArchive,
   BookOpen,
-  LayoutTemplate,
   LibraryBig,
   ChevronsUpDown,
   Bell,
+  Layers,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -99,9 +99,9 @@ const items = {
           // ],
         },
         {
-          title: "Year Level",
-          url: "/admin/year-level",
-          icon: LibraryBig,
+          title: "Department",
+          url: "/admin/departments",
+          icon:  Building2,
           // items: [
           //   {
           //     title: "View Courses",
@@ -111,8 +111,20 @@ const items = {
           // ],
         },
         {
-          title: "Course and Section",
-          url: "/admin/course-section",
+          title: "Year Level",
+          url: "/admin/year-level",
+          icon: Layers,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
+        {
+          title: "Section",
+          url: "/admin/section",
           icon: LibraryBig,
           // items: [
           //   {
@@ -122,6 +134,30 @@ const items = {
           //   },
           // ],
         },
+        // {
+        //   title: "Course",
+        //   url: "/admin/course-section",
+        //   icon: LibraryBig,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
+        // {
+        //   title: "Course and Section",
+        //   url: "/admin/course-section",
+        //   icon: LibraryBig,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         // {
           //   title: "Section",
           //   url: "#",
@@ -133,11 +169,6 @@ const items = {
         //       icon: UsersRound,
         //     },
         //   ],
-        // },
-        // {
-        //   title: "Departments",
-        //   url: "/admin/departments",
-        //   icon: Building,
         // },
         // {
         //   title: "Schedules",
@@ -180,7 +211,7 @@ const items = {
         {
           title: "Archives",
           url: "/admin/archives",
-          icon: Archive,
+          icon: FolderArchive,
           // items: [
           //   {
           //     title: "View Archive Users",
