@@ -15,9 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, LoaderCircle} from "lucide-react";
+import { Plus, LoaderCircle } from "lucide-react";
 
-export default function AddAcademicYearModal() {
+export default function AddAcademicYearModal({ onAcademicYearAdded }) {
   const [open, setOpen] = useState(false);
   const [yearName, setYearName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ export default function AddAcademicYearModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!yearName) {
-      toast.error("Please enter an academic year name.");
+      toast.error("Please fill in all fields.");
       return;
     }
 
@@ -70,6 +70,9 @@ export default function AddAcademicYearModal() {
       toast.success("Academic Year added successfully!");
       setYearName("");
       setOpen(false);
+      if (onAcademicYearAdded) {
+        onAcademicYearAdded();
+      }
     } catch (error) {
       console.error("Error adding document: ", error);
       toast.error("Failed to add academic year.");
@@ -88,9 +91,7 @@ export default function AddAcademicYearModal() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-foreground">
-            Add New Academic Year
-          </DialogTitle>
+          <DialogTitle>Add New Academic Year</DialogTitle>
         </DialogHeader>
         <DialogDescription>
           Create one session per academic year.

@@ -86,17 +86,6 @@ export default function AddYearLevelCard({ yearLevel, onEdit, onDelete }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <CardDescription>
-          {yearLevel.status === "active" ? (
-            <Badge variant="default" className="bg-green-600 text-white">
-              Active
-            </Badge>
-          ) : (
-            <Badge variant="destructive" className="bg-red-600 text-white">
-              Inactive
-            </Badge>
-          )}
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-1 text-sm">

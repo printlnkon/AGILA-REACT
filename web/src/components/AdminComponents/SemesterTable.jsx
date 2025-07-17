@@ -224,7 +224,7 @@ export default function Semester() {
 
         {/* skeleton for cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-          {Array(2)
+          {Array(4)
             .fill(0)
             .map((_, i) => (
               <div key={i} className="border rounded-lg p-4 space-y-2">
@@ -266,9 +266,9 @@ export default function Semester() {
         <Card>
           <CardContent className="p-4 flex items-start gap-3">
             {activeAcadYear ? (
-              <Info className="h-8 w-8 mt-2 flex-shrink-0 text-sidebar-ring" />
+              <Info className="h-8 w-8 mt-2 flex-shrink-0 text-ring" />
             ) : (
-              <AlertTriangle className="h-8 w-8 mt-2 text-yellow-600" />
+              <AlertTriangle className="h-8 w-8 mt-2 flex-shrink-0 text-destructive" />
             )}
             <div>
               <p className="font-semibold">
@@ -281,7 +281,7 @@ export default function Semester() {
                   {activeAcadYear.acadYear}
                 </p>
               ) : (
-                <p className="text-sm text-yellow-700">
+                <p className="text-sm text-destructive">
                   Please go to the Academic Year module and set an active
                   session to manage semesters.
                 </p>
