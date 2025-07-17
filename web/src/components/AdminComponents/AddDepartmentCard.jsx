@@ -4,6 +4,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -25,7 +26,6 @@ import {
   MoreHorizontal,
   Trash2,
   Check,
-  Building,
   LoaderCircle,
 } from "lucide-react";
 import { db } from "@/api/firebase";
@@ -128,7 +128,8 @@ export default function AddDepartmentCard({ department, onDelete }) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
-            <Building className="h-5 w-5 text-primary" />
+            {/* icon - WILL BE IMPLEMENTED SOON */}
+            {/* <Building className="h-5 w-5 text-primary" /> */}
             <CardTitle className="text-xl">
               {department.departmentName}
             </CardTitle>

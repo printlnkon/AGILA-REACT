@@ -162,7 +162,7 @@ export default function AddSemesterCard({
                 disabled={isActive}
               >
                 <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                <span>Delete</span>
+                <span>Delete Permanently</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -192,17 +192,6 @@ export default function AddSemesterCard({
               {semester.endDate
                 ? format(
                     toDate(semester.endDate),
-                    "MMMM d, yyyy"
-                  )
-                : "-"}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Last Updated:</span>
-            <span>
-              {semester.updatedAt
-                ? format(
-                    toDate(semester.updatedAt),
                     "MMMM d, yyyy"
                   )
                 : "-"}
@@ -330,7 +319,7 @@ export default function AddSemesterCard({
               onClick={handleEdit}
               className="cursor-pointer bg-primary"
             >
-              <Check className="mr-2 h-4 w-4" /> Save Changes
+              <Check /> Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -360,7 +349,7 @@ export default function AddSemesterCard({
               onClick={handleDelete}
               className="cursor-pointer"
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
             </Button>
           </DialogFooter>
         </DialogContent>

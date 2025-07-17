@@ -41,174 +41,164 @@ import {
   MoreVertical,
   Check,
   BookOpen,
-  Users,
   LoaderCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import AddSectionModal from "@/components/AdminComponents/AddSectionModal";
+import AddCourseModal from "@/components/AdminComponents/AddCourseModal";
 
-export default function AddSectionCard({ yearLevel, activeSession }) {
-  const [sections, setSections] = useState([]);
+export default function AddCourseCard({ department, activeSession }) {
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editedSection, setEditedSection] = useState(null);
+  const [editedCourse, setEditedCourse] = useState(null);
   const [editedName, setEditedName] = useState("");
+  const [editedCode, setEditedCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sectionCount, setSectionCount] = useState(0);
-  const [studentCount, setStudentCount] = useState(0);
+  const [courseCount, setCourseCount] = useState(0);
 
   useEffect(() => {
-    if (!yearLevel || !yearLevel.id || !activeSession || !yearLevel.semesterId)
+    if (
+      !department ||
+      !department.id ||
+      !activeSession ||
+      !department.semesterId
+    )
       return;
 
     setLoading(true);
 
-    // query sections under year level
-    const sectionsRef = collection(
-      db,
-      `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
-    );
+    const coursesPath = `academic_years/${activeSession.id}/semesters/${department.semesterId}/departments/${department.id}/courses`;
+    const coursesRef = collection(db, coursesPath);
 
-    const unsubscribeSections = onSnapshot(
-      sectionsRef,
+    const unsubscribeCourses = onSnapshot(
+      coursesRef,
       (snapshot) => {
-        const sectionsList = snapshot.docs.map((doc) => ({
+        const coursesList = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
           academicYearId: activeSession.id,
-          semesterId: yearLevel.semesterId,
-          yearLevelId: yearLevel.id,
+          semesterId: department.semesterId,
+          departmentId: department.id,
         }));
 
-        // Sort sections alphabetically by name
-        sectionsList.sort((a, b) => a.sectionName.localeCompare(b.sectionName));
+        coursesList.sort((a, b) => a.courseName.localeCompare(b.courseName));
 
-        setSections(sectionsList);
-        setSectionCount(sectionsList.length);
+        setCourses(coursesList);
+        setCourseCount(coursesList.length);
         setLoading(false);
       },
       (error) => {
-        console.error("Error fetching sections:", error);
-        toast.error("Failed to load sections.");
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to load courses.");
         setLoading(false);
       }
     );
 
-    // Get approximate student count (could be simplified or removed if not needed)
-    // Update this to use the hierarchical path if students are also stored hierarchically
-    const getStudentCount = async () => {
-      try {
-        const studentsQuery = query(
-          collection(db, "students"),
-          where("yearLevelId", "==", yearLevel.id)
-        );
-        const snapshot = await getDocs(studentsQuery);
-        setStudentCount(snapshot.size);
-      } catch (error) {
-        console.error("Error getting student count:", error);
-      }
-    };
-
-    getStudentCount();
-
     return () => {
-      unsubscribeSections();
+      unsubscribeCourses();
     };
-  }, [yearLevel, activeSession]);
+  }, [department, activeSession]);
 
-  // edit function
-  const handleEditSection = async () => {
-    if (!editedSection || !editedName.trim()) {
-      toast.error("Section name cannot be empty.");
+  const handleEditCourse = async () => {
+    if (!editedCourse || !editedName.trim() || !editedCode.trim()) {
+      toast.error("Course name and code cannot be empty.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Updated: Check if section name already exists in this year level
-      const sectionsRef = collection(
+      const coursesRef = collection(
         db,
-        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
+        `academic_years/${activeSession.id}/semesters/${department.semesterId}/departments/${department.id}/courses`
       );
 
-      const q = query(
-        sectionsRef,
-        where("sectionName", "==", editedName.trim())
+      const qName = query(
+        coursesRef,
+        where("courseName", "==", editedName.trim())
+      );
+      const qCode = query(
+        coursesRef,
+        where("courseCode", "==", editedCode.trim())
       );
 
-      const querySnapshot = await getDocs(q);
+      const [nameSnapshot, codeSnapshot] = await Promise.all([
+        getDocs(qName),
+        getDocs(qCode),
+      ]);
 
-      if (
-        !querySnapshot.empty &&
-        querySnapshot.docs[0].id !== editedSection.id
-      ) {
-        toast.error(`Section "${editedName.trim()}" already exists.`);
+      if (!nameSnapshot.empty && nameSnapshot.docs[0].id !== editedCourse.id) {
+        toast.error(`Course "${editedName.trim()}" already exists.`);
         setIsSubmitting(false);
         return;
       }
 
-      // Updated: Reference the section in the hierarchical path
-      const sectionRef = doc(
+      if (!codeSnapshot.empty && codeSnapshot.docs[0].id !== editedCourse.id) {
+        toast.error(`Course code "${editedCode.trim()}" already exists.`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const courseRef = doc(
         db,
-        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`,
-        editedSection.id
+        `academic_years/${activeSession.id}/semesters/${department.semesterId}/departments/${department.id}/courses`,
+        editedCourse.id
       );
 
-      await updateDoc(sectionRef, {
-        sectionName: editedName.trim(),
+      await updateDoc(courseRef, {
+        courseName: editedName.trim(),
+        courseCode: editedCode.trim(),
         updatedAt: serverTimestamp(),
       });
 
-      toast.success(`Section updated successfully to "${editedName}".`);
+      toast.success(`Course updated successfully.`);
       setShowEditDialog(false);
     } catch (error) {
-      console.error("Error updating section:", error);
-      toast.error("Failed to update section. Please try again.");
+      console.error("Error updating course:", error);
+      toast.error("Failed to update course. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // delete function
-  const handleDeleteSection = async () => {
-    if (!editedSection) return;
+  const handleDeleteCourse = async () => {
+    if (!editedCourse) return;
 
     setIsSubmitting(true);
 
     try {
-      // Updated: Reference the section in the hierarchical path
-      const sectionsRef = doc(
+      const courseRef = doc(
         db,
-        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`,
-        editedSection.id
+        `academic_years/${activeSession.id}/semesters/${department.semesterId}/departments/${department.id}/courses`,
+        editedCourse.id
       );
 
-      await deleteDoc(sectionsRef);
+      await deleteDoc(courseRef);
       toast.success(
-        `Section "${editedSection.sectionName}" deleted successfully.`
+        `Course "${editedCourse.courseName}" deleted successfully.`
       );
       setShowDeleteDialog(false);
     } catch (error) {
-      console.error("Error deleting section:", error);
-      toast.error("Failed to delete section. Please try again.");
+      console.error("Error deleting course:", error);
+      toast.error("Failed to delete course. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openEditDialog = (section) => {
-    setEditedSection(section);
-    setEditedName(section.sectionName);
+  const openEditDialog = (course) => {
+    setEditedCourse(course);
+    setEditedName(course.courseName);
+    setEditedCode(course.courseCode);
     setShowEditDialog(true);
   };
 
-  const openDeleteDialog = (section) => {
-    setEditedSection(section);
+  const openDeleteDialog = (course) => {
+    setEditedCourse(course);
     setShowDeleteDialog(true);
   };
 
@@ -216,27 +206,31 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
     <Card className="w-full">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-xl">{yearLevel.yearLevelName}</CardTitle>
+          <CardTitle className="text-xl">{department.departmentName}</CardTitle>
           <Badge className="bg-primary">
-            {sectionCount} {sectionCount === 1 ? "Section" : "Sections"}
+            {courseCount} {courseCount === 1 ? "Course" : "Courses"}
           </Badge>
         </div>
         <CardDescription className="flex items-center">
-          <Users className="h-3.5 w-3.5 mr-1" />
-          {studentCount} Students
+          Courses offered by this department.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="pb-2">
         <div className="space-y-2">
-          {sections.map((section) => (
+          {courses.map((course) => (
             <div
-              key={section.id}
+              key={course.id}
               className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
             >
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <span>{section.sectionName}</span>
+                <div>
+                  <span>{course.courseName}</span>
+                  <p className="text-xs text-muted-foreground">
+                    {course.courseCode}
+                  </p>
+                </div>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -247,7 +241,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => openEditDialog(section)}
+                    onClick={() => openEditDialog(course)}
                     className="cursor-pointer"
                   >
                     <Edit className="mr-2 h-4 w-4" />
@@ -255,7 +249,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => openDeleteDialog(section)}
+                    onClick={() => openDeleteDialog(course)}
                     className="text-red-600 cursor-pointer"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -266,9 +260,9 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
             </div>
           ))}
 
-          {sections.length === 0 && !loading && (
+          {courses.length === 0 && !loading && (
             <div className="text-center py-4 text-muted-foreground">
-              No sections added yet.
+              No courses added yet.
             </div>
           )}
 
@@ -280,11 +274,11 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
         </div>
       </CardContent>
 
-      <CardFooter className="pt-2">
-        <AddSectionModal
+      <CardFooter className="pt-2 mt-auto flex">
+        <AddCourseModal
           activeSession={activeSession}
           disabled={!activeSession || !activeSession.id}
-          yearLevel={yearLevel}
+          department={department}
         />
       </CardFooter>
 
@@ -292,20 +286,32 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Section</DialogTitle>
+            <DialogTitle>Edit Course</DialogTitle>
             <DialogDescription>
-              Change the section name below.
+              Change the course details below.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sectionName" className="text-right">
-                Section Name
+              <Label htmlFor="courseName" className="text-right">
+                Course Name
               </Label>
               <Input
-                id="sectionName"
+                id="courseName"
                 value={editedName}
                 onChange={(e) => setEditedName(e.target.value)}
+                className="col-span-3"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="courseCode" className="text-right">
+                Course Code
+              </Label>
+              <Input
+                id="courseCode"
+                value={editedCode}
+                onChange={(e) => setEditedCode(e.target.value)}
                 className="col-span-3"
                 disabled={isSubmitting}
               />
@@ -321,7 +327,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
               Cancel
             </Button>
             <Button
-              onClick={handleEditSection}
+              onClick={handleEditCourse}
               disabled={isSubmitting}
               className="cursor-pointer"
             >
@@ -340,10 +346,10 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Delete Section</DialogTitle>
+            <DialogTitle>Delete Course</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete section "
-              {editedSection?.sectionName}"? This action cannot be undone.
+              Are you sure you want to delete course "{editedCourse?.courseName}
+              "? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -357,7 +363,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteSection}
+              onClick={handleDeleteCourse}
               disabled={isSubmitting}
               className="cursor-pointer"
             >
@@ -366,7 +372,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Delete Section
+              Delete Course
             </Button>
           </DialogFooter>
         </DialogContent>
