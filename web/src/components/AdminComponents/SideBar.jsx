@@ -5,15 +5,14 @@ import {
   UsersRound,
   LogOut,
   GalleryVerticalEnd,
-  CircleUserRound,
   ChevronRight,
   FolderArchive,
   BookOpen,
-  LayoutTemplate,
   LibraryBig,
   ChevronsUpDown,
   Bell,
   Layers,
+  Building2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -100,6 +99,18 @@ const items = {
           // ],
         },
         {
+          title: "Department",
+          url: "/admin/departments",
+          icon:  Building2,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
+        {
           title: "Year Level",
           url: "/admin/year-level",
           icon: Layers,
@@ -158,11 +169,6 @@ const items = {
         //       icon: UsersRound,
         //     },
         //   ],
-        // },
-        // {
-        //   title: "Departments",
-        //   url: "/admin/departments",
-        //   icon: Building,
         // },
         // {
         //   title: "Schedules",

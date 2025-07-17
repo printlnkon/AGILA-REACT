@@ -32,7 +32,7 @@ import { Plus, LoaderCircle } from "lucide-react";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
-export default function AddYearLevelModal({ activeSession, disabled }) {
+export default function AddYearLevelModal({ activeSession, disabled, onYearLevelAdded }) {
   const [isOpen, setIsOpen] = useState(false);
   const [yearLevelName, setYearLevelName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,6 +125,11 @@ export default function AddYearLevelModal({ activeSession, disabled }) {
       toast.success(
         `Year level "${yearLevelName.trim()}" has been added to ${academicYear}, ${semester}.`
       );
+
+      if (onYearLevelAdded) {
+        onYearLevelAdded();
+      }
+
       setYearLevelName("");
       handleOpenChange(false);
     } catch (error) {

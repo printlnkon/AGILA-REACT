@@ -11,7 +11,6 @@ import {
   serverTimestamp,
   getDocs,
 } from "firebase/firestore";
-import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -20,9 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +44,11 @@ import {
   Users,
   LoaderCircle,
 } from "lucide-react";
-import AddSectionModal from "./AddSectionModal";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import AddSectionModal from "@/components/AdminComponents/AddSectionModal";
 
 export default function AddSectionCard({ yearLevel, activeSession }) {
   const [sections, setSections] = useState([]);
@@ -67,10 +67,10 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
 
     setLoading(true);
 
-    // Updated: Use hierarchical path to query sections under year level
+    // query sections under year level
     const sectionsRef = collection(
       db,
-      `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels/${yearLevel.id}/sections`
+      `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
     );
 
     const unsubscribeSections = onSnapshot(
@@ -79,7 +79,6 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
         const sectionsList = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-          // Store references for edit/delete operations
           academicYearId: activeSession.id,
           semesterId: yearLevel.semesterId,
           yearLevelId: yearLevel.id,
@@ -121,6 +120,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
     };
   }, [yearLevel, activeSession]);
 
+  // edit function
   const handleEditSection = async () => {
     if (!editedSection || !editedName.trim()) {
       toast.error("Section name cannot be empty.");
@@ -133,7 +133,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
       // Updated: Check if section name already exists in this year level
       const sectionsRef = collection(
         db,
-        `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels/${yearLevel.id}/sections`
+        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
       );
 
       const q = query(
@@ -155,7 +155,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
       // Updated: Reference the section in the hierarchical path
       const sectionRef = doc(
         db,
-        `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels/${yearLevel.id}/sections`,
+        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`,
         editedSection.id
       );
 
@@ -174,6 +174,7 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
     }
   };
 
+  // delete function
   const handleDeleteSection = async () => {
     if (!editedSection) return;
 
@@ -183,11 +184,11 @@ export default function AddSectionCard({ yearLevel, activeSession }) {
       // Updated: Reference the section in the hierarchical path
       const sectionRef = doc(
         db,
-        `academic_years/${activeSession.id}/semesters/${yearLevel.semesterId}/year_levels/${yearLevel.id}/sections`,
+        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`,
         editedSection.id
       );
 
-      await deleteDoc(sectionRef);
+      await deleteDoc(sectionsRef);
       toast.success(
         `Section "${editedSection.sectionName}" deleted successfully.`
       );
