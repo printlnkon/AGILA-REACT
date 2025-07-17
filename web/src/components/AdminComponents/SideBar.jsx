@@ -6,13 +6,14 @@ import {
   LogOut,
   GalleryVerticalEnd,
   ChevronRight,
-  FolderArchive,
+  Archive,
   BookOpen,
   LibraryBig,
   ChevronsUpDown,
   Bell,
   Layers,
   Building2,
+  LayoutList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -102,6 +103,18 @@ const items = {
           title: "Department",
           url: "/admin/departments",
           icon:  Building2,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
+        {
+          title: "Course",
+          url: "/admin/course",
+          icon:  LayoutList,
           // items: [
           //   {
           //     title: "View Courses",
@@ -211,7 +224,7 @@ const items = {
         {
           title: "Archives",
           url: "/admin/archives",
-          icon: FolderArchive,
+          icon: Archive,
           // items: [
           //   {
           //     title: "View Archive Users",
@@ -391,7 +404,7 @@ export default function SideBar() {
                                   menuItem.items.some((subItem) =>
                                     isActive(subItem.url)
                                   )
-                                    ? "font-bold bg-accent"
+                                    ? "font-bold bg-sidebar-primary"
                                     : ""
                                 }
                                 `}

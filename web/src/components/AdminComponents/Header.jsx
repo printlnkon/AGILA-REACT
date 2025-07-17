@@ -25,6 +25,7 @@ export default function Header() {
     "departments": "Departments",
     "year-level": "Year Level",
     "section": "Section",
+    "course": "Course",
     "course-section": "Course and Section",
     "academic-heads": "Academic Head",
     "program-heads": "Program Head",
