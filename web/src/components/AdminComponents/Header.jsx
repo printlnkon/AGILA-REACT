@@ -11,6 +11,7 @@ import {
 import { useLocation, Link } from "react-router-dom";
 import React from "react";
 import { ThemeToggle } from "@/utils/ThemeToggle";
+import { ThemeToggleDropdown } from "@/utils/ThemeToggleDropdown";
 
 export default function Header() {
   const location = useLocation();
@@ -19,18 +20,18 @@ export default function Header() {
   const customBreadcrumbNames = {
     // admin paths
     "academic-year": "Academic Year",
-    "semester": "Semester",
-    "accounts": "Accounts",
-    "archives": "Archives",
-    "departments": "Departments",
+    semester: "Semester",
+    accounts: "Accounts",
+    archives: "Archives",
+    departments: "Departments",
     "year-level": "Year Level",
-    "section": "Section",
-    "course": "Course",
+    section: "Section",
+    course: "Course",
     "course-section": "Course and Section",
     "academic-heads": "Academic Head",
     "program-heads": "Program Head",
-    "teachers": "Teachers",
-    "students": "Students",
+    teachers: "Teachers",
+    students: "Students",
   };
 
   // A simple function to capitalize the first letter.
@@ -43,7 +44,7 @@ export default function Header() {
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b">
       <div className="flex items-center gap-2 px-3">
         <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6"  />
+        <Separator orientation="vertical" className="h-6" />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -57,7 +58,9 @@ export default function Header() {
               const isLast = index === pathnames.length - 1;
               // Create the path for the link.
               const to = `/${pathnames.slice(0, index + 1).join("/")}`;
-              const name = customBreadcrumbNames[value] || capitalize(value.replace(/-/g, " "));
+              const name =
+                customBreadcrumbNames[value] ||
+                capitalize(value.replace(/-/g, " "));
 
               // Don't render the 'admin' path segment itself, as 'Home' covers it.
               if (value.toLowerCase() === "admin" && index === 0) {
@@ -82,9 +85,10 @@ export default function Header() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-        <div className="flex items-center gap-2 pr-3">
-          <ThemeToggle />
-        </div>
+      <div className="flex items-center gap-2 pr-3">
+        <ThemeToggleDropdown />
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
