@@ -1,6 +1,18 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 
+const availableColorThemes = [
+  "neutral",
+  "zinc",
+  "slate",
+  "rose",
+  "orange",
+  "green",
+  "blue",
+  "yellow",
+  "violet",
+];
+
 const getInitialTheme = (storageKey, defaultTheme) => {
   if (typeof window === "undefined") {
     return defaultTheme;
@@ -11,22 +23,31 @@ const getInitialTheme = (storageKey, defaultTheme) => {
 const ThemeProviderContext = createContext({
   theme: "system",
   setTheme: () => {},
+  colorTheme: "zinc",
+  setColorTheme: () => {},
+  availableColorThemes: [],
 });
 
 export function ThemeProvider({
   children,
-  defaultTheme = "dark",
+  defaultTheme = "system",
+  defaultColorTheme = "zinc",
   storageKey = "vite-ui-theme",
+  colorThemeStorageKey = "vite-ui-color-theme",
   ...props
 }) {
   const [theme, setTheme] = useState(() =>
     getInitialTheme(storageKey, defaultTheme)
   );
 
+  const [colorTheme, setColorTheme] = useState(() =>
+    getInitialTheme(colorThemeStorageKey, defaultColorTheme)
+  );
+
   // handles theme application and system preference changes
   useEffect(() => {
     const applyTheme = (currentTheme) => {
-      // Clear previous theme classes from the root
+      // clear previous theme classes from the root
       const root = window.document.documentElement;
       root.classList.remove("light", "dark");
 
@@ -37,8 +58,7 @@ export function ThemeProvider({
             ? "dark"
             : "light"
           : currentTheme;
-      
-      // Apply the new theme class to the root
+      // apply the new theme class to the root
       root.classList.add(effectiveTheme);
     };
 
@@ -59,8 +79,15 @@ export function ThemeProvider({
       const root = window.document.documentElement;
       root.classList.remove("light", "dark");
     };
-      
   }, [theme]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove(...availableColorThemes.map((t) => `theme-${t}`));
+    if (colorTheme) {
+      root.classList.add(`theme-${colorTheme}`);
+    }
+  }, [colorTheme]);
 
   const value = {
     theme,
@@ -68,6 +95,12 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
     },
+    colorTheme,
+    setColorTheme: (newColorTheme) => {
+      localStorage.setItem(colorThemeStorageKey, newColorTheme);
+      setColorTheme(newColorTheme);
+    },
+    availableColorThemes,
   };
 
   return (
@@ -81,6 +114,8 @@ ThemeProvider.propTypes = {
   children: PropTypes.node.isRequired,
   defaultTheme: PropTypes.oneOf(["light", "dark", "system"]),
   storageKey: PropTypes.string,
+  defaultColorTheme: PropTypes.string,
+  colorThemeStorageKey: PropTypes.string,
 };
 
 export const useTheme = () => {
