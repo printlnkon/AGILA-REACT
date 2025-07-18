@@ -404,7 +404,7 @@ export default function SideBar() {
                                   menuItem.items.some((subItem) =>
                                     isActive(subItem.url)
                                   )
-                                    ? "font-bold bg-sidebar-primary"
+                                    ? "font-bold bg-sidebar-primary text-white"
                                     : ""
                                 }
                                 `}

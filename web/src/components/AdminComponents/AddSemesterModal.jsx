@@ -174,7 +174,7 @@ export default function AddSemesterModal({
     <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
       <DialogTrigger asChild>
         <Button
-          className="cursor-pointer bg-primary mr-2"
+          className="cursor-pointer mr-2"
           disabled={loading}
           onClick={() => setDialogOpen(true)}
         >
@@ -341,7 +341,7 @@ export default function AddSemesterModal({
             type="submit"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="bg-primary bg-primary:hover text-white cursor-pointer"
+            className="bg-primary bg-primary:hover cursor-pointer"
           >
             {isSubmitting && (
               <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
