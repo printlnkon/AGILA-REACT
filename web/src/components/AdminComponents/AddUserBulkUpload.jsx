@@ -1,37 +1,44 @@
-import { useState, useRef } from "react";
-import { 
-    Dialog, 
-    DialogTrigger, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogDescription, 
-    DialogClose 
-} from "@/components/ui/dialog";
+import * as XLSX from "xlsx";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { db, auth } from "@/api/firebase";
-import { 
-    doc, 
-    setDoc, 
-    serverTimestamp 
-} from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import DragNDrop from "@/components/AdminComponents/DragNDrop";
 
 export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef(null);
+
+  const onDrop = useCallback((acceptedFiles) => {
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      const selectedFile = acceptedFiles[0];
+      setFile(selectedFile);
+      toast.info(`Selected file: ${selectedFile.name}`);
+    } else {
+      toast.error("Invalid file type. Please upload a .xlsx or .xls file.");
+    }
+  }, []);
 
   const requiredHeaders = [
     "First Name",
     "Last Name",
     "Gender",
     "Date of Birth",
-    "Department"
+    "Department",
   ];
 
   const validateHeaders = (headers) => {
@@ -42,8 +49,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
-  const handleBulkUpload = async (e) => {
-    e.preventDefault();
+  const handleBulkUpload = async () => {
     if (!file) return toast.error("Please select a file first.");
     setIsUploading(true);
 
@@ -70,8 +76,10 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         });
 
         // Required field checks
-        if (!row["First Name"] || row["First Name"].length < 2) errors.push("Invalid First Name");
-        if (!row["Last Name"] || row["Last Name"].length < 2) errors.push("Invalid Last Name");
+        if (!row["First Name"] || row["First Name"].length < 2)
+          errors.push("Invalid First Name");
+        if (!row["Last Name"] || row["Last Name"].length < 2)
+          errors.push("Invalid Last Name");
 
         // gender validation
         const genderInput = row["Gender"]?.toLowerCase();
@@ -84,9 +92,10 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         let formattedDOB = "";
         let isValidDate = false;
 
-        let parsedDOB = typeof dob === "string" || typeof dob === "number"
-          ? new Date(dob)
-          : dob instanceof Date
+        let parsedDOB =
+          typeof dob === "string" || typeof dob === "number"
+            ? new Date(dob)
+            : dob instanceof Date
             ? dob
             : null;
 
@@ -96,19 +105,29 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         }
 
         if (!dob || !isValidDate) {
-          errors.push("Date of Birth must be a valid date with complete month, day, and year");
+          errors.push(
+            "Date of Birth must be a valid date with complete month, day, and year"
+          );
         }
 
         // department validation
-        const validDepartments = ["information technology", "computer science", "computer engineering"];
+        const validDepartments = [
+          "information technology",
+          "computer science",
+          "computer engineering",
+        ];
         const department = row["Department"]?.toLowerCase();
         if (!department || !validDepartments.includes(department)) {
-          errors.push("Department must be one of: Information Technology, Computer Science, or Computer Engineering");
+          errors.push(
+            "Department must be one of: Information Technology, Computer Science, or Computer Engineering"
+          );
         }
 
         if (errors.length > 0) {
           await new Promise((resolve) => {
-            toast.warning(`Row ${index + 2} skipped:\n• ${errors.join("\n• ")}`);
+            toast.warning(
+              `Row ${index + 2} skipped:\n• ${errors.join("\n• ")}`
+            );
             setTimeout(resolve, 1000); // 1 second delay
           });
           continue;
@@ -117,10 +136,18 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         try {
           const generatedID = generateID();
           const isStudent = role === "student";
-          const email = `${row["Last Name"].toLowerCase().replace(/\s+/g, "")}.${generatedID}@caloocan.sti.edu.ph`;
-          const password = `@${row["Last Name"].charAt(0).toUpperCase()}${row["Last Name"].slice(1)}.${format(new Date(formattedDOB), "yyyyddMM")}`;
+          const email = `${row["Last Name"]
+            .toLowerCase()
+            .replace(/\s+/g, "")}.${generatedID}@caloocan.sti.edu.ph`;
+          const password = `@${row["Last Name"].charAt(0).toUpperCase()}${row[
+            "Last Name"
+          ].slice(1)}.${format(new Date(formattedDOB), "yyyyddMM")}`;
 
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
           const userId = userCredential.user.uid;
 
           const userData = {
@@ -141,7 +168,11 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
           };
 
           await setDoc(doc(db, `users/${role}/accounts`, userId), userData);
-          toast.success(`Row ${index + 2}: Account created for ${row["First Name"]} ${row["Last Name"]}`);
+          toast.success(
+            `Row ${index + 2}: Account created for ${row["First Name"]} ${
+              row["Last Name"]
+            }`
+          );
         } catch (err) {
           toast.error(`Row ${index + 2} failed: ${err.message}`);
         }
@@ -152,9 +183,6 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     } finally {
       setIsUploading(false);
       setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // clear the input 
-      }
       if (typeof onUserAdded === "function") {
         onUserAdded();
       }
@@ -165,46 +193,50 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     <div className="flex items-center gap-3">
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />
+          <Button className="flex items-center cursor-pointer gap-2">
+            <Upload />
             Bulk Upload
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl">
+          {/* header */}
           <DialogHeader>
             <DialogTitle>Upload {role.replace("_", " ")}s in Bulk</DialogTitle>
             <DialogDescription>
               Upload an Excel file with {role.replace("_", " ")} account data.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleBulkUpload} className="space-y-4">
-            <div>
-              <label htmlFor="file-upload" className="block mb-1 font-medium text-sm">
-                Upload Excel File
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                 ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  required
-                  className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4
-                             file:rounded-md file:border-0
-                             file:bg-gray-700 file:text-white
-                             hover:file:bg-gray-600"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              {/* drag and drop function */}
+              <DragNDrop onDrop={onDrop} />
+              {file && (
+                <p className=" text-sm text-center text-primary">
+                  Selected file: <strong>{file.name}</strong>
+                </p>
+              )}
+            </CardContent>
+            {/* cancel and upload btn */}
+            <CardFooter className="flex justify-end">
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button
+                  variant="ghost"
+                  className="mr-2 cursor-pointer"
+                  disabled={isUploading}
+                  onClick={() => setFile(null)}
+                >
+                  Cancel
+                </Button>
               </DialogClose>
-              <Button type="submit" disabled={isUploading}>
+              <Button
+                onClick={handleBulkUpload}
+                className="cursor-pointer"
+                disabled={isUploading || !file}
+              >
                 {isUploading ? "Uploading..." : "Upload"}
               </Button>
-            </div>
-          </form>
+            </CardFooter>
+          </Card>
         </DialogContent>
       </Dialog>
     </div>

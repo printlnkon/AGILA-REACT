@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import AddDepartmentModal from "@/components/AdminComponents/AddDepartmentModal";
-import AddDepartmentCard from "@/components/AdminComponents/AddDepartmentCard";
+import DepartmentCard from "@/components/AdminComponents/DepartmentCard";
 
 export default function DepartmentsTable() {
   const [departments, setDepartments] = useState([]);
@@ -261,7 +261,7 @@ export default function DepartmentsTable() {
           {departments.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
               {departments.map((department) => (
-                <AddDepartmentCard
+                <DepartmentCard
                   key={department.id}
                   department={department}
                 />

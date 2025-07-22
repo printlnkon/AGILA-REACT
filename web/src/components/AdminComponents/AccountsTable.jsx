@@ -319,7 +319,7 @@ const createColumns = (handleArchiveUser) => [
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
+              <Button variant="ghost" className="h-10 w-12 p-0 cursor-pointer">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal />
               </Button>
@@ -545,13 +545,12 @@ export default function AccountsTable() {
 
             allUsers.push({
               id: doc.id,
-              role: role,
+              role: role.toLowerCase().replace(" ", "_"),
               status: userData.status || "active",
               email: userData.email || "",
               firstName: userData.firstName || "",
               lastName: userData.lastName || "",
               ...userData,
-              role: role.toLowerCase().replace(" ", "_"),
             });
           });
         } catch (roleError) {

@@ -410,7 +410,7 @@ export default function ArchiveTable() {
         const firstName = row.original.firstName || "";
         const lastName = row.original.lastName || "";
         const fullName = `${firstName} ${lastName}`.trim();
-        return <div className="ml-3 capitalize">{fullName || "N/A"}</div>
+        return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
       },
     },
 
@@ -432,9 +432,7 @@ export default function ArchiveTable() {
         const status = row.getValue("status") || "active";
         const isActive = status === "active";
         return (
-          <Badge
-            variant={isActive ? "default" : "destructive"}
-          >
+          <Badge variant={isActive ? "default" : "destructive"}>
             {isActive ? "Active" : "Inactive"}
           </Badge>
         );
@@ -454,7 +452,10 @@ export default function ArchiveTable() {
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
+                <Button
+                  variant="ghost"
+                  className="h-10 w-12 p-0 cursor-pointer"
+                >
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal />
                 </Button>
@@ -796,14 +797,11 @@ export default function ArchiveTable() {
                 <DropdownMenuCheckboxItem
                   key={role}
                   checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={() => {
+                  // FIX: Simplify the handler to use the 'checked' state passed by the component
+                  onCheckedChange={(checked) => {
                     table
                       .getColumn("role")
-                      ?.setFilterValue(
-                        table.getColumn("role")?.getFilterValue() === role
-                          ? undefined
-                          : role
-                      );
+                      ?.setFilterValue(checked ? role : undefined);
                   }}
                   className="capitalize"
                 >
@@ -886,7 +884,7 @@ export default function ArchiveTable() {
                   colSpan={columns.length}
                   className="h-48 text-center"
                 >
-                   <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="flex flex-col items-center justify-center space-y-2">
                     <FolderArchive className="h-12 w-12 text-muted-foreground" />
                     <p className="text-lg font-medium">No archives found.</p>
                     <p className="text-sm text-muted-foreground">
