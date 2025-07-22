@@ -437,7 +437,7 @@ export default function SideBar() {
                                     transition-all duration-200 ease-in-out
                                     ${
                                       isActive(subItem.url)
-                                        ? "bg-sidebar-primary text-white font-bold"
+                                        ? "bg-sidebar-primary text-white font-bold mt-1 mb-2"
                                         : ""
                                     }
                                   `}

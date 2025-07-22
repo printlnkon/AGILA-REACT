@@ -20,7 +20,7 @@ import {
   Info,
 } from "lucide-react";
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
-import AddSemesterCard from "@/components/AdminComponents/AddSemesterCard";
+import SemesterCard from "@/components/AdminComponents/SemesterCard";
 
 export default function Semester() {
   const [activeAcadYear, setActiveAcadYear] = useState(null);
@@ -305,7 +305,7 @@ export default function Semester() {
           {semesters.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
               {semesters.map((semester) => (
-                <AddSemesterCard
+                <SemesterCard
                   key={semester.id}
                   semester={semester}
                   onEdit={handleEditSemester}

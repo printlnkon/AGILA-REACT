@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
+import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 import {
   collection,
   getDocs,
@@ -134,7 +135,6 @@ const searchGlobalFilter = (row, columnId, filterValue) => {
     fullName.includes(search)
   );
 };
-
 
 const createColumns = (handleArchiveUser) => [
   {
@@ -290,7 +290,7 @@ const createColumns = (handleArchiveUser) => [
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
+              <Button variant="ghost" className="h-10 w-10 p-0 cursor-pointer">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal />
               </Button>
@@ -374,7 +374,7 @@ export default function StudentsTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
-  const [globalFilter , setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
@@ -543,7 +543,7 @@ export default function StudentsTable() {
       columnFilters,
       columnVisibility,
       rowSelection,
-      globalFilter
+      globalFilter,
     },
   });
 
@@ -670,6 +670,7 @@ export default function StudentsTable() {
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
         <AddStudentModal onUserAdded={fetchUsers} />
+        <AddUserBulkUpload />
 
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
@@ -718,46 +719,6 @@ export default function StudentsTable() {
             )}
           </div>
         </div>
-
-        {/* filter by role */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="cursor-pointer ml-2">
-              <Search /> Filter By Role <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              checked={table.getColumn("role")?.getFilterValue() === undefined}
-              onCheckedChange={() => {
-                table.getColumn("role")?.setFilterValue(undefined);
-              }}
-            >
-              All Roles
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {["academic_head", "program_head", "teacher", "student"].map(
-              (role) => (
-                <DropdownMenuCheckboxItem
-                  key={role}
-                  checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={() => {
-                    table
-                      .getColumn("role")
-                      ?.setFilterValue(
-                        table.getColumn("role")?.getFilterValue() === role
-                          ? undefined
-                          : role
-                      );
-                  }}
-                  className="capitalize"
-                >
-                  {role.replace("_", " ")}
-                </DropdownMenuCheckboxItem>
-              )
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         {/* flter columns */}
         <DropdownMenu>

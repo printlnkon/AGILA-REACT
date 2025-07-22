@@ -45,7 +45,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export default function AddDepartmentCard({ department, onDelete }) {
+export default function DepartmentCard({ department, onDelete }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedName, setEditedName] = useState(department.departmentName);

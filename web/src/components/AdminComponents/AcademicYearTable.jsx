@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CalendarDays } from "lucide-react";
 import AddAcademicYearModal from "@/components/AdminComponents/AddAcademicYearModal";
-import AddAcademicYearCard from "@/components/AdminComponents/AddAcademicYearCard";
+import AcademicYearCard from "@/components/AdminComponents/AcademicYearCard";
 
 export default function AcademicYearTable() {
   const [academicYears, setAcademicYears] = useState([]);
@@ -184,7 +184,7 @@ export default function AcademicYearTable() {
       {academicYears.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
           {academicYears.map((acadYear) => (
-            <AddAcademicYearCard
+            <AcademicYearCard
               key={acadYear.id}
               acadYear={acadYear}
               onEdit={handleEditAcademicYear}

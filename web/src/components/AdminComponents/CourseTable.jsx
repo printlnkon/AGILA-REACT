@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Info, AlertTriangle, LibraryBig } from "lucide-react";
-import AddCourseCard from "@/components/AdminComponents/AddCourseCard";
+import CourseCard from "@/components/AdminComponents/CourseCard";
 
 export default function CourseTable() {
   const [departments, setDepartments] = useState([]);
@@ -204,7 +204,7 @@ export default function CourseTable() {
           {departments.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mt-4">
               {departments.map((department) => (
-                <AddCourseCard
+                <CourseCard
                   key={department.id}
                   department={department}
                   activeSession={activeSession}

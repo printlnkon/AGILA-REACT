@@ -34,7 +34,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-export default function AddAcademicYearCard({
+export default function AcademicYearCard({
   acadYear,
   onEdit,
   onDelete,

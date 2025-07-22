@@ -47,7 +47,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-export default function AddSemesterCard({ 
+export default function SemesterCard({ 
   semester, 
   onEdit, 
   onDelete, 
