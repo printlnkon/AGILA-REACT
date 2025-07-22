@@ -301,7 +301,7 @@ export default function AddStudentModal({ onUserAdded }) {
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer mr-2">
+        <Button className="cursor-pointer">
           <UserRoundPlus />
           Add Student
         </Button>
