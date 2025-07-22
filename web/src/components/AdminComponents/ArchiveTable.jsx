@@ -372,25 +372,6 @@ export default function ArchiveTable() {
       enableHiding: false,
     },
 
-    // email column
-    {
-      accessorKey: "email",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Email
-            <ArrowUpDown />
-          </Button>
-        );
-      },
-      cell: ({ row }) => (
-        <div className="ml-3 lowercase">{row.getValue("email") || "N/A"}</div>
-      ),
-    },
-
     // name column
     {
       accessorKey: "name",
@@ -412,6 +393,25 @@ export default function ArchiveTable() {
         const fullName = `${firstName} ${lastName}`.trim();
         return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
       },
+    },
+
+    // email column
+    {
+      accessorKey: "email",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Email
+            <ArrowUpDown />
+          </Button>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="ml-3 lowercase">{row.getValue("email") || "N/A"}</div>
+      ),
     },
 
     // role column
@@ -792,12 +792,11 @@ export default function ArchiveTable() {
               All Roles
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
-            {["student", "teacher", "program_head", "academic_head"].map(
+            {["academic head", "program head", "teacher", "student"].map(
               (role) => (
                 <DropdownMenuCheckboxItem
                   key={role}
                   checked={table.getColumn("role")?.getFilterValue() === role}
-                  // FIX: Simplify the handler to use the 'checked' state passed by the component
                   onCheckedChange={(checked) => {
                     table
                       .getColumn("role")

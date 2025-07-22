@@ -559,12 +559,13 @@ export default function StudentsTable() {
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add user button */}
           <Skeleton className="h-9 w-28" />
+          {/* skeleton for export button */}
+          <Skeleton className="h-9 w-28" />
 
           {/* skeleton for search box */}
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-2" />
           <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
