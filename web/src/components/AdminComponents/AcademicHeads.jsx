@@ -1,6 +1,6 @@
 import AcademicHeadsTable from "@/components/AdminComponents/AcademicHeadsTable";
 
-export default function Teachers() {
+export default function AcademicHeads() {
   return (
     <>
       <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6">

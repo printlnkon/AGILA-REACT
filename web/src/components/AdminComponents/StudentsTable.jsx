@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
+import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 import {
   collection,
   getDocs,
@@ -670,6 +671,7 @@ export default function StudentsTable() {
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
         <AddStudentModal onUserAdded={fetchUsers} />
+        <AddUserBulkUpload />
 
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
