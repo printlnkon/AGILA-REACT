@@ -1,7 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import AddUserModal from "@/components/AdminComponents/AddUserModal";
 import {
   collection,
   getDocs,
@@ -10,24 +8,22 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import * as XLSX from "xlsx";
+import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
-  DialogTrigger,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import {
   flexRender,
   useReactTable,
@@ -48,7 +44,6 @@ import {
   X,
   Archive,
   UsersRound,
-  FileDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -84,24 +79,7 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
-
-// export format
-const handleExportTemplate = (role) => {
-  const ws = XLSX.utils.json_to_sheet([
-    {
-      "First Name": "e.g., Juan",
-      "Middle Name": "",
-      "Last Name": "Dela Cruz",
-      "Suffix": "",
-      "Gender": "Male",
-      "Date of Birth": "2004-05-14",
-      "Department": "Information Technology",
-    },
-  ]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Format");
-  XLSX.writeFile(wb, `${role}_format.xlsx`);
-};
+import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -184,7 +162,7 @@ const createColumns = (handleArchiveUser) => [
     enableHiding: false,
   },
 
-  // student no. column 
+  // student no. column
   {
     id: "studentNumber",
     accessorKey: "studentNumber",
@@ -193,11 +171,11 @@ const createColumns = (handleArchiveUser) => [
     enableHiding: true,
   },
 
-  // employee id 
+  // employee id
   {
     id: "employeeNumber",
     accessorKey: "employeeNumber",
-    header: "Employee ID",
+    header: "Employee I.D",
     cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
     enableHiding: true,
   },
@@ -205,6 +183,7 @@ const createColumns = (handleArchiveUser) => [
   // name column
   {
     id: "name",
+    accessorKey: "name",
     accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
     header: ({ column }) => {
       return (
@@ -250,7 +229,7 @@ const createColumns = (handleArchiveUser) => [
   {
     accessorKey: "role",
     header: "Role",
-    filterFn: "equals", 
+    // filterFn: "equals",
     cell: ({ row }) => {
       const role = row.getValue("role") || "N/A";
       return <div className="capitalize">{role.replace("_", " ")}</div>;
@@ -414,6 +393,62 @@ export default function AccountsTable() {
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
 
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const allUsers = [];
+      const roles = ["student", "teacher", "program_head", "academic_head"];
+
+      for (const role of roles) {
+        try {
+          const querySnapshot = await getDocs(
+            collection(db, `users/${role}/accounts`)
+          );
+
+          querySnapshot.forEach((doc) => {
+            const userData = doc.data();
+            // Validate required fields
+            if (!userData.email) {
+              console.warn(
+                `User ${doc.id} in ${role} collection missing email`
+              );
+            }
+
+            allUsers.push({
+              id: doc.id,
+              role: userData.role || "unknown",
+              status: userData.status || "active",
+              email: userData.email || "",
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              ...userData,
+            });
+          });
+        } catch (roleError) {
+          console.error(`Error fetching ${role} users:`, roleError);
+        }
+      }
+
+      if (allUsers.length === 0) {
+        setError("No users found in any collection.");
+      } else {
+        setUsers(allUsers);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setError(
+        "Failed to load users. Please check your connection and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const handleArchiveUser = async (user) => {
     if (!user || !user.id || !user.role) {
       toast.error("Invalid user data");
@@ -521,62 +556,6 @@ export default function AccountsTable() {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const allUsers = [];
-      const roles = ["student", "teacher", "program_head", "academic_head"];
-
-      for (const role of roles) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, `users/${role}/accounts`)
-          );
-
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            // Validate required fields
-            if (!userData.email) {
-              console.warn(
-                `User ${doc.id} in ${role} collection missing email`
-              );
-            }
-
-            allUsers.push({
-              id: doc.id,
-              role: role.toLowerCase().replace(" ", "_"),
-              status: userData.status || "active",
-              email: userData.email || "",
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              ...userData,
-            });
-          });
-        } catch (roleError) {
-          console.error(`Error fetching ${role} users:`, roleError);
-        }
-      }
-
-      if (allUsers.length === 0) {
-        setError("No users found in any collection.");
-      } else {
-        setUsers(allUsers);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      setError(
-        "Failed to load users. Please check your connection and try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
     data: users,
@@ -599,13 +578,12 @@ export default function AccountsTable() {
       globalFilter,
     },
     initialState: {
-    columnVisibility: {
-      studentNumber: false,
-      employeeNumber: false,
+      columnVisibility: {
+        studentNumber: false,
+        employeeNumber: false,
+      },
     },
-  },
   });
-
 
   if (loading) {
     return (
@@ -625,6 +603,8 @@ export default function AccountsTable() {
 
           {/* skeleton for filter columns */}
           <Skeleton className="h-9 w-36 ml-2" />
+          <Skeleton className="h-9 w-36 ml-2" />
+          {/* skeleton for export format */}
           <Skeleton className="h-9 w-36 ml-2" />
         </div>
 
@@ -728,9 +708,6 @@ export default function AccountsTable() {
         </div>
       </div>
       <div className="flex items-center gap-2 py-4">
-        {/* add new account button */}
-        {/* <AddUserModal onUserAdded={fetchUsers} /> */}
-
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
           <div className="flex gap-2">
@@ -796,19 +773,15 @@ export default function AccountsTable() {
               All Roles
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
-            {["academic_head", "program_head", "teacher", "student"].map(
+            {["academic head", "program head", "teacher", "student"].map(
               (role) => (
                 <DropdownMenuCheckboxItem
                   key={role}
                   checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={() => {
+                  onCheckedChange={(checked) => {
                     table
                       .getColumn("role")
-                      ?.setFilterValue(
-                        table.getColumn("role")?.getFilterValue() === role
-                          ? undefined
-                          : role
-                      );
+                      ?.setFilterValue(checked ? role : undefined);
                   }}
                   className="capitalize"
                 >
@@ -831,62 +804,28 @@ export default function AccountsTable() {
               .getAllColumns()
               .filter((column) => column.getCanHide())
               .map((column) => {
-                const customLabelMap = {
-                  studentNumber: "Student No.",
-                  employeeNumber: "Employee ID",
-                };
-
                 const label =
-                  customLabelMap[column.id] ||
-                  column.columnDef.header ||
-                  column.id;
+                  typeof column.columnDef.header === "string"
+                    ? column.columnDef.header
+                    : column.id;
 
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
                   >
-                    {typeof label === "function" ? label({ column }) : label}
+                    {label}
                   </DropdownMenuCheckboxItem>
                 );
               })}
           </DropdownMenuContent>
 
           {/* export format */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="cursor-pointer ml-2 flex items-center gap-2">
-                <FileDown className="h-4 w-4" />
-                Export Format
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Export Template</DialogTitle>
-                <DialogDescription>Select a role to download the format.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                <Select onValueChange={handleExportTemplate}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="teacher">Teacher</SelectItem>
-                    <SelectItem value="program_head">Program Head</SelectItem>
-                    <SelectItem value="academic_head">Academic Head</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">Close</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <ExportExcelFormat />
         </DropdownMenu>
       </div>
 
