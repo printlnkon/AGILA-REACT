@@ -84,7 +84,8 @@ import {
 
 const handleCopyID = (id) => {
   if (!id) return toast.error("ID not found");
-  navigator.clipboard.writeText(id)
+  navigator.clipboard
+    .writeText(id)
     .then(() => toast.success("ID copied to clipboard"))
     .catch(() => toast.error("Failed to copy ID"));
 };
@@ -103,9 +104,13 @@ const handleEditUser = (user) => {
 const searchGlobalFilter = (row, columnId, filterValue) => {
   const id = row.original.id?.toLowerCase() || "";
   const email = row.original.email?.toLowerCase() || "";
-  const fullName = `${row.original.firstName || ""} ${row.original.lastName || ""}`.toLowerCase();
+  const fullName = `${row.original.firstName || ""} ${
+    row.original.lastName || ""
+  }`.toLowerCase();
   const search = filterValue.toLowerCase();
-  return id.includes(search) || email.includes(search) || fullName.includes(search);
+  return (
+    id.includes(search) || email.includes(search) || fullName.includes(search)
+  );
 };
 
 const createColumns = (handleArchiveUser) => [
@@ -113,7 +118,10 @@ const createColumns = (handleArchiveUser) => [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="ml-4"
@@ -145,22 +153,34 @@ const createColumns = (handleArchiveUser) => [
     id: "name",
     accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
     header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} className="mr-12">
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="mr-12"
+      >
         Name <ArrowUpDown />
       </Button>
     ),
     cell: ({ row }) => (
       <div className="ml-3 capitalize">
-        {`${row.original.firstName || ""} ${row.original.lastName || ""}` || "N/A"}
+        {`${row.original.firstName || ""} ${row.original.lastName || ""}` ||
+          "N/A"}
       </div>
     ),
   },
   {
     accessorKey: "email",
     header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>Email <ArrowUpDown /></Button>
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Email <ArrowUpDown />
+      </Button>
     ),
-    cell: ({ row }) => <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>,
+    cell: ({ row }) => (
+      <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
+    ),
   },
 
   {
@@ -211,85 +231,87 @@ const createColumns = (handleArchiveUser) => [
   },
 
   {
-        id: "actions",
-        header: "Actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          const user = row.original;
-          const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-    
-          return (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
-                    <span className="sr-only">Open menu</span>
-                    <MoreHorizontal />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleCopyID(user.id)}><Copy className="mr-2" /> Copy ID</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleViewUser(user)}
-                    className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                  >
-                    <Eye className="mr-2 h-4 w-4 text-green-600" />
-                    View
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleEditUser(user)}
-                    className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-                  >
-                    <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowArchiveDialog(true)}
-                    className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-                  >
-                    <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                    Archive
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-    
-              {/* Archive Confirmation Dialog */}
-              <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Archive</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to archive the user "{user.firstName}{" "}
-                      {user.lastName}"? This will set their account status to
-                      inactive.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowArchiveDialog(false)}
-                      className="cursor-pointer"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="warning"
-                      onClick={() => {
-                        handleArchiveUser(user);
-                        setShowArchiveDialog(false);
-                      }}
-                      className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-                    >
-                      <Archive /> Archive
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </>
-          );
-        },
-      },
+    id: "actions",
+    header: "Actions",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const user = row.original;
+      const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+
+      return (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-10 w-10 p-0 cursor-pointer">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleCopyID(user.id)}>
+                <Copy className="mr-2" /> Copy ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleViewUser(user)}
+                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+              >
+                <Eye className="mr-2 h-4 w-4 text-green-600" />
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleEditUser(user)}
+                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowArchiveDialog(true)}
+                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+              >
+                <Archive className="mr-2 h-4 w-4 text-amber-600" />
+                Archive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Archive Confirmation Dialog */}
+          <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirm Archive</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to archive the user "{user.firstName}{" "}
+                  {user.lastName}"? This will set their account status to
+                  inactive.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowArchiveDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="warning"
+                  onClick={() => {
+                    handleArchiveUser(user);
+                    setShowArchiveDialog(false);
+                  }}
+                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+                >
+                  <Archive /> Archive
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    },
+  },
 ];
 
 export default function TeachersTable() {
@@ -308,7 +330,11 @@ export default function TeachersTable() {
     try {
       const ref = collection(db, "users/teacher/accounts");
       const snap = await getDocs(ref);
-      const data = snap.docs.map(doc => ({ id: doc.id, role: "teacher", ...doc.data() }));
+      const data = snap.docs.map((doc) => ({
+        id: doc.id,
+        role: "teacher",
+        ...doc.data(),
+      }));
       setUsers(data);
     } catch (e) {
       toast.error("Failed to load teacher");
@@ -318,26 +344,91 @@ export default function TeachersTable() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleArchiveUser = async (user) => {
-    if (!user?.id) return toast.error("Invalid user");
+    if (!user?.id) {
+      toast.error("Invalid user data");
+      return false;
+    }
+
     try {
       const userRef = doc(db, "users/teacher/accounts", user.id);
       const snapshot = await getDoc(userRef);
       if (!snapshot.exists()) throw new Error("User not found");
 
       const archiveRef = doc(db, "archive", user.id);
-      await setDoc(archiveRef, { ...snapshot.data(), status: "inactive", archivedAt: new Date() });
+      await setDoc(archiveRef, {
+        ...snapshot.data(),
+        status: "inactive",
+        archivedAt: new Date(),
+      });
       await deleteDoc(userRef);
-      toast.success(`Archived ${user.firstName}`);
-      fetchUsers();
+      toast.success(
+        `User ${user.firstName} ${user.lastName} archived successfully`
+      );
+      await fetchUsers();
+      return true;
     } catch (err) {
-      toast.error("Archive failed");
+      toast.error(`Archive failed: ${err.message}`);
+      return false;
     }
   };
 
-  const columns = createColumns(handleArchiveUser);
+  const handleBatchArchive = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+
+    if (selectedRows.length === 0) {
+      toast.error("No users selected");
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    // Show a loading toast
+    const loadingToast = toast.loading(
+      `Archiving ${selectedRows.length} users...`
+    );
+
+    // Process each selected user
+    for (const row of selectedRows) {
+      const user = row.original;
+      const success = await handleArchiveUser(user);
+
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    // Dismiss the loading toast
+    toast.dismiss(loadingToast);
+
+    // Show results
+    if (successCount > 0) {
+      toast.success(`Successfully archived ${successCount} users`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to archive ${failCount} users`);
+    }
+
+    // Clear selection
+    table.resetRowSelection();
+
+    // force re-fetch users to update the table
+    if (successCount > 0) {
+      const remainingUsers = users.filter(
+        (user) => !selectedRows.some((row) => row.original.id === user.id)
+      );
+      setUsers(remainingUsers);
+    }
+  };
+
+  const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
     data: users,
     columns,
@@ -349,7 +440,13 @@ export default function TeachersTable() {
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: { sorting, columnFilters, columnVisibility, rowSelection, globalFilter },
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+      globalFilter,
+    },
     globalFilterFn: searchGlobalFilter,
   });
 
@@ -466,9 +563,9 @@ export default function TeachersTable() {
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Program Heads</h1>
+          <h1 className="text-2xl font-bold">Manage Teachers</h1>
           <p className="text-muted-foreground">
-            Add, edit, or archive program heads available in the system.
+            Add, edit, or archive teachers available in the system.
           </p>
         </div>
       </div>
@@ -524,46 +621,6 @@ export default function TeachersTable() {
             )}
           </div>
         </div>
-
-        {/* filter by role */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="cursor-pointer ml-2">
-              <Search /> Filter By Role <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              checked={table.getColumn("role")?.getFilterValue() === undefined}
-              onCheckedChange={() => {
-                table.getColumn("role")?.setFilterValue(undefined);
-              }}
-            >
-              All Roles
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {["academic_head", "program_head", "teacher", "student"].map(
-              (role) => (
-                <DropdownMenuCheckboxItem
-                  key={role}
-                  checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={() => {
-                    table
-                      .getColumn("role")
-                      ?.setFilterValue(
-                        table.getColumn("role")?.getFilterValue() === role
-                          ? undefined
-                          : role
-                      );
-                  }}
-                  className="capitalize"
-                >
-                  {role.replace("_", " ")}
-                </DropdownMenuCheckboxItem>
-              )
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         {/* flter columns */}
         <DropdownMenu>
@@ -643,9 +700,9 @@ export default function TeachersTable() {
                       <UsersRound className="h-12 w-12 " />
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-medium">No program heads found.</p>
+                      <p className="text-lg font-medium">No Teachers found.</p>
                       <p className="text-muted-foreground  text-sm mt-2">
-                        Try adjusting your search or filters to find program heads.
+                        Try adjusting your search or filters to find teachers.
                       </p>
                     </div>
                   </div>

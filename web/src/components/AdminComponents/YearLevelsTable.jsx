@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import AddYearLevelModal from "@/components/AdminComponents/AddYearLevelModal";
-import AddYearLevelCard from "@/components/AdminComponents/AddYearLevelCard";
+import YearLevelCard from "@/components/AdminComponents/YearLevelCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, Layers } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -324,7 +324,7 @@ export default function YearLevelsTable() {
           {yearLevels.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
               {yearLevels.map((yearLevel) => (
-                <AddYearLevelCard
+                <YearLevelCard
                   key={yearLevel.id}
                   yearLevel={yearLevel}
                   onEdit={handleEditYearLevel}
