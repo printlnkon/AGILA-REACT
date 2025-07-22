@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,7 +34,7 @@ import { Edit, MoreHorizontal, Trash2, Check } from "lucide-react";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
-export default function AddYearLevelCard({ yearLevel, onEdit, onDelete }) {
+export default function YearLevelCard({ yearLevel, onEdit, onDelete }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedName, setEditedName] = useState(yearLevel.yearLevelName);

@@ -10,6 +10,7 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
+import * as XLSX from "xlsx";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,12 @@ import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
+  DialogTrigger,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
@@ -45,6 +48,7 @@ import {
   X,
   Archive,
   UsersRound,
+  FileDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,6 +84,24 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+
+// export format
+const handleExportTemplate = (role) => {
+  const ws = XLSX.utils.json_to_sheet([
+    {
+      "First Name": "e.g., Juan",
+      "Middle Name": "",
+      "Last Name": "Dela Cruz",
+      "Suffix": "",
+      "Gender": "Male",
+      "Date of Birth": "2004-05-14",
+      "Department": "Information Technology",
+    },
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Format");
+  XLSX.writeFile(wb, `${role}_format.xlsx`);
+};
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -162,15 +184,22 @@ const createColumns = (handleArchiveUser) => [
     enableHiding: false,
   },
 
-  // student no. column
+  // student no. column 
   {
-    id: "Student No.",
+    id: "studentNumber",
     accessorKey: "studentNumber",
     header: "Student No.",
-    cell: ({ row }) => {
-      const studentNo = row.original.studentNumber;
-      return <div className="capitalize">{studentNo || "N/A"}</div>;
-    },
+    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
+    enableHiding: true,
+  },
+
+  // employee id 
+  {
+    id: "employeeNumber",
+    accessorKey: "employeeNumber",
+    header: "Employee ID",
+    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
+    enableHiding: true,
   },
 
   // name column
@@ -221,6 +250,7 @@ const createColumns = (handleArchiveUser) => [
   {
     accessorKey: "role",
     header: "Role",
+    filterFn: "equals", 
     cell: ({ row }) => {
       const role = row.getValue("role") || "N/A";
       return <div className="capitalize">{role.replace("_", " ")}</div>;
@@ -289,7 +319,7 @@ const createColumns = (handleArchiveUser) => [
         <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-12 w-12 p-0 cursor-pointer">
+              <Button variant="ghost" className="h-10 w-12 p-0 cursor-pointer">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal />
               </Button>
@@ -375,7 +405,10 @@ export default function AccountsTable() {
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
-  const [columnVisibility, setColumnVisibility] = useState({});
+  const [columnVisibility, setColumnVisibility] = useState({
+    studentNumber: false,
+    employeeNumber: false,
+  });
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -512,7 +545,7 @@ export default function AccountsTable() {
 
             allUsers.push({
               id: doc.id,
-              role: role,
+              role: role.toLowerCase().replace(" ", "_"),
               status: userData.status || "active",
               email: userData.email || "",
               firstName: userData.firstName || "",
@@ -565,6 +598,12 @@ export default function AccountsTable() {
       rowSelection,
       globalFilter,
     },
+    initialState: {
+    columnVisibility: {
+      studentNumber: false,
+      employeeNumber: false,
+    },
+  },
   });
 
 
@@ -792,20 +831,62 @@ export default function AccountsTable() {
               .getAllColumns()
               .filter((column) => column.getCanHide())
               .map((column) => {
+                const customLabelMap = {
+                  studentNumber: "Student No.",
+                  employeeNumber: "Employee ID",
+                };
+
+                const label =
+                  customLabelMap[column.id] ||
+                  column.columnDef.header ||
+                  column.id;
+
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
-                    {column.id}
+                    {typeof label === "function" ? label({ column }) : label}
                   </DropdownMenuCheckboxItem>
                 );
               })}
           </DropdownMenuContent>
+
+          {/* export format */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="cursor-pointer ml-2 flex items-center gap-2">
+                <FileDown className="h-4 w-4" />
+                Export Format
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Export Template</DialogTitle>
+                <DialogDescription>Select a role to download the format.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <Select onValueChange={handleExportTemplate}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="program_head">Program Head</SelectItem>
+                    <SelectItem value="academic_head">Academic Head</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Close</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </DropdownMenu>
       </div>
 

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Info, AlertTriangle, LibraryBig } from "lucide-react";
-import AddSectionCard from "@/components/AdminComponents/AddSectionCard";
+import SectionCard from "@/components/AdminComponents/SectionCard";
 
 export default function SectionsTable() {
   const [yearLevels, setYearLevels] = useState([]);
@@ -216,7 +216,7 @@ export default function SectionsTable() {
           {yearLevels.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
               {yearLevels.map((yearLevel) => (
-                <AddSectionCard
+                <SectionCard
                   key={yearLevel.id}
                   yearLevel={yearLevel}
                   activeSession={activeSession}
