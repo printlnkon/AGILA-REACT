@@ -244,7 +244,7 @@ export default function AddTeacherModal({ onUserAdded }) {
   return (
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
-          <Button className="cursor-pointer mr-2">
+          <Button className="cursor-pointer">
               <UserRoundPlus />
               Add Teacher
           </Button>

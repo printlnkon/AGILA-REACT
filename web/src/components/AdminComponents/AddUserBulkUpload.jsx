@@ -193,7 +193,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     <div className="flex items-center gap-3">
       <Dialog>
         <DialogTrigger asChild>
-          <Button className="flex items-center cursor-pointer gap-2">
+          <Button className="flex items-center cursor-pointer">
             <Upload />
             Bulk Upload
           </Button>
