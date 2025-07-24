@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, LoaderCircle } from "lucide-react";
+import { Plus, LoaderCircle, Check } from "lucide-react";
 
 export default function AddAcademicYearModal({ onAcademicYearAdded }) {
   const [open, setOpen] = useState(false);
@@ -126,11 +126,15 @@ export default function AddAcademicYearModal({ onAcademicYearAdded }) {
             >
               {loading ? (
                 <>
-                  <LoaderCircle className="animate-spin" />
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
                   Saving...
                 </>
               ) : (
-                "Save"
+                <>
+                  <Check /> Save
+                </>
               )}
             </Button>
           </DialogFooter>

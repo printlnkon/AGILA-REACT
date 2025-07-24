@@ -84,9 +84,7 @@ export default function AddDepartmentModal({ activeSession }) {
         updatedAt: serverTimestamp(),
       });
 
-      toast.success(
-        `Department "${newDepartmentName.trim()}" added successfully.`
-      );
+      toast.success(`"${newDepartmentName.trim()}" added successfully.`);
 
       setNewDepartmentName("");
       handleOpenChange(false);
@@ -106,7 +104,7 @@ export default function AddDepartmentModal({ activeSession }) {
           Add Department
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
           <DialogTitle>Add Department</DialogTitle>
           <DialogDescription>
@@ -120,8 +118,8 @@ export default function AddDepartmentModal({ activeSession }) {
               id="departmentName"
               value={newDepartmentName}
               onChange={(e) => setNewDepartmentName(e.target.value)}
-              placeholder="e.g., Computer Science"
-              className="col-span-3"
+              placeholder="e.g., Department of Information Technology"
+              className="col-span-3 w-full"
               disabled={isSubmitting}
             />
           </div>

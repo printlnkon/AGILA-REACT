@@ -14,12 +14,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import AddDepartmentModal from "@/components/AdminComponents/AddDepartmentModal";
 import DepartmentCard from "@/components/AdminComponents/DepartmentCard";
 
-export default function DepartmentsTable() {
+export default function DepartmentAndCourseTable() {
   const [departments, setDepartments] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch active academic year
+  // fetch active academic year
   const fetchActiveSession = useCallback(async () => {
     try {
       // Find the active academic year first
@@ -137,8 +137,8 @@ export default function DepartmentsTable() {
       setLoading(true);
       const hasActiveSession = await fetchActiveSession();
 
-      // If we have an active session, fetchDepartments will be triggered by its own useEffect
-      // If not, we should set loading to false here
+      // if we have an active session, fetchdepartments will be triggered by its own useeffect
+      // if not, we should set loading to false here
       if (!hasActiveSession) {
         setLoading(false);
       }
@@ -154,11 +154,13 @@ export default function DepartmentsTable() {
       unsubscribe = fetchDepartments();
     }
 
-    // Clean up the listener when component unmounts or dependencies change
+    // clean up the listener when component unmounts or dependencies change
     return () => {
       if (unsubscribe) unsubscribe();
     };
   }, [fetchDepartments, activeSession]);
+
+  const isNoActiveSession = activeSession && !activeSession.id;
 
   if (loading) {
     return (
@@ -167,7 +169,7 @@ export default function DepartmentsTable() {
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        {/* skeleton for departments active session */}
+        {/* skeleton for department active session */}
         <div>
           <Skeleton className="h-18 w-full" />
         </div>
@@ -176,26 +178,34 @@ export default function DepartmentsTable() {
           <Skeleton className="h-9 w-28" />
         </div>
 
-        {/* skeleton for cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-          {Array(4)
+        {/* skeleton for departmentcard grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+          {Array(3)
             .fill(0)
             .map((_, i) => (
-              <div key={i} className="border rounded-lg p-4 space-y-2">
-                <div className="flex justify-between">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-8 w-8 rounded-md" />
+              <div
+                key={i}
+                className="border rounded-lg p-4 flex flex-col space-y-2"
+              >
+                {/* cardheader skeleton */}
+                <div className="flex justify-between items-start pb-2">
+                  <div>
+                    <Skeleton className="h-6 w-32 mb-1" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
                 </div>
-                <Skeleton className="h-4 w-16 mt-1" />
-                <div className="space-y-2 pt-3">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                  <div className="flex justify-between">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
+                {/* cardcontent skeleton (CourseList) */}
+                <div className="flex-grow pb-2">
+                  <Skeleton className="h-8 w-full mb-2" />
+                  <Skeleton className="h-8 w-full mb-2" />
+                </div>
+                {/* cardfooter skeleton (AddCourseModal) */}
+                <div>
+                  <Skeleton className="h-9 w-32" />
                 </div>
               </div>
             ))}
@@ -204,15 +214,14 @@ export default function DepartmentsTable() {
     );
   }
 
-  const isNoActiveSession = activeSession && !activeSession.id;
-
   return (
     <div className="flex h-full w-full flex-col">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Departments</h1>
+          <h1 className="text-2xl font-bold">Manage Department and Course</h1>
           <p className="text-muted-foreground">
-            Add, edit, or delete departments available in the system.
+            Add, edit, or delete departments and courses available in the
+            system.
           </p>
         </div>
       </div>
@@ -229,7 +238,7 @@ export default function DepartmentsTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Departments for Active Academic Year and Semester"
+                  ? "Departments and Courses for Active Academic Year and Semester"
                   : "No Active Academic Year"}
               </p>
               {!isNoActiveSession ? (
@@ -239,7 +248,7 @@ export default function DepartmentsTable() {
               ) : (
                 <p className="text-sm text-destructive">
                   Please go to the Academic Year module and set an active
-                  session to manage departments.
+                  session to manage departments and courses.
                 </p>
               )}
             </div>
@@ -247,7 +256,7 @@ export default function DepartmentsTable() {
         </Card>
       </div>
 
-      {/* Only show the add department button and content if there's an active academic year and semester */}
+      {/* only show the add department button and content if there's an active academic year and semester */}
       {!isNoActiveSession ? (
         <>
           <div className="flex items-center py-4 gap-2">
@@ -257,22 +266,21 @@ export default function DepartmentsTable() {
             />
           </div>
 
-          {/* Card Grid Layout */}
+          {/* card grid layout */}
           {departments.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               {departments.map((department) => (
-                <DepartmentCard
-                  key={department.id}
-                  department={department}
-                />
+                <DepartmentCard key={department.id} department={department} />
               ))}
             </div>
           ) : (
-            // Empty state - when no departments
+            // empty state - when no departments
             <Card className="py-12">
               <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
                 <Building2 className="h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium">No departments found.</p>
+                <p className="text-lg font-medium">
+                  No department and course found.
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Click "Add Department" to get started.
                 </p>
