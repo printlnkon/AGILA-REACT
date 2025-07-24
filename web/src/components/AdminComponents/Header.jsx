@@ -20,18 +20,15 @@ export default function Header() {
   const customBreadcrumbNames = {
     // admin paths
     "academic-year": "Academic Year",
-    semester: "Semester",
-    accounts: "Accounts",
-    archives: "Archives",
-    departments: "Departments",
-    "year-level": "Year Level",
-    section: "Section",
-    course: "Course",
-    "course-section": "Course and Section",
+    "semester": "Semester",
+    "departmentAndCourse": "Department and Course",
+    "yearLevelAndSection": "Year Level and Section",
+    "accounts": "Accounts",
     "academic-heads": "Academic Head",
     "program-heads": "Program Head",
-    teachers: "Teachers",
-    students: "Students",
+    "teachers": "Teachers",
+    "students": "Students",
+    "archives": "Archives",
   };
 
   // A simple function to capitalize the first letter.

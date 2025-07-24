@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  doc,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,35 +23,27 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, LoaderCircle } from "lucide-react";
 
-// Update the props to receive the complete yearLevel object instead of just id and name
-export default function AddSectionModal({
-  activeSession,
-  disabled,
-  yearLevel,
-}) {
+export default function AddSectionModal({ course, yearLevel, session }) {
   const [isOpen, setIsOpen] = useState(false);
   const [sectionName, setSectionName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = () => {
-    setSectionName("");
-  };
-
-  const handleOpenChange = (isOpen) => {
-    if (!isOpen) {
-      resetForm();
-    }
-    setIsOpen(isOpen);
-  };
-
   const handleAddSection = async () => {
-    if (!activeSession || !activeSession.id) {
-      toast.error("Cannot add section without an active academic session.");
-      return;
-    }
-
-    if (!yearLevel || !yearLevel.id) {
-      toast.error("Year level must be selected to add a section.");
+    if (
+      !session?.id ||
+      !session?.semesterId ||
+      !session?.departmentId ||
+      !course?.id ||
+      !yearLevel?.id
+    ) {
+      toast.error(
+        "Cannot add section: Required information is missing. Please refresh and try again."
+      );
+      console.error("Missing props in AddSectionModal:", {
+        session,
+        course,
+        yearLevel,
+      });
       return;
     }
 
@@ -60,16 +51,14 @@ export default function AddSectionModal({
       toast.error("Section name cannot be empty.");
       return;
     }
-
     setIsSubmitting(true);
 
-    try {
-      const sectionsRef = collection(
-        db,
-        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/year_levels/${yearLevel.id}/sections`
-      );
+    const sectionsRef = collection(
+      db,
+      `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.departmentId}/courses/${course.id}/year_levels/${yearLevel.id}/sections`
+    );
 
-      // Check if section with the same name already exists for this year level
+    try {
       const q = query(
         sectionsRef,
         where("sectionName", "==", sectionName.trim())
@@ -77,68 +66,54 @@ export default function AddSectionModal({
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
-        toast.error(
-          `Section "${sectionName.trim()}" already exists for ${
-            yearLevel.yearLevelName
-          }.`
-        );
+        toast.error(`Section "${sectionName.trim()}" already exists.`);
         setIsSubmitting(false);
         return;
       }
 
-      // Add section to year level
       await addDoc(sectionsRef, {
         sectionName: sectionName.trim(),
-        yearLevelId: yearLevel.id,
-        yearLevelName: yearLevel.yearLevelName,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
       toast.success(
-        `Section "${sectionName.trim()}" has been added to ${
-          yearLevel.yearLevelName
-        }.`
+        `Section "${sectionName.trim()}" added to ${yearLevel.yearLevelName}.`
       );
       setSectionName("");
-      handleOpenChange(false);
+      setIsOpen(false);
     } catch (error) {
-      console.error("Error adding section:", error);
-      toast.error("Failed to add section. Please try again.");
+      toast.error("Failed to add section.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer" disabled={disabled}>
+        <Button size="sm" className="cursor-pointer">
           <Plus />
           Add Section
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+
+      {/* add section dialog */}
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Add Section to {yearLevel?.yearLevelName || ""}
-          </DialogTitle>
+          <DialogTitle>Add Section to {yearLevel?.yearLevelName}</DialogTitle>
           <DialogDescription>
-            Enter a name for the new section. Click save when you're done.
+            Enter the name for the new section.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="sectionName">Section Name</Label>
-            <Input
-              id="sectionName"
-              value={sectionName}
-              onChange={(e) => setSectionName(e.target.value)}
-              placeholder="e.g., A, B, IT-1A"
-              className="col-span-3"
-              disabled={isSubmitting}
-            />
-          </div>
+        <div>
+          <Label className="mb-2">Section Name</Label>
+          <Input
+            value={sectionName}
+            onChange={(e) => setSectionName(e.target.value)}
+            placeholder="e.g., BSIT-1101"
+            disabled={isSubmitting}
+          />
         </div>
         <DialogFooter>
           <Button
@@ -152,10 +127,9 @@ export default function AddSectionModal({
           <Button
             onClick={handleAddSection}
             disabled={isSubmitting}
-            className="bg-primary cursor-pointer"
+            className="cursor-pointer"
           >
-            {isSubmitting ? <LoaderCircle className="animate-spin" /> : null}
-            {isSubmitting ? "Saving..." : "Save"}
+            {isSubmitting && <LoaderCircle className="animate-spin" />}Save
           </Button>
         </DialogFooter>
       </DialogContent>

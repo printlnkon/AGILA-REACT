@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  doc,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,25 +31,14 @@ import { Plus, LoaderCircle } from "lucide-react";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
-export default function AddYearLevelModal({ activeSession, disabled, onYearLevelAdded }) {
+export default function AddYearLevelModal({ course, session, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [yearLevelName, setYearLevelName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = () => {
-    setYearLevelName("");
-  };
-
-  const handleOpenChange = (isOpen) => {
-    if (!isOpen) {
-      resetForm();
-    }
-    setIsOpen(isOpen);
-  };
-
   const handleAddYearLevel = async () => {
-    if (!activeSession || !activeSession.id) {
-      toast.error("Cannot add year level without an active academic session.");
+    if (!course || !session) {
+      toast.error("Course and active session must be selected.");
       return;
     }
     if (!yearLevelName.trim()) {
@@ -59,45 +47,12 @@ export default function AddYearLevelModal({ activeSession, disabled, onYearLevel
     }
     setIsSubmitting(true);
 
+    const yearLevelsRef = collection(
+      db,
+      `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.departmentId}/courses/${course.id}/year_levels`
+    );
+
     try {
-      // Extract academic year and semester from activeSession
-      const academicYear = activeSession.acadYear;
-      const semester = activeSession.semesterName;
-
-      if (!academicYear || !semester) {
-        console.error("Active session data:", activeSession);
-        toast.error("Academic year or semester information is missing.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Create hierarchical path: academic_years/{academicYearId}/semesters/{semesterId}/year_levels
-      const academicYearRef = doc(db, "academic_years", activeSession.id);
-      const semestersRef = collection(academicYearRef, "semesters");
-      const semesterQuery = query(semestersRef, where("semesterName", "==", semester));
-      const semesterSnapshot = await getDocs(semesterQuery);
-
-      let semesterId;
-
-      if (semesterSnapshot.empty) {
-        // Create the semester if it doesn't exist
-        const newSemesterRef = await addDoc(semestersRef, {
-          semesterName: semester,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        semesterId = newSemesterRef.id;
-      } else {
-        semesterId = semesterSnapshot.docs[0].id;
-      }
-
-      // Reference to the year_levels collection under this specific semester
-      const yearLevelsRef = collection(
-        db,
-        `academic_years/${activeSession.id}/semesters/${semesterId}/year_levels`
-      );
-
-      // Check if year level already exists in this semester
       const q = query(
         yearLevelsRef,
         where("yearLevelName", "==", yearLevelName.trim())
@@ -106,79 +61,65 @@ export default function AddYearLevelModal({ activeSession, disabled, onYearLevel
 
       if (!querySnapshot.empty) {
         toast.error(
-          `Year level "${yearLevelName.trim()}" already exists in this semester.`
+          `Year level "${yearLevelName.trim()}" already exists for this course.`
         );
         setIsSubmitting(false);
         return;
       }
 
-      // Add the year level to the nested collection
       await addDoc(yearLevelsRef, {
-        academicYearId: activeSession.id,
-        semesterId: semesterId,
         yearLevelName: yearLevelName.trim(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: "active",
       });
 
       toast.success(
-        `Year level "${yearLevelName.trim()}" has been added to ${academicYear}, ${semester}.`
+        `Year level "${yearLevelName.trim()}" added to ${course.courseName}.`
       );
-
-      if (onYearLevelAdded) {
-        onYearLevelAdded();
-      }
-
       setYearLevelName("");
-      handleOpenChange(false);
+      setIsOpen(false);
     } catch (error) {
       console.error("Error adding year level:", error);
-      toast.error("Failed to add year level. Please try again.");
+      toast.error("Failed to add year level.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer mr-2" disabled={disabled}>
-          <Plus />
+        <Button className="cursor-pointer" disabled={disabled}>
+          <Plus className="h-4 w-4" />
           Add Year Level
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Year Level</DialogTitle>
+          <DialogTitle>Add Year Level to {course?.courseName}</DialogTitle>
           <DialogDescription>
-            Enter the name for the new year level. Click save when you're done.
+            Select a year level to add to this course.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Year Name
-            </Label>
-            <Select
-              value={yearLevelName}
-              onValueChange={(value) => {
-                setYearLevelName(value);
-              }}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger id="yearLevelSelect" className="col-span-3 w-full">
-                <SelectValue placeholder="Select a year level" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEAR_LEVELS.map((level) => (
-                  <SelectItem key={level} value={level}>
-                    {level}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* year level selection */}
+        <div className="py-4">
+          <Label className="mb-2">Year Level</Label>
+          <Select
+            value={yearLevelName}
+            onValueChange={setYearLevelName}
+            disabled={isSubmitting}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a year level" />
+            </SelectTrigger>
+            <SelectContent>
+              {YEAR_LEVELS.map((level) => (
+                <SelectItem key={level} value={level}>
+                  {level}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <DialogFooter>
           <Button
@@ -192,12 +133,10 @@ export default function AddYearLevelModal({ activeSession, disabled, onYearLevel
           <Button
             onClick={handleAddYearLevel}
             disabled={isSubmitting}
-            className="bg-primary cursor-pointer"
+            className="cursor-pointer"
           >
-            {isSubmitting ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isSubmitting ? "Saving..." : "Save"}
+            {isSubmitting && <LoaderCircle className="animate-spin" />}
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>
