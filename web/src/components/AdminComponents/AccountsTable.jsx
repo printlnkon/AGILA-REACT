@@ -595,17 +595,15 @@ export default function AccountsTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
-          {/* skeleton for add user button */}
-          {/* <Skeleton className="h-9 w-28" /> */}
-
+          {/* skeleton for export format */}
+          <Skeleton className="h-9 w-36" />
           {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
+          <Skeleton className="relative max-w-sm flex-1 h-9 ml-2" />
 
           {/* skeleton for filter columns */}
           <Skeleton className="h-9 w-36 ml-2" />
           <Skeleton className="h-9 w-36 ml-2" />
-          {/* skeleton for export format */}
-          <Skeleton className="h-9 w-36 ml-2" />
+          
         </div>
 
         {/* skeleton for table */}
@@ -732,6 +730,9 @@ export default function AccountsTable() {
           </div>
         )}
 
+        {/* export format */}
+        <ExportExcelFormat />
+
         {/* search */}
         <div className="relative max-w-sm flex-1">
           {/* search icon */}
@@ -759,7 +760,7 @@ export default function AccountsTable() {
         {/* filter by role */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="cursor-pointer ml-2">
+            <Button variant="outline" className="ml-2 cursor-pointer">
               <Search /> Filter By Role <ChevronDown />
             </Button>
           </DropdownMenuTrigger>
@@ -823,9 +824,6 @@ export default function AccountsTable() {
                 );
               })}
           </DropdownMenuContent>
-
-          {/* export format */}
-          <ExportExcelFormat />
         </DropdownMenu>
       </div>
 

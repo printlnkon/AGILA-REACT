@@ -100,8 +100,8 @@ const items = {
           // ],
         },
         {
-          title: "Department",
-          url: "/admin/departments",
+          title: "Department and Course",
+          url: "/admin/departmentAndCourse",
           icon:  Building2,
           // items: [
           //   {
@@ -111,21 +111,21 @@ const items = {
           //   },
           // ],
         },
+        // {
+        //   title: "Course",
+        //   url: "/admin/course",
+        //   icon:  LayoutList,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         {
-          title: "Course",
-          url: "/admin/course",
-          icon:  LayoutList,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
-        },
-        {
-          title: "Year Level",
-          url: "/admin/year-level",
+          title: "Year Level and Section",
+          url: "/admin/yearLevelAndSection",
           icon: Layers,
           // items: [
           //   {
@@ -135,18 +135,18 @@ const items = {
           //   },
           // ],
         },
-        {
-          title: "Section",
-          url: "/admin/section",
-          icon: LibraryBig,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
-        },
+        // {
+        //   title: "Section",
+        //   url: "/admin/section",
+        //   icon: LibraryBig,
+        //   items: [
+        //     {
+        //       title: "View Courses",
+        //       url: "#",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         // {
         //   title: "Course",
         //   url: "/admin/course-section",
