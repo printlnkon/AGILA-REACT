@@ -39,10 +39,17 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     "Gender",
     "Date of Birth",
     "Department",
+    "Role"
   ];
 
   const validateHeaders = (headers) => {
     return requiredHeaders.every((h) => headers.includes(h));
+  };
+
+  const generateStudentNumber = () => {
+    const prefix = "02000";
+    const uniquePart = Math.random().toString().slice(2, 8);
+    return `${prefix}${uniquePart}`;
   };
 
   const generateID = () => {
@@ -63,31 +70,47 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         toast.error("Excel file headers do not match required format.");
         return;
       }
+      
+      const invalidRoleRows = rows
+        .map((row, idx) => {
+          const excelRole = row["Role"]?.trim().toLowerCase();
+          if (!excelRole || excelRole !== role.toLowerCase()) {
+            return `Row ${idx + 2}: "${row["Role"] || "Empty"}"`;
+          }
+          return null;
+        })
+        .filter(Boolean);
 
-      for (const [index, row] of rows.entries()) {
+      if (invalidRoleRows.length > 0) {
+        toast.error(
+          `Upload failed:\nMismatched roles found:\n• ${invalidRoleRows.join("\n• ")}\n\nExpected: "${role.charAt(0).toUpperCase() + role.slice(1)}"`
+        );
+        return;
+      }
+
+      const validatedRows = [];
+      const allErrors = [];
+
+      rows.forEach((row, index) => {
         const errors = [];
-
-        // for invalid characters in fn, mn, ln, sfx
         const nameFields = ["First Name", "Middle Name", "Last Name", "Suffix"];
+
         nameFields.forEach((field) => {
           if (row[field] && /[^a-zA-Z\s]/.test(row[field])) {
             errors.push(`${field} must not contain numbers or symbols`);
           }
         });
 
-        // Required field checks
         if (!row["First Name"] || row["First Name"].length < 2)
           errors.push("Invalid First Name");
         if (!row["Last Name"] || row["Last Name"].length < 2)
           errors.push("Invalid Last Name");
 
-        // gender validation
         const genderInput = row["Gender"]?.toLowerCase();
         if (!genderInput || !["male", "female"].includes(genderInput)) {
           errors.push("Gender must be Male or Female");
         }
 
-        // date of birth validation
         const dob = row["Date of Birth"];
         let formattedDOB = "";
         let isValidDate = false;
@@ -105,12 +128,9 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         }
 
         if (!dob || !isValidDate) {
-          errors.push(
-            "Date of Birth must be a valid date with complete month, day, and year"
-          );
+          errors.push("Date of Birth must be a valid date with complete month, day, and year");
         }
 
-        // department validation
         const validDepartments = [
           "information technology",
           "computer science",
@@ -118,65 +138,75 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         ];
         const department = row["Department"]?.toLowerCase();
         if (!department || !validDepartments.includes(department)) {
-          errors.push(
-            "Department must be one of: Information Technology, Computer Science, or Computer Engineering"
-          );
+          errors.push("Department must be one of: Information Technology, Computer Science, or Computer Engineering");
+        }
+
+        const roleInput = row["Role"]?.trim().toLowerCase();
+        if (!roleInput || roleInput !== role.toLowerCase()) {
+          errors.push(`Role mismatch: Expected "${role}"`);
         }
 
         if (errors.length > 0) {
-          await new Promise((resolve) => {
-            toast.warning(
-              `Row ${index + 2} skipped:\n• ${errors.join("\n• ")}`
-            );
-            setTimeout(resolve, 1000); // 1 second delay
-          });
-          continue;
+          allErrors.push(`Row ${index + 2}:\n• ${errors.join("\n• ")}`);
+        } else {
+          validatedRows.push({ row, formattedDOB });
         }
+      });
 
-        try {
-          const generatedID = generateID();
-          const isStudent = role === "student";
-          const email = `${row["Last Name"]
-            .toLowerCase()
-            .replace(/\s+/g, "")}.${generatedID}@caloocan.sti.edu.ph`;
-          const password = `@${row["Last Name"].charAt(0).toUpperCase()}${row[
-            "Last Name"
-          ].slice(1)}.${format(new Date(formattedDOB), "yyyyddMM")}`;
-
-          const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            email,
-            password
-          );
-          const userId = userCredential.user.uid;
-
-          const userData = {
-            [isStudent ? "studentNumber" : "employeeNumber"]: generatedID,
-            firstName: row["First Name"].trim(),
-            middleName: row["Middle Name"]?.trim() || "",
-            lastName: row["Last Name"].trim(),
-            suffix: row["Suffix"]?.trim() || "",
-            gender: row["Gender"],
-            dateOfBirth: formattedDOB,
-            email,
-            password,
-            department: row["Department"],
-            role,
-            status: "active",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-
-          await setDoc(doc(db, `users/${role}/accounts`, userId), userData);
-          toast.success(
-            `Row ${index + 2}: Account created for ${row["First Name"]} ${
-              row["Last Name"]
-            }`
-          );
-        } catch (err) {
-          toast.error(`Row ${index + 2} failed: ${err.message}`);
-        }
+      if (allErrors.length > 0) {
+        toast.error(`Upload failed:\n${allErrors.join("\n\n")}`);
+        setIsUploading(false);
+        return;
       }
+
+        for (const [index, { row, formattedDOB }] of validatedRows.entries()) {
+          try {
+            const isStudent = role === "student";
+            const studentNumber = isStudent ? generateStudentNumber() : null;
+            const employeeNumber = !isStudent ? generateID() : null;
+
+            const email = `${row["Last Name"]
+              .toLowerCase()
+              .replace(/\s+/g, "")}.${(isStudent ? studentNumber.slice(-6) : employeeNumber)}@caloocan.sti.edu.ph`;
+
+            const password = `@${row["Last Name"].charAt(0).toUpperCase()}${row[
+              "Last Name"
+            ].slice(1)}.${format(new Date(formattedDOB), "yyyyddMM")}`;
+
+            const userCredential = await createUserWithEmailAndPassword(
+              auth,
+              email,
+              password
+            );
+            const userId = userCredential.user.uid;
+
+            const userData = {
+              [isStudent ? "studentNumber" : "employeeNumber"]: isStudent
+                ? studentNumber
+                : employeeNumber,
+              firstName: row["First Name"].trim(),
+              middleName: row["Middle Name"]?.trim() || "",
+              lastName: row["Last Name"].trim(),
+              suffix: row["Suffix"]?.trim() || "",
+              gender: row["Gender"],
+              dateOfBirth: formattedDOB,
+              email,
+              password,
+              department: row["Department"],
+              role: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
+              status: "active",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+
+            await setDoc(doc(db, `users/${role}/accounts`, userId), userData);
+            toast.success(
+              `Row ${index + 2}: Account created for ${row["First Name"]} ${row["Last Name"]}`
+            );
+          } catch (err) {
+            toast.error(`Row ${index + 2} failed: ${err.message}`);
+          }
+        }
     } catch (error) {
       console.error("Error parsing or processing file:", error);
       toast.error("Failed to process file: " + error.message);

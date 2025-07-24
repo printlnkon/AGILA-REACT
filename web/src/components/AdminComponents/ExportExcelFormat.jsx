@@ -40,6 +40,7 @@ export default function ExportExcelFormat() {
         Gender: "Male",
         "Date of Birth": "2004-05-14",
         Department: "Information Technology",
+        "Role": role,
       },
     ]);
     const wb = XLSX.utils.book_new();
