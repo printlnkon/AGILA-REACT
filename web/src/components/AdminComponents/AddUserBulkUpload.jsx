@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { db, auth } from "@/api/firebase";
 import { format } from "date-fns";
@@ -15,7 +15,13 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  getDocs,
+} from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import DragNDrop from "@/components/AdminComponents/DragNDrop";
 
@@ -39,10 +45,17 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     "Gender",
     "Date of Birth",
     "Department",
+    "Role",
   ];
 
   const validateHeaders = (headers) => {
     return requiredHeaders.every((h) => headers.includes(h));
+  };
+
+  const generateStudentNumber = () => {
+    const prefix = "02000";
+    const uniquePart = Math.random().toString().slice(2, 8);
+    return `${prefix}${uniquePart}`;
   };
 
   const generateID = () => {
@@ -64,30 +77,64 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         return;
       }
 
-      for (const [index, row] of rows.entries()) {
-        const errors = [];
+      const existingUsersSnapshot = await getDocs(
+        collection(db, `users/${role}/accounts`)
+      );
 
-        // for invalid characters in fn, mn, ln, sfx
+      const existingNames = new Set();
+      existingUsersSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.firstName && data.lastName) {
+          existingNames.add(
+            `${data.firstName.trim().toLowerCase()} ${data.lastName
+              .trim()
+              .toLowerCase()}`
+          );
+        }
+      });
+
+      const invalidRoleRows = rows
+        .map((row, idx) => {
+          const excelRole = row["Role"]?.trim().toLowerCase();
+          if (!excelRole || excelRole !== role.toLowerCase()) {
+            return `Row ${idx + 2}: "${row["Role"] || "Empty"}"`;
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      if (invalidRoleRows.length > 0) {
+        toast.error(
+          `Upload failed:\nMismatched roles found:\n• ${invalidRoleRows.join(
+            "\n• "
+          )}\n\nExpected: "${role.charAt(0).toUpperCase() + role.slice(1)}"`
+        );
+        return;
+      }
+
+      const validatedRows = [];
+      const allErrors = [];
+
+      rows.forEach((row, index) => {
+        const errors = [];
         const nameFields = ["First Name", "Middle Name", "Last Name", "Suffix"];
+
         nameFields.forEach((field) => {
           if (row[field] && /[^a-zA-Z\s]/.test(row[field])) {
             errors.push(`${field} must not contain numbers or symbols`);
           }
         });
 
-        // Required field checks
         if (!row["First Name"] || row["First Name"].length < 2)
           errors.push("Invalid First Name");
         if (!row["Last Name"] || row["Last Name"].length < 2)
           errors.push("Invalid Last Name");
 
-        // gender validation
         const genderInput = row["Gender"]?.toLowerCase();
         if (!genderInput || !["male", "female"].includes(genderInput)) {
           errors.push("Gender must be Male or Female");
         }
 
-        // date of birth validation
         const dob = row["Date of Birth"];
         let formattedDOB = "";
         let isValidDate = false;
@@ -110,7 +157,6 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
           );
         }
 
-        // department validation
         const validDepartments = [
           "information technology",
           "computer science",
@@ -123,22 +169,45 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
           );
         }
 
-        if (errors.length > 0) {
-          await new Promise((resolve) => {
-            toast.warning(
-              `Row ${index + 2} skipped:\n• ${errors.join("\n• ")}`
-            );
-            setTimeout(resolve, 1000); // 1 second delay
-          });
-          continue;
+        const fullNameKey = `${row["First Name"].trim().toLowerCase()} ${row[
+          "Last Name"
+        ]
+          .trim()
+          .toLowerCase()}`;
+        if (existingNames.has(fullNameKey)) {
+          errors.push("Account with this full name already exists");
         }
 
+        const roleInput = row["Role"]?.trim().toLowerCase();
+        if (!roleInput || roleInput !== role.toLowerCase()) {
+          errors.push(`Role mismatch: Expected "${role}"`);
+        }
+
+        if (errors.length > 0) {
+          allErrors.push(`Row ${index + 2}:\n• ${errors.join("\n• ")}`);
+        } else {
+          validatedRows.push({ row, formattedDOB });
+        }
+      });
+
+      if (allErrors.length > 0) {
+        toast.error(`Upload failed:\n${allErrors.join("\n\n")}`);
+        setIsUploading(false);
+        return;
+      }
+
+      for (const [index, { row, formattedDOB }] of validatedRows.entries()) {
         try {
-          const generatedID = generateID();
           const isStudent = role === "student";
+          const studentNumber = isStudent ? generateStudentNumber() : null;
+          const employeeNumber = !isStudent ? generateID() : null;
+
           const email = `${row["Last Name"]
             .toLowerCase()
-            .replace(/\s+/g, "")}.${generatedID}@caloocan.sti.edu.ph`;
+            .replace(/\s+/g, "")}.${
+            isStudent ? studentNumber.slice(-6) : employeeNumber
+          }@caloocan.sti.edu.ph`;
+
           const password = `@${row["Last Name"].charAt(0).toUpperCase()}${row[
             "Last Name"
           ].slice(1)}.${format(new Date(formattedDOB), "yyyyddMM")}`;
@@ -151,7 +220,9 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
           const userId = userCredential.user.uid;
 
           const userData = {
-            [isStudent ? "studentNumber" : "employeeNumber"]: generatedID,
+            [isStudent ? "studentNumber" : "employeeNumber"]: isStudent
+              ? studentNumber
+              : employeeNumber,
             firstName: row["First Name"].trim(),
             middleName: row["Middle Name"]?.trim() || "",
             lastName: row["Last Name"].trim(),
@@ -161,7 +232,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
             email,
             password,
             department: row["Department"],
-            role,
+            role: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase(),
             status: "active",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -221,7 +292,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
               <DialogClose asChild>
                 <Button
                   variant="ghost"
-                  className="mr-2 cursor-pointer"
+                  className="cursor-pointer"
                   disabled={isUploading}
                   onClick={() => setFile(null)}
                 >
@@ -233,7 +304,19 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
                 className="cursor-pointer"
                 disabled={isUploading || !file}
               >
-                {isUploading ? "Uploading..." : "Upload"}
+                {/* {isUploading ? "Uploading..." : "Upload"} */}
+                {isUploading ? (
+                  <>
+                    <span className="animate-spin">
+                      <LoaderCircle />
+                    </span>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload />
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>

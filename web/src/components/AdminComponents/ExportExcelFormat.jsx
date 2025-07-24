@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown } from "lucide-react";
+import { FileDown, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const ROLE_DISPLAY_NAMES = {
+  academic_head: "Academic Head",
+  program_head: "Program Head",
+  teacher: "Teacher",
+  student: "Student",
+};
+
 export default function ExportExcelFormat() {
   const [selectedRole, setSelectedRole] = useState("");
 
@@ -31,22 +38,25 @@ export default function ExportExcelFormat() {
       return;
     }
 
+    const displayRoleName = ROLE_DISPLAY_NAMES[role] || "Unknown Role";
+
     const ws = XLSX.utils.json_to_sheet([
       {
         "First Name": "e.g., Juan",
         "Middle Name": "",
         "Last Name": "Dela Cruz",
-        Suffix: "",
-        Gender: "Male",
+        "Suffix": "",
+        "Gender": "Male",
         "Date of Birth": "2004-05-14",
-        Department: "Information Technology",
+        "Department": "Information Technology",
+        "Role": displayRoleName,
       },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Format");
-    XLSX.writeFile(wb, `${role}_format.xlsx`);
+    XLSX.writeFile(wb, `${displayRoleName.replace(/\s/g, "_")}_format.xlsx`);
 
-    toast.success(`Exported ${role} format successfully!`);
+    toast.success(`Exported ${displayRoleName} format successfully!`);
   };
 
   return (
@@ -54,11 +64,8 @@ export default function ExportExcelFormat() {
       {/* export format */}
       <Dialog>
         <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            className="cursor-pointer ml-2 flex items-center gap-2"
-          >
-            <FileDown className="h-4 w-4" />
+          <Button className="mr-2 cursor-pointer">
+            <FileDown />
             Export Format
           </Button>
         </DialogTrigger>
@@ -76,10 +83,11 @@ export default function ExportExcelFormat() {
                 <SelectValue placeholder="Select Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="academic_head">Academic Head</SelectItem>
-                <SelectItem value="program_head">Program Head</SelectItem>
-                <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="student">Student</SelectItem>
+                {Object.entries(ROLE_DISPLAY_NAMES).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -94,7 +102,7 @@ export default function ExportExcelFormat() {
               disabled={!selectedRole}
               className="cursor-pointer"
             >
-              Download
+              <Download /> Download
             </Button>
           </DialogFooter>
         </DialogContent>
