@@ -15,7 +15,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import DragNDrop from "@/components/AdminComponents/DragNDrop";
 
@@ -70,7 +70,17 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         toast.error("Excel file headers do not match required format.");
         return;
       }
-      
+
+      const existingUsersSnapshot = await getDocs(collection(db, `users/${role}/accounts`));
+
+      const existingNames = new Set();
+      existingUsersSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.firstName && data.lastName) {
+          existingNames.add(`${data.firstName.trim().toLowerCase()} ${data.lastName.trim().toLowerCase()}`);
+        }
+      });
+    
       const invalidRoleRows = rows
         .map((row, idx) => {
           const excelRole = row["Role"]?.trim().toLowerCase();
@@ -139,6 +149,11 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         const department = row["Department"]?.toLowerCase();
         if (!department || !validDepartments.includes(department)) {
           errors.push("Department must be one of: Information Technology, Computer Science, or Computer Engineering");
+        }
+
+        const fullNameKey = `${row["First Name"].trim().toLowerCase()} ${row["Last Name"].trim().toLowerCase()}`;
+        if (existingNames.has(fullNameKey)) {
+          errors.push("Account with this full name already exists");
         }
 
         const roleInput = row["Role"]?.trim().toLowerCase();
