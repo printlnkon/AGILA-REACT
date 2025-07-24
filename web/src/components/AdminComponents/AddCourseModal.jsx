@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, LoaderCircle } from "lucide-react";
+import { Plus, LoaderCircle, Check } from "lucide-react";
 
 export default function AddCourseModal({
   activeSession,
@@ -180,7 +180,7 @@ export default function AddCourseModal({
         </div>
         <DialogFooter>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => setIsOpen(false)}
             disabled={isSubmitting}
             className="cursor-pointer"
@@ -193,9 +193,17 @@ export default function AddCourseModal({
             className="bg-primary cursor-pointer"
           >
             {isSubmitting ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isSubmitting ? "Saving..." : "Save Course"}
+              <>
+                <span className="animate-spin">
+                  <LoaderCircle />
+                </span>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Check /> Save
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

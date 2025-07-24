@@ -1,6 +1,13 @@
 import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
+import AuthProvider from "@/context/AuthContext";
+import ProtectedRoute from "@/routes/ProtectedRoute";
 import ErrorMessage from "@/utils/ErrorMessage";
 import PageNotFound from "@/utils/PageNotFound";
 import HomePage from "@/pages/Homepage/HomePage";
@@ -13,36 +20,27 @@ import AcademicHead from "@/pages/AcademicHead";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Accounts from "@/components/AdminComponents/Accounts";
-import Archives from "@/components/AdminComponents/Archives";
 import Schedules from "@/components/AdminComponents/Schedules";
-import AuthProvider from "@/context/AuthContext";
-import ProtectedRoute from "@/routes/ProtectedRoute";
-import Attendance from "@/components/StudentComponents/Attendance";
-import CourseSection from "@/components/AdminComponents/CourseSection";
 import AcademicYear from "@/components/AdminComponents/AcademicYear";
 import Semester from "@/components/AdminComponents/Semester";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
 import Students from "@/components/AdminComponents/Students";
-import Departments from "@/components/AdminComponents/Departments";
-import YearLevels from "@/components/AdminComponents/YearLevels";
-import Sections from "@/components/AdminComponents/Sections";
-import Courses from "@/components/AdminComponents/Courses";
+import DepartmentAndCourse from "@/components/AdminComponents/DepartmentAndCourse";
+import Archives from "@/components/AdminComponents/Archives";
+import YearLevelAndSection from "@/components/AdminComponents/YearLevelAndSection";
+import Attendance from "@/components/StudentComponents/Attendance";
 
 const routeTitles = {
   "/login": "AGILA | Login",
   "/": "AGILA | Welcome",
-  // admin titles
   "/admin": "AGILA | Admin - Dashboard",
   "/admin/academic-year": "AGILA | Admin - Academic Year",
   "/admin/semester": "AGILA | Admin - Semester",
+  "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
+  "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
   "/admin/accounts": "AGILA | Admin - Accounts",
-  "/admin/departments": "AGILA | Admin - Department",
-  "/admin/year-level": "AGILA | Admin - Year Level",
-  "/admin/section": "AGILA | Admin - Section",
-  "/admin/course": "AGILA | Admin - Course",
-  // "/admin/course-section": "AGILA | Admin - Course and Section",
   "/admin/academic-heads": "AGILA | Admin - Academic Head",
   "/admin/program-heads": "AGILA | Admin - Program Head",
   "/admin/teachers": "AGILA | Admin - Teachers",
@@ -76,18 +74,14 @@ function AppContent() {
         <Route index element={<AdminDashboard />} />
         <Route path="academic-year" element={<AcademicYear />} />
         <Route path="semester" element={<Semester />} />
+        <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
+        <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="academic-heads" element={<AcademicHeads />} />
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
         <Route path="archives" element={<Archives />} />
-        <Route path="course-section" element={<CourseSection />} />
-        <Route path="deparments" element={<Departments />} />
-        <Route path="year-level" element={<YearLevels />} />
-        <Route path="section" element={<Sections />} />
-        <Route path="departments" element={<Departments />} />
-        <Route path="course" element={<Courses />} />
         <Route path="schedules" element={<Schedules />} />
       </Route>
 

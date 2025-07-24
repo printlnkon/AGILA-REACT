@@ -1,12 +1,12 @@
-import YearLevelsTable from "@/components/AdminComponents/YearLevelsTable";
+import DepartmentAndCourseTable from "@/components/AdminComponents/DepartmentAndCourseTable";
 
-export default function YearLevels() {
+export default function Departments() {
   return (
     <>
       <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6">
         <div className="grid auto-rows-min gap-2 sm:gap-4">
           <div className="w-full overflow-x-auto">
-            <YearLevelsTable className="container min-w-full py-1 sm:py-2" />
+            <DepartmentAndCourseTable className="container min-w-full py-1 sm:py-2" />
           </div>
         </div>
       </div>

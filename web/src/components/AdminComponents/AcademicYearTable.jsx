@@ -36,8 +36,8 @@ export default function AcademicYearTable() {
 
       // Sort by status: Active > Upcoming > Archived
       acadYearList.sort((a, b) => {
-        const statusOrder = { Active: 0, Upcoming: 1, Archived: 2 };
-        return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+        const statusOrder = { Active: 1, Upcoming: 2, Archived: 3 };
+        return (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4);
       });
 
       setAcademicYears(acadYearList);
