@@ -15,13 +15,15 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import DragNDrop from "@/components/AdminComponents/DragNDrop";
 
 export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
   const [file, setFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
@@ -56,9 +58,12 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
+
   const handleBulkUpload = async () => {
     if (!file) return toast.error("Please select a file first.");
     setIsUploading(true);
+
+    let allSucceeded = true;
 
     try {
       const data = await file.arrayBuffer();
@@ -70,16 +75,6 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
         toast.error("Excel file headers do not match required format.");
         return;
       }
-
-      const existingUsersSnapshot = await getDocs(collection(db, `users/${role}/accounts`));
-
-      const existingNames = new Set();
-      existingUsersSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.firstName && data.lastName) {
-          existingNames.add(`${data.firstName.trim().toLowerCase()} ${data.lastName.trim().toLowerCase()}`);
-        }
-      });
     
       const invalidRoleRows = rows
         .map((row, idx) => {
@@ -151,11 +146,6 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
           errors.push("Department must be one of: Information Technology, Computer Science, or Computer Engineering");
         }
 
-        const fullNameKey = `${row["First Name"].trim().toLowerCase()} ${row["Last Name"].trim().toLowerCase()}`;
-        if (existingNames.has(fullNameKey)) {
-          errors.push("Account with this full name already exists");
-        }
-
         const roleInput = row["Role"]?.trim().toLowerCase();
         if (!roleInput || roleInput !== role.toLowerCase()) {
           errors.push(`Role mismatch: Expected "${role}"`);
@@ -171,6 +161,8 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
       if (allErrors.length > 0) {
         toast.error(`Upload failed:\n${allErrors.join("\n\n")}`);
         setIsUploading(false);
+        setFile(null); // clear file
+        setUploadSuccess(false); // keep modal open
         return;
       }
 
@@ -219,6 +211,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
               `Row ${index + 2}: Account created for ${row["First Name"]} ${row["Last Name"]}`
             );
           } catch (err) {
+            allSucceeded = false;
             toast.error(`Row ${index + 2} failed: ${err.message}`);
           }
         }
@@ -228,17 +221,29 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
     } finally {
       setIsUploading(false);
       setFile(null);
-      if (typeof onUserAdded === "function") {
-        onUserAdded();
+
+      if (allSucceeded) {
+        setDialogOpen(false); // only close modal if successful
+        if (typeof onUserAdded === "function") {
+          onUserAdded();
+        }
+      } else {
+        setDialogOpen(true); // keep it open on failure
       }
     }
   };
 
   return (
     <div className="flex items-center gap-3">
-      <Dialog>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
-          <Button className="flex items-center cursor-pointer">
+          <Button
+            className="flex items-center cursor-pointer"
+            onClick={() => {
+              setDialogOpen(true); // open dialog manually
+              setUploadSuccess(false); // reset upload success
+            }}
+          >
             <Upload />
             Bulk Upload
           </Button>
@@ -263,16 +268,17 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
             </CardContent>
             {/* cancel and upload btn */}
             <CardFooter className="flex justify-end">
-              <DialogClose asChild>
-                <Button
-                  variant="ghost"
-                  className="mr-2 cursor-pointer"
-                  disabled={isUploading}
-                  onClick={() => setFile(null)}
-                >
-                  Cancel
-                </Button>
-              </DialogClose>
+              <Button
+                variant="ghost"
+                className="mr-2 cursor-pointer"
+                disabled={isUploading}
+                onClick={() => {
+                  setFile(null);
+                  setDialogOpen(false); // Close the dialog
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 onClick={handleBulkUpload}
                 className="cursor-pointer"
