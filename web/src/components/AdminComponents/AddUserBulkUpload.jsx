@@ -314,7 +314,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
                   </>
                 ) : (
                   <>
-                    <Upload />
+                    <Upload /> Upload
                   </>
                 )}
               </Button>

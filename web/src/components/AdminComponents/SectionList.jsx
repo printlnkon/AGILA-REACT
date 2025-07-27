@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, Trash2, MoreVertical, LoaderCircle } from "lucide-react";
+import { Edit, Trash2, MoreVertical, LoaderCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,8 +198,18 @@ export default function SectionList({ yearLevel, course, session }) {
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              {isSubmitting && <LoaderCircle className="animate-spin" />}
-              Save
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check /> Save Changes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -231,9 +241,18 @@ export default function SectionList({ yearLevel, course, session }) {
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              {isSubmitting && <LoaderCircle className="animate-spin mr-2" />}
-              <Trash2 />
-              Delete
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 /> Delete
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
