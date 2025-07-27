@@ -1,8 +1,14 @@
-import { db, auth } from "@/api/firebase";
+import { db, auth, storage } from "@/api/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useState, useCallback } from "react";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { toast } from "sonner";
 import {
   UserRoundPlus,
   Info,
@@ -10,11 +16,6 @@ import {
   CalendarIcon,
   LoaderCircle,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -149,6 +150,13 @@ export default function AddStudentModal({ onUserAdded }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [photo, setPhoto] = useState(null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    setPhoto(file);
+    clearFieldError("photo");
+  };
 
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM_DATA);
@@ -236,6 +244,17 @@ export default function AddStudentModal({ onUserAdded }) {
         "yyyyddMM"
       )}`;
 
+      // upload photo in firebase storage
+      let photoURL = "";
+      if (photo) {
+        const photoRef = ref(
+          storage,
+          `studentsPhoto/${studentNumber}/${photo.name}`
+        );
+        await uploadBytes(photoRef, photo);
+        photoURL = await getDownloadURL(photoRef);
+      }
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -249,10 +268,11 @@ export default function AddStudentModal({ onUserAdded }) {
         middleName: formData.middleName.trim() || "",
         lastName: formData.lastName.trim(),
         suffix: formData.suffix.trim() || "",
+        photoURL,
         gender: formData.gender,
         dateOfBirth: date.toISOString().split("T")[0],
         email,
-        password, 
+        password,
         department: formData.department,
         status: "active",
         role: formData.role,
@@ -310,19 +330,19 @@ export default function AddStudentModal({ onUserAdded }) {
         <DialogHeader>
           <DialogTitle className="text-xl">Add User</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. All fields marked with <span className="text-red-500">*</span> are required.
+            Add a new user to the system. All fields marked with{" "}
+            <span className="text-red-500">*</span> are required.
           </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Student Information */}
           <div>
             <div className="flex items-center mb-2">
               <h3 className="font-medium">Student Information</h3>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p>Enter the student's personal details.</p>
@@ -330,7 +350,9 @@ export default function AddStudentModal({ onUserAdded }) {
                 </Tooltip>
               </TooltipProvider>
             </div>
+            {/* student information */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* first name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="firstName">
                   First Name <span className="text-red-500">*</span>
@@ -344,6 +366,7 @@ export default function AddStudentModal({ onUserAdded }) {
                 />
                 <FormError message={formErrors.firstName} />
               </div>
+              {/* middle name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="middleName">Middle Name</Label>
                 <Input
@@ -354,6 +377,7 @@ export default function AddStudentModal({ onUserAdded }) {
                 />
                 <FormError message={formErrors.middleName} />
               </div>
+              {/* last name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="lastName">
                   Last Name <span className="text-red-500">*</span>
@@ -367,6 +391,7 @@ export default function AddStudentModal({ onUserAdded }) {
                 />
                 <FormError message={formErrors.lastName} />
               </div>
+              {/* suffix */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="suffix">Suffix</Label>
                 <Input
@@ -377,11 +402,22 @@ export default function AddStudentModal({ onUserAdded }) {
                 />
                 <FormError message={formErrors.suffix} />
               </div>
+              {/* photo upload */}
+              <div className="space-y-1 md:col-span-4">
+                <Label htmlFor="photo">Photo</Label>
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                />
+                <FormError message={formErrors.photo} />
+              </div>
             </div>
           </div>
 
-          {/* Gender and Date of Birth */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* gender */}
             <div className="space-y-1">
               <Label htmlFor="gender">
                 Gender <span className="text-red-500">*</span>
@@ -400,6 +436,7 @@ export default function AddStudentModal({ onUserAdded }) {
               </Select>
               <FormError message={formErrors.gender} />
             </div>
+            {/* date of birth */}
             <div className="space-y-1">
               <Label htmlFor="date">
                 Date of Birth <span className="text-red-500">*</span>
@@ -433,14 +470,13 @@ export default function AddStudentModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* System Access */}
           <div>
             <div className="flex items-center mb-2">
               <h3 className="font-medium">System Access</h3>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p>Choose access to the system.</p>
@@ -449,6 +485,7 @@ export default function AddStudentModal({ onUserAdded }) {
               </TooltipProvider>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* system access */}
               <div className="space-y-1">
                 <Label htmlFor="role">
                   Role <span className="text-red-500">*</span>
@@ -461,13 +498,12 @@ export default function AddStudentModal({ onUserAdded }) {
                     <SelectValue placeholder="Select Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ROLES.STUDENT}>
-                      Student
-                    </SelectItem>
+                    <SelectItem value={ROLES.STUDENT}>Student</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormError message={formErrors.role} />
               </div>
+              {/* department */}
               <div className="space-y-1">
                 <Label htmlFor="department">
                   Department <span className="text-red-500">*</span>
@@ -494,16 +530,26 @@ export default function AddStudentModal({ onUserAdded }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="cursor-pointer" disabled={isSubmitting}>
+              <Button
+                variant="ghost"
+                className="cursor-pointer"
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" className="cursor-pointer" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="cursor-pointer"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
-                  <LoaderCircle className="animate-spin" />
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
                   Adding User...
                 </>
               ) : (

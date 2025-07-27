@@ -1,8 +1,14 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import AddAcademicHeadModal from "@/components/AdminComponents/AddAcademicHeadModal";
-import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   collection,
   getDocs,
@@ -11,12 +17,6 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import { format } from "date-fns";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import {
   flexRender,
   getCoreRowModel,
@@ -81,15 +80,17 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import AddAcademicHeadModal from "@/components/AdminComponents/AddAcademicHeadModal";
+import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
 // Reuse StudentTable logic, replacing student with academic_head role
 
-const handleCopyID = (id) => {
-  if (!id) return toast.error("ID not found");
+const handleCopyEmployeeNo = (employeeNo) => {
+  if (!employeeNo) return toast.error("Employee No. not found");
   navigator.clipboard
-    .writeText(id)
-    .then(() => toast.success("ID copied to clipboard"))
-    .catch(() => toast.error("Failed to copy ID"));
+    .writeText(employeeNo)
+    .then(() => toast.success("Employee No. copied to clipboard"))
+    .catch(() => toast.error("Failed to copy Employee No."));
 };
 
 const handleViewUser = (user) => {
@@ -148,6 +149,28 @@ const createColumns = (handleArchiveUser) => [
     cell: ({ row }) => {
       const employeeNo = row.original.employeeNumber;
       return <div className="capitalize">{employeeNo || "N/A"}</div>;
+    },
+  },
+
+  // photo column
+  {
+    id: "Photo",
+    accessorKey: "photoURL",
+    header: "Photo",
+    cell: ({ row }) => {
+      const photoURL = row.original.photoURL;
+      const firstName = row.original.firstName || "";
+      const lastName = row.original.lastName || "";
+      const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      return (
+        <Avatar className="w-10 h-10">
+          {photoURL ? (
+            <AvatarImage src={photoURL} alt="Student Photo" />
+          ) : (
+            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
+          )}
+        </Avatar>
+      );
     },
   },
 
@@ -250,7 +273,10 @@ const createColumns = (handleArchiveUser) => [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleCopyID(user.id)}>
+              <DropdownMenuItem
+                onClick={() => handleCopyEmployeeNo(user.employeeNumber)}
+                className="cursor-pointer"
+              >
                 <Copy className="mr-2" /> Copy ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />

@@ -1,8 +1,14 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
-import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   collection,
   getDocs,
@@ -11,12 +17,6 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import { format } from "date-fns";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import {
   flexRender,
   getCoreRowModel,
@@ -81,6 +80,8 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
+import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -170,6 +171,28 @@ const createColumns = (handleArchiveUser) => [
     cell: ({ row }) => {
       const studentNo = row.original.studentNumber;
       return <div className="capitalize">{studentNo || "N/A"}</div>;
+    },
+  },
+
+  // photo column
+  {
+    id: "Photo",
+    accessorKey: "photoURL",
+    header: "Photo",
+    cell: ({ row }) => {
+      const photoURL = row.original.photoURL;
+      const firstName = row.original.firstName || "";
+      const lastName = row.original.lastName || "";
+      const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      return (
+        <Avatar className="w-10 h-10">
+          {photoURL ? (
+            <AvatarImage src={photoURL} alt="Student Photo" />
+          ) : (
+            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
+          )}
+        </Avatar>
+      );
     },
   },
 
@@ -300,7 +323,7 @@ const createColumns = (handleArchiveUser) => [
                 onClick={() => handleCopyStudentNumber(user.studentNumber)}
                 className="cursor-pointer"
               >
-                <Copy className="mr-2 h-4 w-4" />
+                <Copy className="mr-2" />
                 Copy ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -571,30 +594,36 @@ export default function StudentsTable() {
 
         {/* skeleton for table */}
         <div className="rounded-md border">
+          {/* skeleton header row */}
           <div className="px-4">
             <div className="h-10 flex items-center">
-              {/* skeleton header row */}
-              <div className="flex w-full space-x-4 py-3">
+              <div className="flex w-full items-center space-x-6 py-3">
+                {/* skeletons for select */}
+                <Skeleton className="h-5 w-5 rounded-sm" />
+                {/* skeleton for photo */}
+                <Skeleton className="h-4" style={{ width: "15%" }} />
+                <Skeleton className="h-4 w-10" />
+
+                {/* 6 flexible-width skeletons */}
                 {Array(6)
                   .fill(0)
-                  .map((_, i) => (
-                    <Skeleton
-                      key={i}
-                      className="h-4"
-                      style={{
-                        width:
-                          i === 0
-                            ? "5%"
-                            : i === 5
-                            ? "10%"
-                            : i === 1
-                            ? "25%"
-                            : i === 2
-                            ? "25%"
-                            : "15%",
-                      }}
-                    />
-                  ))}
+                  .map((_, colIndex) => {
+                    const remainingWidths = [
+                      "17%", // Name
+                      "20%", // Email
+                      "10%", // Date Created
+                      "10%", // Last Updated
+                      "5%", // Status
+                      "5%", // Actions
+                    ];
+                    return (
+                      <Skeleton
+                        key={colIndex}
+                        className="h-4"
+                        style={{ width: remainingWidths[colIndex] }}
+                      />
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -605,27 +634,33 @@ export default function StudentsTable() {
               .fill(0)
               .map((_, rowIndex) => (
                 <div key={rowIndex} className="border-t px-4">
-                  <div className="flex w-full space-x-4 py-4">
+                  <div className="flex w-full items-center space-x-6 py-3">
+                    {/* skeletons for select */}
+                    <Skeleton className="h-5 w-5 rounded-md" />
+                    {/* skeleton for photo */}
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
+                    <Skeleton className="h-10 w-10 rounded-full" />
+
+                    {/* 6 flexible-width skeletons */}
                     {Array(6)
                       .fill(0)
-                      .map((_, colIndex) => (
-                        <Skeleton
-                          key={colIndex}
-                          className="h-4"
-                          style={{
-                            width:
-                              colIndex === 0
-                                ? "5%"
-                                : colIndex === 5
-                                ? "10%"
-                                : colIndex === 1
-                                ? "25%"
-                                : colIndex === 2
-                                ? "25%"
-                                : "15%",
-                          }}
-                        />
-                      ))}
+                      .map((_, colIndex) => {
+                        const remainingWidths = [
+                          "17%", // Name
+                          "20%", // Email
+                          "10%", // Date Created
+                          "10%", // Last Updated
+                          "5%", // Status
+                          "5%", // Actions
+                        ];
+                        return (
+                          <Skeleton
+                            key={colIndex}
+                            className="h-4"
+                            style={{ width: remainingWidths[colIndex] }}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               ))}
@@ -639,13 +674,15 @@ export default function StudentsTable() {
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
               <div className="flex items-center gap-2">
+                {/* skeleton for rows per page */}
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-16" />
               </div>
               <div className="flex items-center gap-1">
+                {/* skeleton for page btns */}
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
               </div>
