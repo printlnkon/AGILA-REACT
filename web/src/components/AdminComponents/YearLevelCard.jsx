@@ -72,7 +72,7 @@ export default function YearLevelCard({
     <>
       <Card className="transition-all hover:shadow-md flex flex-col">
         {/* card header */}
-        <CardHeader className="pb-2">
+        <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl">{yearLevel.yearLevelName}</CardTitle>
             <DropdownMenu>
@@ -101,14 +101,17 @@ export default function YearLevelCard({
             </DropdownMenu>
           </div>
         </CardHeader>
-        <CardContent className="flex-grow">
-          {/* render the list of sections */}
-          <SectionList
-            yearLevel={yearLevel}
-            course={course}
-            session={session}
-          />
-        </CardContent>
+        
+        <Card className="flex flex-col w-full max-w-3xl mx-auto">
+          <CardContent className="flex-grow">
+            {/* render the list of sections */}
+            <SectionList
+              yearLevel={yearLevel}
+              course={course}
+              session={session}
+            />
+          </CardContent>
+        </Card>
       </Card>
 
       {/* edit year level dialog*/}
@@ -188,7 +191,7 @@ export default function YearLevelCard({
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              {isSubmitting && <LoaderCircle className="animate-spin" />} 
+              {isSubmitting && <LoaderCircle className="animate-spin" />}
               <Trash2 /> Delete
             </Button>
           </DialogFooter>
