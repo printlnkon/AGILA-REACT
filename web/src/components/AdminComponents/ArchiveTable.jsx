@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/api/firebase";
 import {
   collection,
   getDocs,
@@ -225,21 +227,27 @@ export default function ArchiveTable() {
   };
 
   const handleDeleteUser = async (user) => {
-    if (!user || !user.id || !user.role) {
-      toast.error("Invalid user data");
+    if (!user || !user.id || !user.role || !user.email?.trim()) {
+      toast.error("Invalid user data (missing email)");
       return false;
     }
-    try {
-      // delete from archive collection
-      const archiveRef = doc(db, "archive", user.id);
 
+    try {
+      const deleteUser = httpsCallable(functions, "deleteUserAuth");
+
+      console.log("Deleting user with email:", user.email);
+
+      // Delete from Firebase Authentication using Cloud Function
+      await deleteUser({ email: user.email });
+
+      // Delete from Firestore archive collection
+      const archiveRef = doc(db, "archive", user.id);
       await deleteDoc(archiveRef);
 
       toast.success(
-        `User ${user.firstName} ${user.lastName} permanently deleted successfully`
+        `User ${user.firstName} ${user.lastName} permanently deleted.`
       );
 
-      // force re-fetch users to update the table
       setArchivedUsers((currentUsers) =>
         currentUsers.filter((u) => u.id !== user.id)
       );
@@ -311,7 +319,7 @@ export default function ArchiveTable() {
         const userData = doc.data();
         // validate required fields
         if (!userData.email) {
-          console.warn(`Archived user ${doc.id} missing email`);
+          console.warn(`Missing email for user ${doc.id}:`, userData);
         }
 
         archivedUsersArray.push({
