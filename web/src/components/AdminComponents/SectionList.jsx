@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { Edit, Trash2, MoreVertical, LoaderCircle, Check } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   collection,
   onSnapshot,
@@ -8,7 +14,6 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +29,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, Trash2, MoreVertical, LoaderCircle, Check } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import AddSectionModal from "@/components/AdminComponents/AddSectionModal";
 
 export default function SectionList({ yearLevel, course, session }) {
@@ -128,34 +134,42 @@ export default function SectionList({ yearLevel, course, session }) {
             className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
           >
             <p className="text-sm">{section.sectionName}</p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 cursor-pointer"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => openEditDialog(section)}
-                  className="text-primary cursor-pointer"
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => openDeleteDialog(section)}
-                  className="text-destructive cursor-pointer"
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
+            <TooltipProvider>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 cursor-pointer"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">View More Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => openEditDialog(section)}
+                    className="text-primary cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    <span>Edit</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => openDeleteDialog(section)}
+                    className="text-destructive cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    <span>Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TooltipProvider>
           </div>
         ))}
       </div>

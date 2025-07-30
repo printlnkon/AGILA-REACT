@@ -160,7 +160,7 @@ export default function DepartmentAndCourseTable() {
     };
   }, [fetchDepartments, activeSession]);
 
-  const isNoActiveSession = activeSession && !activeSession.id;
+  const isNoActiveSession = activeSession && !activeSession.id; 
 
   if (loading) {
     return (

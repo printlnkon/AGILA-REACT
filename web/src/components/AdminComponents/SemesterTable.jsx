@@ -22,7 +22,7 @@ import {
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
 import SemesterCard from "@/components/AdminComponents/SemesterCard";
 
-export default function Semester() {
+export default function Semester({ existingSemesters }) {
   const [activeAcadYear, setActiveAcadYear] = useState(null);
   const [semesters, setSemesters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -298,6 +298,7 @@ export default function Semester() {
             <AddSemesterModal
               activeAcadYear={activeAcadYear}
               onSemesterAdded={fetchSemesters}
+              existingSemesters={semesters}
             />
           </div>
 

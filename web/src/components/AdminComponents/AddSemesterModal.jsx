@@ -37,21 +37,28 @@ import {
 } from "@/components/ui/popover";
 
 // Validation function
-const validateForm = (formData, activeAcadYear) => {
+const validateForm = (formData, activeAcadYear, existingSemesters = []) => {
   const errors = {};
+
+  if (Object.keys(errors).length > 0) {
+    return errors;
+  }
 
   if (!formData.semesterName) {
     errors.semesterName = "Semester is required.";
+  }
+  // check for existing semester names
+  if (
+    existingSemesters.some((sem) => sem.semesterName === formData.semesterName)
+  ) {
+    errors.semesterName = "Semester with this name already exists.";
+    return errors;
   }
   if (!formData.startDate) {
     errors.startDate = "Start date is required.";
   }
   if (!formData.endDate) {
     errors.endDate = "End date is required.";
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return errors;
   }
 
   if (!activeAcadYear) {
@@ -79,6 +86,7 @@ export default function AddSemesterModal({
   activeAcadYear,
   onSemesterAdded,
   loading,
+  existingSemesters = [],
 }) {
   const [startDatePopoverOpen, setStartDatePopoverOpen] = useState(false);
   const [endDatePopoverOpen, setEndDatePopoverOpen] = useState(false);
@@ -136,10 +144,24 @@ export default function AddSemesterModal({
     e.preventDefault();
     setIsSubmitting(true);
 
-    const errors = validateForm(formData, activeAcadYear);
+    const errors = validateForm(formData, activeAcadYear, existingSemesters);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      toast.error(errors.general || "Please fix the errors before submitting.");
+
+      if (errors.general) {
+        toast.error(errors.general);
+      } else if (errors.semesterName) {
+        if (errors.semesterName) {
+          toast.error(
+            "You can't add the same semester twice in one academic year."
+          );
+        } else {
+          toast.error(errors.semesterName);
+        }
+      } else {
+        toast.error("Please fix the errors before submitting.");
+      }
+
       setIsSubmitting(false);
       return;
     }

@@ -72,7 +72,7 @@ export default function AcademicYearTable() {
     try {
       await batch.commit();
       toast.success(
-        `"${acadYearToActivate.acadYear}" is now the active academic year.`
+        `${acadYearToActivate.acadYear} is now the active academic year.`
       );
       fetchAcademicYears(); // Refresh the list
     } catch (error) {

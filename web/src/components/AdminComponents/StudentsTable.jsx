@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import {
@@ -89,6 +88,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
@@ -449,9 +449,6 @@ export default function StudentsTable() {
       const semesterSnapshot = await getDocs(qSemester);
 
       if (semesterSnapshot.empty) {
-        toast.error(
-          `No active semester found for the academic year ${academicYearData.acadYear}.`
-        );
         setActiveSession({
           ...academicYearData,
           semesterName: "No Active Semester",

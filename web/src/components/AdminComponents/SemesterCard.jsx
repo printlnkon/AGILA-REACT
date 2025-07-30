@@ -2,6 +2,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -31,13 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Edit,
   MoreHorizontal,
@@ -46,24 +46,30 @@ import {
   Calendar as CalendarIcon,
   LoaderCircle,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export default function SemesterCard({ 
-  semester, 
-  onEdit, 
-  onDelete, 
+export default function SemesterCard({
+  semester,
+  onEdit,
+  onDelete,
   onSetActive,
-  isActivating = false
+  isActivating = false,
 }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isStartDatePickerOpen, setStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setEndDatePickerOpen] = useState(false);
-  
+
   const toDate = (timestamp) => {
     if (!timestamp) return null;
     return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   };
-  
+
   const [editedSemester, setEditedSemester] = useState({
     semesterName: semester.semesterName,
     startDate: toDate(semester.startDate),
@@ -119,56 +125,67 @@ export default function SemesterCard({
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{semester.semesterName}</CardTitle>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="h-8 w-8 p-0 cursor-pointer" 
-                disabled={isActivating}
-              >
-                <span className="sr-only">Open menu</span>
-                {isActivating ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4" />
+
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0 cursor-pointer"
+                      disabled={isActivating}
+                    >
+                      <span className="sr-only">Open menu</span>
+                      {isActivating ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                {!isActive && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => onSetActive(semester)}
+                      className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                      disabled={isActive || isActivating}
+                    >
+                      <Check className="mr-2 h-4 w-4 text-green-600" />
+                      <span>Set as Active</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!isActive && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => onSetActive(semester)}
-                    className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                    disabled={isActive || isActivating}
-                  >
-                    <Check className="mr-2 h-4 w-4 text-green-600" />
-                    <span>Set as Active</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem
-                onClick={() => setShowEditDialog(true)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                <span>Edit</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                disabled={isActive}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                <span>Delete Permanently</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={() => setShowEditDialog(true)}
+                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                >
+                  <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                  <span>Edit</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                  disabled={isActive}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                  <span>Delete Permanently</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
         </div>
         <CardDescription>
-          <Badge variant={statusConfig.variant} className={statusConfig.className}>
+          <Badge
+            variant={statusConfig.variant}
+            className={statusConfig.className}
+          >
             {semester.status}
           </Badge>
         </CardDescription>
@@ -179,10 +196,7 @@ export default function SemesterCard({
             <span className="text-muted-foreground">Start Date:</span>
             <span>
               {semester.startDate
-                ? format(
-                    toDate(semester.startDate),
-                    "MMMM d, yyyy"
-                  )
+                ? format(toDate(semester.startDate), "MMMM d, yyyy")
                 : "-"}
             </span>
           </div>
@@ -190,10 +204,7 @@ export default function SemesterCard({
             <span className="text-muted-foreground">End Date:</span>
             <span>
               {semester.endDate
-                ? format(
-                    toDate(semester.endDate),
-                    "MMMM d, yyyy"
-                  )
+                ? format(toDate(semester.endDate), "MMMM d, yyyy")
                 : "-"}
             </span>
           </div>
@@ -315,10 +326,7 @@ export default function SemesterCard({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleEdit}
-              className="cursor-pointer bg-primary"
-            >
+            <Button onClick={handleEdit} className="cursor-pointer bg-primary">
               <Check /> Save Changes
             </Button>
           </DialogFooter>
