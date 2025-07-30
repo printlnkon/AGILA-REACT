@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTeacherProfile } from "@/context/TeacherProfileContext";
 import { db } from "@/api/firebase";
 import {
   collection,
@@ -80,6 +82,12 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import AddTeacherModal from "@/components/AdminComponents/AddTeacherModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
@@ -89,17 +97,6 @@ const handleCopyEmployeeNo = (employeeNo) => {
     .writeText(employeeNo)
     .then(() => toast.success("Employee No. copied to clipboard"))
     .catch(() => toast.error("Failed to copy Employee No."));
-};
-
-const handleViewUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Viewing: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Edit Teacher Head: ${user.firstName} ${user.lastName}`);
 };
 
 const searchGlobalFilter = (row, columnId, filterValue) => {
@@ -114,7 +111,7 @@ const searchGlobalFilter = (row, columnId, filterValue) => {
   );
 };
 
-const createColumns = (handleArchiveUser) => [
+const createColumns = (handleArchiveUser, handleViewTeacherProfile) => [
   {
     id: "select",
     header: ({ table }) => (
@@ -160,13 +157,15 @@ const createColumns = (handleArchiveUser) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      const gender = row.original.gender;
+      const defaultPhoto =
+        gender === "Female"
+          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
+          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          {photoURL ? (
-            <AvatarImage src={photoURL} alt="Student Photo" />
-          ) : (
-            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
-          )}
+          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
     },
@@ -264,41 +263,47 @@ const createColumns = (handleArchiveUser) => [
 
       return (
         <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-10 w-10 p-0 cursor-pointer">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleCopyEmployeeNo(user.employeeNumber)}>
-                <Copy className="mr-2" /> Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-              >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-10 w-10 p-0 cursor-pointer"
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCopyEmployeeNo(user.employeeNumber)}
+                >
+                  <Copy className="mr-2" /> Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleViewTeacherProfile(user)}
+                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4 text-green-600" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowArchiveDialog(true)}
+                  className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                >
+                  <Archive className="mr-2 h-4 w-4 text-amber-600" />
+                  Archive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
 
           {/* Archive Confirmation Dialog */}
           <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
@@ -348,6 +353,21 @@ export default function TeachersTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+
+  // navigate to teacher profile
+  const navigate = useNavigate();
+  // contet to set selected teacher
+  const { setSelectedTeacher } = useTeacherProfile();
+  // handle viewing teacher profile
+  const handleViewTeacherProfile = (user) => {
+    if (!user) {
+      toast.error("User data not found.");
+      return;
+    }
+    setSelectedTeacher(user);
+    navigate(`/admin/teachers/profile`)
+    console.log("User details:", user);
+  }
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -452,7 +472,7 @@ export default function TeachersTable() {
     }
   };
 
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
+  const columns = createColumns(handleArchiveUser, handleViewTeacherProfile);
   const table = useReactTable({
     data: users,
     columns,
@@ -642,7 +662,7 @@ export default function TeachersTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
           <Input
-            placeholder="Search users by employee no and email"
+            placeholder="Search users..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
             className="pl-10 max-w-sm"

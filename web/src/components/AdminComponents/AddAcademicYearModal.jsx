@@ -2,6 +2,10 @@ import { useState } from "react";
 import { db } from "@/api/firebase";
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Plus, LoaderCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +16,6 @@ import {
   DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Plus, LoaderCircle, Check } from "lucide-react";
 
 export default function AddAcademicYearModal({ onAcademicYearAdded }) {
   const [open, setOpen] = useState(false);
@@ -111,11 +111,7 @@ export default function AddAcademicYearModal({ onAcademicYearAdded }) {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="cursor-pointer"
-              >
+              <Button type="button" variant="ghost" className="cursor-pointer">
                 Cancel
               </Button>
             </DialogClose>
@@ -129,12 +125,10 @@ export default function AddAcademicYearModal({ onAcademicYearAdded }) {
                   <span className="animate-spin">
                     <LoaderCircle />
                   </span>
-                  Saving...
+                  Adding...
                 </>
               ) : (
-                <>
-                  <Check /> Save
-                </>
+                <>Add</>
               )}
             </Button>
           </DialogFooter>

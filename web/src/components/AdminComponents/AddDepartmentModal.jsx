@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, LoaderCircle, Plus } from "lucide-react";
+import { LoaderCircle, Plus } from "lucide-react";
 
 export default function AddDepartmentModal({ activeSession }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -143,12 +143,10 @@ export default function AddDepartmentModal({ activeSession }) {
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Saving...
+                Adding...
               </>
             ) : (
-              <>
-                <Check /> Save
-              </>
+              <>Add</>
             )}
           </Button>
         </DialogFooter>

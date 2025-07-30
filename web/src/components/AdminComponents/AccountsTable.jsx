@@ -79,6 +79,7 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
 
 // Action handlers
@@ -178,6 +179,30 @@ const createColumns = (handleArchiveUser) => [
     header: "Employee I.D",
     cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
     enableHiding: true,
+  },
+
+  // photo column
+  {
+    id: "Photo",
+    accessorKey: "photoURL",
+    header: "Photo",
+    cell: ({ row }) => {
+      const photoURL = row.original.photoURL;
+      const firstName = row.original.firstName || "";
+      const lastName = row.original.lastName || "";
+      const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      const gender = row.original.gender;
+      const defaultPhoto =
+        gender === "Female"
+          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
+          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
+      return (
+        <Avatar className="w-10 h-10">
+          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
+        </Avatar>
+      );
+    },
   },
 
   // name column
@@ -595,43 +620,49 @@ export default function AccountsTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
-          {/* skeleton for export format */}
-          <Skeleton className="h-9 w-36" />
+          {/* skeleton for export button */}
+          <Skeleton className="h-9 w-28" />
+
           {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9 ml-2" />
+          <Skeleton className="relative max-w-sm flex-1 h-9" />
 
           {/* skeleton for filter columns */}
           <Skeleton className="h-9 w-36 ml-2" />
           <Skeleton className="h-9 w-36 ml-2" />
-          
         </div>
 
         {/* skeleton for table */}
         <div className="rounded-md border">
+          {/* skeleton header row */}
           <div className="px-4">
             <div className="h-10 flex items-center">
-              {/* skeleton header row */}
-              <div className="flex w-full space-x-4 py-3">
+              <div className="flex w-full items-center space-x-6 py-3">
+                {/* skeletons for select */}
+                <Skeleton className="h-5 w-5 rounded-sm" />
+                {/* skeleton for photo */}
+                <Skeleton className="h-4" style={{ width: "15%" }} />
+                <Skeleton className="h-4 w-10" />
+
+                {/* 6 flexible-width skeletons */}
                 {Array(6)
                   .fill(0)
-                  .map((_, i) => (
-                    <Skeleton
-                      key={i}
-                      className="h-4"
-                      style={{
-                        width:
-                          i === 0
-                            ? "5%"
-                            : i === 5
-                            ? "10%"
-                            : i === 1
-                            ? "25%"
-                            : i === 2
-                            ? "25%"
-                            : "15%",
-                      }}
-                    />
-                  ))}
+                  .map((_, colIndex) => {
+                    const remainingWidths = [
+                      "17%", // Name
+                      "20%", // Email
+                      "10%", // Date Created
+                      "10%", // Last Updated
+                      "5%", // Status
+                      "5%", // Actions
+                    ];
+                    return (
+                      <Skeleton
+                        key={colIndex}
+                        className="h-4"
+                        style={{ width: remainingWidths[colIndex] }}
+                      />
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -642,27 +673,33 @@ export default function AccountsTable() {
               .fill(0)
               .map((_, rowIndex) => (
                 <div key={rowIndex} className="border-t px-4">
-                  <div className="flex w-full space-x-4 py-4">
+                  <div className="flex w-full items-center space-x-6 py-3">
+                    {/* skeletons for select */}
+                    <Skeleton className="h-5 w-5 rounded-md" />
+                    {/* skeleton for photo */}
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
+                    <Skeleton className="h-10 w-10 rounded-full" />
+
+                    {/* 6 flexible-width skeletons */}
                     {Array(6)
                       .fill(0)
-                      .map((_, colIndex) => (
-                        <Skeleton
-                          key={colIndex}
-                          className="h-4"
-                          style={{
-                            width:
-                              colIndex === 0
-                                ? "5%"
-                                : colIndex === 5
-                                ? "10%"
-                                : colIndex === 1
-                                ? "25%"
-                                : colIndex === 2
-                                ? "25%"
-                                : "15%",
-                          }}
-                        />
-                      ))}
+                      .map((_, colIndex) => {
+                        const remainingWidths = [
+                          "17%", // Name
+                          "20%", // Email
+                          "10%", // Date Created
+                          "10%", // Last Updated
+                          "5%", // Status
+                          "5%", // Actions
+                        ];
+                        return (
+                          <Skeleton
+                            key={colIndex}
+                            className="h-4"
+                            style={{ width: remainingWidths[colIndex] }}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               ))}
@@ -676,13 +713,15 @@ export default function AccountsTable() {
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
               <div className="flex items-center gap-2">
+                {/* skeleton for rows per page */}
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-16" />
               </div>
               <div className="flex items-center gap-1">
+                {/* skeleton for page btns */}
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
               </div>
@@ -738,7 +777,7 @@ export default function AccountsTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
           <Input
-            placeholder="Search users by student no and email"
+            placeholder="Search users..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
             className="pl-10 max-w-sm"

@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/api/firebase";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   collection,
   getDocs,
@@ -8,12 +17,6 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +59,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import {
   ArrowUpDown,
   ChevronDown,
@@ -70,6 +72,7 @@ import {
   RotateCcw,
   FolderArchive,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   flexRender,
   getCoreRowModel,
@@ -78,7 +81,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { toast } from "sonner";
 
 export default function ArchiveTable() {
   const [archivedUsers, setArchivedUsers] = useState([]);
@@ -225,18 +227,21 @@ export default function ArchiveTable() {
   };
 
   const handleDeleteUser = async (user) => {
-    if (!user || !user.id || !user.role) {
-      toast.error("Invalid user data");
+    if (!user || !user.id || !user.role || !user.email?.trim()) {
+      toast.error("Invalid user data. Please check the user details.");
       return false;
     }
     try {
-      // delete from archive collection
+      const deleteUser = httpsCallable(functions, "deleteUserAuth");
+      // delete from firebase authentication
+      await deleteUser({ email: user.email });
+      // delete from firestore archive collection
       const archiveRef = doc(db, "archive", user.id);
 
       await deleteDoc(archiveRef);
 
       toast.success(
-        `User ${user.firstName} ${user.lastName} permanently deleted successfully`
+        `User ${user.firstName} ${user.lastName} permanently deleted.`
       );
 
       // force re-fetch users to update the table
@@ -311,7 +316,7 @@ export default function ArchiveTable() {
         const userData = doc.data();
         // validate required fields
         if (!userData.email) {
-          console.warn(`Archived user ${doc.id} missing email`);
+          console.warn(`Missing email for user ${doc.id}:`, userData);
         }
 
         archivedUsersArray.push({
@@ -370,6 +375,29 @@ export default function ArchiveTable() {
       ),
       enableSorting: false,
       enableHiding: false,
+    },
+
+    // photo column
+    {
+      id: "Photo",
+      accessorKey: "photoURL",
+      header: "Photo",
+      cell: ({ row }) => {
+        const photoURL = row.original.photoURL;
+        const firstName = row.original.firstName || "";
+        const lastName = row.original.lastName || "";
+        const initials =
+          (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+        return (
+          <Avatar className="w-10 h-10">
+            {photoURL ? (
+              <AvatarImage src={photoURL} alt="Student Photo" />
+            ) : (
+              <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
+            )}
+          </Avatar>
+        );
+      },
     },
 
     // name column
