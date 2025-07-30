@@ -129,7 +129,16 @@ export default function AddSectionModal({ course, yearLevel, session }) {
             disabled={isSubmitting}
             className="cursor-pointer"
           >
-            {isSubmitting && <LoaderCircle className="animate-spin" />}Save
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin">
+                  <LoaderCircle />
+                </span>
+                Adding...
+              </>
+            ) : (
+              <>Add</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

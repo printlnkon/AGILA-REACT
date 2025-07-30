@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   collection,
   onSnapshot,
@@ -31,10 +35,12 @@ import {
   LoaderCircle,
   Check,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function CourseList({ department, onCourseCountChange }) {
   const [courses, setCourses] = useState([]);
@@ -164,34 +170,42 @@ export default function CourseList({ department, onCourseCountChange }) {
                 </p>
               </div>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 cursor-pointer"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => openEditDialog(course)}
-                  className="text-primary cursor-pointer"
-                >
-                  <Edit className="mr-2 h-4 w-4 text-primary" />
-                  <span>Edit Course</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => openDeleteDialog(course)}
-                  className="text-destructive cursor-pointer"
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                  <span>Delete Course</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TooltipProvider>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 cursor-pointer"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">View More Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  {/* add list of student's menu */}
+                  <DropdownMenuItem
+                    onClick={() => openEditDialog(course)}
+                    className="text-primary cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4 text-primary" />
+                    <span>Edit Course</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => openDeleteDialog(course)}
+                    className="text-destructive cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    <span>Delete Course</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TooltipProvider>
           </div>
         ))}
       </div>
