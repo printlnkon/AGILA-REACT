@@ -1,8 +1,14 @@
 import { db, auth, storage } from "@/api/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useState, useCallback } from "react";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  onSnapshot,
+} from "firebase/firestore";
+import { useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,12 +50,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const DEPARTMENTS = {
-  IT: "Information Technology",
-  CS: "Computer Science",
-  CPE: "Computer Engineering",
-};
-
 const ROLES = {
   STUDENT: "Student",
 };
@@ -62,6 +62,7 @@ const INITIAL_FORM_DATA = {
   gender: "",
   role: "",
   department: "",
+  departmentName: "",
 };
 
 const MIN_AGE = 15;
@@ -75,6 +76,12 @@ const FormError = ({ message }) => {
       {message}
     </div>
   );
+};
+
+const generateStudentNumber = () => {
+  const prefix = "02000";
+  const uniquePart = Math.random().toString().slice(2, 8); // 6 random digits
+  return `${prefix}${uniquePart}`;
 };
 
 // validation functions
@@ -108,12 +115,6 @@ const validateDateOfBirth = (date) => {
   return null;
 };
 
-const generateStudentNumber = () => {
-  const prefix = "02000";
-  const uniquePart = Math.random().toString().slice(2, 8); // 6 random digits
-  return `${prefix}${uniquePart}`;
-};
-
 const validateForm = (formData, date) => {
   const errors = {};
 
@@ -142,7 +143,7 @@ const validateForm = (formData, date) => {
   return errors;
 };
 
-export default function AddStudentModal({ onUserAdded }) {
+export default function AddStudentModal({ onUserAdded, activeSession }) {
   const today = new Date();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [date, setDate] = useState(undefined);
@@ -151,6 +152,56 @@ export default function AddStudentModal({ onUserAdded }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [departments, setDepartments] = useState([]);
+
+  const fetchDepartments = useCallback(() => {
+    if (!activeSession || !activeSession.id || !activeSession.semesterId) {
+      setDepartments([]);
+      return;
+    }
+    try {
+      const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+      const departmentsRef = collection(db, departmentsPath);
+
+      return onSnapshot(
+        departmentsRef,
+        (snapshot) => {
+          const depts = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            academicYearId: activeSession.id,
+            semesterId: activeSession.semesterId,
+          }));
+          depts.sort((a, b) =>
+            a.departmentName.localeCompare(b.departmentName)
+          );
+          // console.log("Fetched departments:", depts);
+          setDepartments(depts);
+        },
+        (error) => {
+          console.error("Error in departments listener:", error);
+          toast.error("Failed to listen for department updates.");
+        }
+      );
+    } catch (error) {
+      console.error("Error setting up departments listener:", error);
+      toast.error("Failed to fetch departments.");
+    }
+  }, [activeSession]);
+
+  useEffect(() => {
+    let unsubscribe;
+    if (activeSession && activeSession.id && activeSession.semesterId) {
+      unsubscribe = fetchDepartments();
+    } else {
+      setDepartments([]);
+    }
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [fetchDepartments, activeSession]);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -163,6 +214,7 @@ export default function AddStudentModal({ onUserAdded }) {
     setDate(undefined);
     setFormErrors({});
     setIsSubmitting(false);
+    setPhoto(null);
   }, []);
 
   const handleDialogChange = useCallback(
@@ -201,10 +253,19 @@ export default function AddStudentModal({ onUserAdded }) {
 
   const handleSelectChange = useCallback(
     (id, value) => {
-      setFormData((prev) => ({ ...prev, [id]: value }));
+      if (id === "department") {
+        const selectedDept = departments.find((dept) => dept.id === value);
+        setFormData((prev) => ({
+          ...prev,
+          department: value,
+          departmentName: selectedDept ? selectedDept.departmentName : "",
+        }));
+      } else {
+        setFormData((prev) => ({ ...prev, [id]: value }));
+      }
       clearFieldError(id);
     },
-    [clearFieldError]
+    [departments, clearFieldError]
   );
 
   const handleDateSelect = useCallback(
@@ -232,6 +293,16 @@ export default function AddStudentModal({ onUserAdded }) {
       return;
     }
 
+    if (!activeSession || !activeSession.id || !activeSession.semesterId) {
+      toast.error("Active academic session not found. Cannot add student.", {
+        description:
+          "Please ensure an active academic year and semester are set.",
+        duration: 5000,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const studentNumber = generateStudentNumber();
       const email = `${formData.lastName
@@ -244,7 +315,6 @@ export default function AddStudentModal({ onUserAdded }) {
         "yyyyddMM"
       )}`;
 
-      // upload photo in firebase storage
       let photoURL = "";
       if (photo) {
         const photoRef = ref(
@@ -274,8 +344,11 @@ export default function AddStudentModal({ onUserAdded }) {
         email,
         password,
         department: formData.department,
+        departmentName: formData.departmentName,
         status: "active",
         role: formData.role,
+        academicYearId: activeSession.id,
+        semesterId: activeSession.semesterId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -286,7 +359,7 @@ export default function AddStudentModal({ onUserAdded }) {
       toast.success(
         `User ${formData.firstName} ${formData.lastName} created successfully!`,
         {
-          description: `Added as ${formData.role} in the ${formData.department} department.`,
+          description: `Added as ${formData.role} in the ${formData.departmentName} department.`,
           duration: 5000,
         }
       );
@@ -318,6 +391,12 @@ export default function AddStudentModal({ onUserAdded }) {
     }
   };
 
+  const isDepartmentSelectDisabled =
+    !activeSession ||
+    !activeSession.id ||
+    !activeSession.semesterId ||
+    departments.length === 0;
+
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
@@ -326,7 +405,7 @@ export default function AddStudentModal({ onUserAdded }) {
           Add Student
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
+      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Add User</DialogTitle>
           <DialogDescription>
@@ -403,7 +482,7 @@ export default function AddStudentModal({ onUserAdded }) {
                 <FormError message={formErrors.suffix} />
               </div>
               {/* photo upload */}
-              <div className="space-y-1 md:col-span-4">
+              <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -415,7 +494,6 @@ export default function AddStudentModal({ onUserAdded }) {
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* gender */}
             <div className="space-y-1">
@@ -424,6 +502,7 @@ export default function AddStudentModal({ onUserAdded }) {
               </Label>
               <Select
                 required
+                value={formData.gender}
                 onValueChange={(value) => handleSelectChange("gender", value)}
               >
                 <SelectTrigger id="gender" className="w-full">
@@ -470,63 +549,182 @@ export default function AddStudentModal({ onUserAdded }) {
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center mb-2">
-              <h3 className="font-medium">System Access</h3>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Choose access to the system.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+          {/* academic information */}
+          <div className="flex items-center mb-2">
+            <h3 className="font-medium">Academic Information</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Provide the student's academic details.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          {/* department and course */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* department */}
+            <div className="space-y-1">
+              <Label htmlFor="department">
+                Department <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={isDepartmentSelectDisabled}
+                onValueChange={(value) =>
+                  handleSelectChange("department", value)
+                }
+                value={formData.department}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      isDepartmentSelectDisabled
+                        ? "No active departments"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((depts) => (
+                    <SelectItem key={depts.id} value={depts.id}>
+                      {depts.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.department} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* system access */}
-              <div className="space-y-1">
-                <Label htmlFor="role">
-                  Role <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) => handleSelectChange("role", value)}
-                >
-                  <SelectTrigger id="role" className="w-full">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ROLES.STUDENT}>Student</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.role} />
-              </div>
-              {/* department */}
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                      <SelectItem key={key} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
-              </div>
+            {/* course */}
+            <div className="space-y-1">
+              <Label htmlFor="department">
+                Course <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={isDepartmentSelectDisabled}
+                onValueChange={(value) =>
+                  handleSelectChange("department", value)
+                }
+                value={formData.department}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue placeholder="Select Course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((depts) => (
+                    <SelectItem key={depts.id} value={depts.id}>
+                      {depts.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* <FormError message={formErrors.department} /> */}
+            </div>
+          </div>
+
+          {/* year level and section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* year level */}
+            <div className="space-y-1">
+              <Label htmlFor="yearLevel">
+                Year Level <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={isDepartmentSelectDisabled}
+                onValueChange={(value) =>
+                  handleSelectChange("department", value)
+                }
+                value={formData.department}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      isDepartmentSelectDisabled
+                        ? "No active departments"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((depts) => (
+                    <SelectItem key={depts.id} value={depts.id}>
+                      {depts.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* <FormError message={formErrors.department} /> */}
+            </div>
+            {/* section */}
+            <div className="space-y-1">
+              <Label htmlFor="section">
+                Section <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={isDepartmentSelectDisabled}
+                onValueChange={(value) =>
+                  handleSelectChange("department", value)
+                }
+                value={formData.department}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      isDepartmentSelectDisabled
+                        ? "No active departments"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((depts) => (
+                    <SelectItem key={depts.id} value={depts.id}>
+                      {depts.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* <FormError message={formErrors.department} /> */}
+            </div>
+          </div>
+
+          {/* system access */}
+          <div className="flex items-center mb-2">
+            <h3 className="font-medium">System Access</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Choose access to the system.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="role">
+                Role <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                value={formData.role}
+                onValueChange={(value) => handleSelectChange("role", value)}
+              >
+                <SelectTrigger id="role" className="w-full">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ROLES.STUDENT}>Student</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.role} />
             </div>
           </div>
 
@@ -543,7 +741,7 @@ export default function AddStudentModal({ onUserAdded }) {
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isDepartmentSelectDisabled}
             >
               {isSubmitting ? (
                 <>

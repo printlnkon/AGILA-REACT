@@ -31,6 +31,14 @@ import DepartmentAndCourse from "@/components/AdminComponents/DepartmentAndCours
 import Archives from "@/components/AdminComponents/Archives";
 import YearLevelAndSection from "@/components/AdminComponents/YearLevelAndSection";
 import Attendance from "@/components/StudentComponents/Attendance";
+import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadViewProfile";
+import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
+import TeacherViewProfile from "@/components/AdminComponents/TeacherViewProfile";
+import StudentViewProfile from "@/components/AdminComponents/StudentViewProfile";
+import { AcademicHeadProfileProvider } from "@/context/AcademicHeadProfileContext";
+import { ProgramHeadProfileProvider } from "@/context/ProgramHeadProfileContext";
+import { StudentProfileProvider } from "@/context/StudentProfileContext";
+import { TeacherProfileProvider } from "@/context/TeacherProfileContext";
 
 const routeTitles = {
   "/login": "AGILA | Login",
@@ -41,10 +49,13 @@ const routeTitles = {
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
   "/admin/accounts": "AGILA | Admin - Accounts",
-  "/admin/academic-heads": "AGILA | Admin - Academic Head",
-  "/admin/program-heads": "AGILA | Admin - Program Head",
+  "/admin/academic-heads": "AGILA | Admin - Academic Heads",
+  "/admin/program-heads": "AGILA | Admin - Program Heads",
   "/admin/teachers": "AGILA | Admin - Teachers",
   "/admin/students": "AGILA | Admin - Students",
+  "/admin/program-heads/profile": "AGILA | Admin - Program Head Profile",
+  "/admin/teachers/profile": "AGILA | Admin - Teacher Profile",
+  "/admin/students/profile": "AGILA | Admin - Student Profile",
   "/admin/archives": "AGILA | Admin - Archives",
 };
 
@@ -54,7 +65,7 @@ function AppContent() {
   useEffect(() => {
     const path = location.pathname;
     const title = routeTitles[path] || "AGILA"; // default title
-    document.title = title;
+    document.title = title || "AGILA"; // default title
   }, [location]);
 
   return (
@@ -81,6 +92,16 @@ function AppContent() {
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
+        <Route
+          path="academic-heads/profile"
+          element={<AcademicHeadViewProfile />}
+        />
+        <Route
+          path="program-heads/profile"
+          element={<ProgramHeadViewProfile />}
+        />
+        <Route path="teachers/profile" element={<TeacherViewProfile />} />
+        <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
         <Route path="schedules" element={<Schedules />} />
       </Route>
@@ -135,9 +156,17 @@ function App() {
       <Toaster richColors />
       <ErrorMessage>
         <AuthProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <AcademicHeadProfileProvider>
+            <ProgramHeadProfileProvider>
+              <TeacherProfileProvider>
+                <StudentProfileProvider>
+                  <Router>
+                    <AppContent />
+                  </Router>
+                </StudentProfileProvider>
+              </TeacherProfileProvider>
+            </ProgramHeadProfileProvider>
+          </AcademicHeadProfileProvider>
         </AuthProvider>
       </ErrorMessage>
     </>

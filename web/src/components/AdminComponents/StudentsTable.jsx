@@ -1,14 +1,16 @@
-import { useState, useEffect } from "react";
-import { db } from "@/api/firebase";
-import { toast } from "sonner";
-import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect, useCallback } from "react";
+import { db } from "@/api/firebase";
+import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
+import { useStudentProfile } from "@/context/StudentProfileContext";
 import {
   collection,
   getDocs,
@@ -16,6 +18,8 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import {
   Dialog,
@@ -37,7 +41,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Pencil,
   Columns2,
   Eye,
   Copy,
@@ -80,6 +83,12 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
@@ -99,28 +108,6 @@ const handleCopyStudentNumber = (studentNumber) => {
     });
 };
 
-const handleViewUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement a view modal here or navigate to a details page
-  toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement an edit modal here
-  toast.info(
-    `Edit functionality for ${user.firstName} ${user.lastName} - Coming soon`
-  );
-  console.log("Edit user:", user);
-};
-
 const searchGlobalFilter = (row, columnId, filterValue) => {
   const studentNumber = row.original.studentNumber?.toLowerCase() || "";
   const email = row.original.email?.toLowerCase() || "";
@@ -137,7 +124,7 @@ const searchGlobalFilter = (row, columnId, filterValue) => {
   );
 };
 
-const createColumns = (handleArchiveUser) => [
+const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   {
     id: "select",
     header: ({ table }) => (
@@ -184,13 +171,15 @@ const createColumns = (handleArchiveUser) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      const gender = row.original.gender;
+      const defaultPhoto =
+        gender === "Female"
+          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
+          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          {photoURL ? (
-            <AvatarImage src={photoURL} alt="Student Photo" />
-          ) : (
-            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
-          )}
+          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
     },
@@ -240,15 +229,16 @@ const createColumns = (handleArchiveUser) => [
     ),
   },
 
-  // role column
-  // {
-  //   accessorKey: "role",
-  //   header: "Role",
-  //   cell: ({ row }) => {
-  //     const role = row.getValue("role") || "N/A";
-  //     return <div className="capitalize">{role.replace("_", " ")}</div>;
-  //   },
-  // },
+  // department column
+  {
+    id: "Department",
+    accessorKey: "departmentName",
+    header: "Department",
+    cell: ({ row }) => {
+      const departmentName = row.original.departmentName || "";
+      return <div className="">{departmentName || "N/A"}</div>;
+    },
+  },
 
   // date created
   {
@@ -311,45 +301,48 @@ const createColumns = (handleArchiveUser) => [
 
       return (
         <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-10 w-10 p-0 cursor-pointer">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleCopyStudentNumber(user.studentNumber)}
-                className="cursor-pointer"
-              >
-                <Copy className="mr-2" />
-                Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-              >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-10 w-10 p-0 cursor-pointer"
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCopyStudentNumber(user.studentNumber)}
+                  className="cursor-pointer"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleViewStudentProfile(user)}
+                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4 text-green-600" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowArchiveDialog(true)}
+                  className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                >
+                  <Archive className="mr-2 h-4 w-4 text-amber-600" />
+                  Archive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
 
           {/* Archive Confirmation Dialog */}
           <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
@@ -401,6 +394,143 @@ export default function StudentsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
+
+  // navigate to student profile
+  const navigate = useNavigate();
+  // context to set selected student
+  const { setSelectedStudent } = useStudentProfile();
+  // handle viewing student profile
+  const handleViewStudentProfile = (user) => {
+    if (!user) {
+      toast.error("User data not found");
+      return;
+    }
+    setSelectedStudent(user);
+    navigate(`/admin/students/profile`);
+    console.log("User details:", user);
+  };
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      // Find the active academic year first
+      const academicYearsRef = collection(db, "academic_years");
+      const qAcademicYear = query(
+        academicYearsRef,
+        where("status", "==", "Active")
+      );
+
+      const yearSnapshot = await getDocs(qAcademicYear);
+
+      if (yearSnapshot.empty) {
+        toast.error(
+          "No active academic year found. Please set one to manage departments."
+        );
+        setActiveSession({ id: null, name: "No Active Session" });
+        setDepartments([]);
+        return false;
+      }
+
+      const academicYearDoc = yearSnapshot.docs[0];
+      const academicYearData = {
+        id: academicYearDoc.id,
+        ...academicYearDoc.data(),
+      };
+
+      // Find the active semester within that academic year's sub-collection
+      const semestersRef = collection(
+        db,
+        "academic_years",
+        academicYearData.id,
+        "semesters"
+      );
+      const qSemester = query(semestersRef, where("status", "==", "Active"));
+
+      const semesterSnapshot = await getDocs(qSemester);
+
+      if (semesterSnapshot.empty) {
+        toast.error(
+          `No active semester found for the academic year ${academicYearData.acadYear}.`
+        );
+        setActiveSession({
+          ...academicYearData,
+          semesterName: "No Active Semester",
+        });
+        return false;
+      }
+
+      const semesterDoc = semesterSnapshot.docs[0];
+      const semesterData = semesterDoc.data();
+      const semesterId = semesterDoc.id;
+
+      // Combine data from both documents into the activeSession state
+      const sessionInfo = {
+        id: academicYearData.id,
+        acadYear: academicYearData.acadYear,
+        semesterName: semesterData.semesterName,
+        semesterId: semesterId,
+      };
+
+      setActiveSession(sessionInfo);
+      return true;
+    } catch (error) {
+      console.error("Error fetching active session:", error);
+      toast.error("Failed to determine the active session.");
+      return false;
+    }
+  }, []);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const hasActiveSession = await fetchActiveSession();
+
+      // if we have an active session, fetchdepartments will be triggered by its own useeffect
+      // if not, we should set loading to false here
+      if (!hasActiveSession) {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchActiveSession]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const studentsCollectionRef = collection(db, "users/student/accounts");
+      const querySnapshot = await getDocs(studentsCollectionRef);
+
+      if (querySnapshot.empty) {
+        setError("No students found.");
+        setUsers([]);
+      } else {
+        const studentData = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            role: "student",
+            status: data.status || "active",
+            email: data.email || "",
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            ...data,
+          };
+        });
+        setUsers(studentData);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      setError(
+        "Failed to load students. Please check your connection and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleArchiveUser = async (user) => {
     if (!user || !user.id || !user.role) {
@@ -509,46 +639,7 @@ export default function StudentsTable() {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const studentsCollectionRef = collection(db, "users/student/accounts");
-      const querySnapshot = await getDocs(studentsCollectionRef);
-
-      if (querySnapshot.empty) {
-        setError("No students found.");
-        setUsers([]);
-      } else {
-        const studentData = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            role: "student",
-            status: data.status || "active",
-            email: data.email || "",
-            firstName: data.firstName || "",
-            lastName: data.lastName || "",
-            ...data,
-          };
-        });
-        setUsers(studentData);
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      setError(
-        "Failed to load students. Please check your connection and try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
+  const columns = createColumns(handleArchiveUser, handleViewStudentProfile);
   const table = useReactTable({
     data: users,
     columns,
@@ -561,6 +652,7 @@ export default function StudentsTable() {
     globalFilterFn: searchGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
@@ -707,7 +799,10 @@ export default function StudentsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddStudentModal onUserAdded={fetchUsers} />
+        <AddStudentModal
+          onUserAdded={fetchUsers}
+          activeSession={activeSession}
+        />
         <AddUserBulkUpload />
 
         {/* archive selected button */}
@@ -739,7 +834,7 @@ export default function StudentsTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
           <Input
-            placeholder="Search users by student no and email"
+            placeholder="Search users..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
             className="pl-10 max-w-sm"
@@ -749,7 +844,7 @@ export default function StudentsTable() {
             {globalFilter && (
               <button
                 onClick={() => setGlobalFilter("")}
-                className="p-1 hover:bg-gray-100 rounded-full mr-2 cursor-pointer"
+                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
                 aria-label="Clear search"
               >
                 <X className="h-4 w-4 text-primary" />

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
+import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
 import {
   collection,
   getDocs,
@@ -80,6 +82,12 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import AddAcademicHeadModal from "@/components/AdminComponents/AddAcademicHeadModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
@@ -116,7 +124,7 @@ const searchGlobalFilter = (row, columnId, filterValue) => {
   );
 };
 
-const createColumns = (handleArchiveUser) => [
+const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
   {
     id: "select",
     header: ({ table }) => (
@@ -162,13 +170,15 @@ const createColumns = (handleArchiveUser) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+      const gender = row.original.gender;
+      const defaultPhoto =
+        gender === "Female"
+          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
+          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          {photoURL ? (
-            <AvatarImage src={photoURL} alt="Student Photo" />
-          ) : (
-            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
-          )}
+          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
     },
@@ -265,44 +275,47 @@ const createColumns = (handleArchiveUser) => [
 
       return (
         <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-10 w-10 p-0 cursor-pointer">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleCopyEmployeeNo(user.employeeNumber)}
-                className="cursor-pointer"
-              >
-                <Copy className="mr-2" /> Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-              >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-10 w-10 p-0 cursor-pointer"
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCopyEmployeeNo(user.employeeNumber)}
+                  className="cursor-pointer"
+                >
+                  <Copy className="mr-2" /> Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleViewAcademicHeadProfile(user)}
+                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4 text-green-600" />
+                  View Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowArchiveDialog(true)}
+                  className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                >
+                  <Archive className="mr-2 h-4 w-4 text-amber-600" />
+                  Archive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
 
           {/* Archive Confirmation Dialog */}
           <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
@@ -353,6 +366,21 @@ export default function AcademicHeadsTable() {
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
 
+  // navigate to student profile
+  const navigate = useNavigate();
+  // context to set selected student
+  const { setSelectedAcademicHead } = useAcademicHeadProfile();
+  // handle viewing student profile
+  const handleViewAcademicHeadProfile = (user) => {
+    if (!user) {
+      toast.error("User data not found");
+      return;
+    }
+    setSelectedAcademicHead(user);
+    navigate(`/admin/academic-heads/profile`);
+    console.log("User details:", user);
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -371,7 +399,6 @@ export default function AcademicHeadsTable() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -453,7 +480,10 @@ export default function AcademicHeadsTable() {
     }
   };
 
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
+  const columns = createColumns(
+    handleArchiveUser,
+    handleViewAcademicHeadProfile
+  );
   const table = useReactTable({
     data: users,
     columns,
@@ -499,30 +529,36 @@ export default function AcademicHeadsTable() {
 
         {/* skeleton for table */}
         <div className="rounded-md border">
+          {/* skeleton header row */}
           <div className="px-4">
             <div className="h-10 flex items-center">
-              {/* skeleton header row */}
-              <div className="flex w-full space-x-4 py-3">
+              <div className="flex w-full items-center space-x-6 py-3">
+                {/* skeletons for select */}
+                <Skeleton className="h-5 w-5 rounded-sm" />
+                {/* skeleton for photo */}
+                <Skeleton className="h-4" style={{ width: "15%" }} />
+                <Skeleton className="h-4 w-10" />
+
+                {/* 6 flexible-width skeletons */}
                 {Array(6)
                   .fill(0)
-                  .map((_, i) => (
-                    <Skeleton
-                      key={i}
-                      className="h-4"
-                      style={{
-                        width:
-                          i === 0
-                            ? "5%"
-                            : i === 5
-                            ? "10%"
-                            : i === 1
-                            ? "25%"
-                            : i === 2
-                            ? "25%"
-                            : "15%",
-                      }}
-                    />
-                  ))}
+                  .map((_, colIndex) => {
+                    const remainingWidths = [
+                      "17%", // Name
+                      "20%", // Email
+                      "10%", // Date Created
+                      "10%", // Last Updated
+                      "5%", // Status
+                      "5%", // Actions
+                    ];
+                    return (
+                      <Skeleton
+                        key={colIndex}
+                        className="h-4"
+                        style={{ width: remainingWidths[colIndex] }}
+                      />
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -533,27 +569,33 @@ export default function AcademicHeadsTable() {
               .fill(0)
               .map((_, rowIndex) => (
                 <div key={rowIndex} className="border-t px-4">
-                  <div className="flex w-full space-x-4 py-4">
+                  <div className="flex w-full items-center space-x-6 py-3">
+                    {/* skeletons for select */}
+                    <Skeleton className="h-5 w-5 rounded-md" />
+                    {/* skeleton for photo */}
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
+                    <Skeleton className="h-10 w-10 rounded-full" />
+
+                    {/* 6 flexible-width skeletons */}
                     {Array(6)
                       .fill(0)
-                      .map((_, colIndex) => (
-                        <Skeleton
-                          key={colIndex}
-                          className="h-4"
-                          style={{
-                            width:
-                              colIndex === 0
-                                ? "5%"
-                                : colIndex === 5
-                                ? "10%"
-                                : colIndex === 1
-                                ? "25%"
-                                : colIndex === 2
-                                ? "25%"
-                                : "15%",
-                          }}
-                        />
-                      ))}
+                      .map((_, colIndex) => {
+                        const remainingWidths = [
+                          "17%", // Name
+                          "20%", // Email
+                          "10%", // Date Created
+                          "10%", // Last Updated
+                          "5%", // Status
+                          "5%", // Actions
+                        ];
+                        return (
+                          <Skeleton
+                            key={colIndex}
+                            className="h-4"
+                            style={{ width: remainingWidths[colIndex] }}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               ))}
@@ -567,13 +609,15 @@ export default function AcademicHeadsTable() {
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
               <div className="flex items-center gap-2">
+                {/* skeleton for rows per page */}
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-16" />
               </div>
               <div className="flex items-center gap-1">
+                {/* skeleton for page btns */}
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
               </div>
@@ -630,7 +674,7 @@ export default function AcademicHeadsTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
           <Input
-            placeholder="Search users by employee no and email"
+            placeholder="Search users..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
             className="pl-10 max-w-sm"

@@ -24,11 +24,18 @@ export default function Header() {
     "departmentAndCourse": "Department and Course",
     "yearLevelAndSection": "Year Level and Section",
     "accounts": "Accounts",
-    "academic-heads": "Academic Head",
-    "program-heads": "Program Head",
+    "academic-heads": "Academic Heads",
+    "program-heads": "Program Heads",
     "teachers": "Teachers",
     "students": "Students",
     "archives": "Archives",
+  };
+
+  const viewProfileBreadcrumbs = {
+    "academic-heads": "Academic Head Profile",
+    "program-heads": "Program Head Profile",
+    "students": "Student Profile",
+    "teachers": "Teacher Profile",
   };
 
   // A simple function to capitalize the first letter.
@@ -51,13 +58,21 @@ export default function Header() {
             </BreadcrumbItem>
             {showInitialSeparator && <BreadcrumbSeparator />}
             {pathnames.map((value, index) => {
-              // The last part of the path is the current page.
+              // the last part of the path is the current page
               const isLast = index === pathnames.length - 1;
-              // Create the path for the link.
+              // create the path for the link
               const to = `/${pathnames.slice(0, index + 1).join("/")}`;
-              const name =
-                customBreadcrumbNames[value] ||
-                capitalize(value.replace(/-/g, " "));
+
+              let name;
+              // map profile pages
+              if (viewProfileBreadcrumbs[pathnames[index - 1]] && isLast) {
+                name = viewProfileBreadcrumbs[pathnames[index - 1]];
+                // map custom names
+              } else {
+                name =
+                  customBreadcrumbNames[value] ||
+                  capitalize(value.replace(/-/g, " "));
+              }
 
               // Don't render the 'admin' path segment itself, as 'Home' covers it.
               if (value.toLowerCase() === "admin" && index === 0) {

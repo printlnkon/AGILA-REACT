@@ -8,12 +8,14 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +58,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import {
   ArrowUpDown,
   ChevronDown,
@@ -78,7 +79,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { toast } from "sonner";
 
 export default function ArchiveTable() {
   const [archivedUsers, setArchivedUsers] = useState([]);
@@ -370,6 +370,29 @@ export default function ArchiveTable() {
       ),
       enableSorting: false,
       enableHiding: false,
+    },
+
+    // photo column
+    {
+      id: "Photo",
+      accessorKey: "photoURL",
+      header: "Photo",
+      cell: ({ row }) => {
+        const photoURL = row.original.photoURL;
+        const firstName = row.original.firstName || "";
+        const lastName = row.original.lastName || "";
+        const initials =
+          (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+        return (
+          <Avatar className="w-10 h-10">
+            {photoURL ? (
+              <AvatarImage src={photoURL} alt="Student Photo" />
+            ) : (
+              <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
+            )}
+          </Avatar>
+        );
+      },
     },
 
     // name column
