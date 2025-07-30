@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "@/api/firebase";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   collection,
   getDocs,
@@ -8,14 +17,6 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,7 @@ import {
   RotateCcw,
   FolderArchive,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   flexRender,
   getCoreRowModel,
@@ -225,18 +227,21 @@ export default function ArchiveTable() {
   };
 
   const handleDeleteUser = async (user) => {
-    if (!user || !user.id || !user.role) {
-      toast.error("Invalid user data");
+    if (!user || !user.id || !user.role || !user.email?.trim()) {
+      toast.error("Invalid user data. Please check the user details.");
       return false;
     }
     try {
-      // delete from archive collection
+      const deleteUser = httpsCallable(functions, "deleteUserAuth");
+      // delete from firebase authentication
+      await deleteUser({ email: user.email });
+      // delete from firestore archive collection
       const archiveRef = doc(db, "archive", user.id);
 
       await deleteDoc(archiveRef);
 
       toast.success(
-        `User ${user.firstName} ${user.lastName} permanently deleted successfully`
+        `User ${user.firstName} ${user.lastName} permanently deleted.`
       );
 
       // force re-fetch users to update the table
@@ -311,7 +316,7 @@ export default function ArchiveTable() {
         const userData = doc.data();
         // validate required fields
         if (!userData.email) {
-          console.warn(`Archived user ${doc.id} missing email`);
+          console.warn(`Missing email for user ${doc.id}:`, userData);
         }
 
         archivedUsersArray.push({
