@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { db } from "@/api/firebase";
 import { doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -24,11 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import {
   Edit,
   Trash2,
@@ -36,6 +36,12 @@ import {
   LoaderCircle,
   Check,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Import the new components
 import AddCourseModal from "@/components/AdminComponents/AddCourseModal";
@@ -112,40 +118,50 @@ export default function DepartmentCard({ department, onDelete }) {
               <Badge variant="secondary">
                 {courseCount} {courseCount === 1 ? "Course" : "Courses"}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-8 w-8 p-0 cursor-pointer"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setShowDeptEditDialog(true)}
-                    className="text-primary cursor-pointer"
-                  >
-                    <Edit className="mr-2 h-4 w-4 text-primary" />
-                    <span>Edit Department</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeptDeleteDialog(true)}
-                    className="text-destructive cursor-pointer"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                    <span>Delete Department</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+
+              <TooltipProvider>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      View More Actions
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setShowDeptEditDialog(true)}
+                      className="text-primary cursor-pointer"
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-primary" />
+                      <span>Edit Department</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setShowDeptDeleteDialog(true)}
+                      className="text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                      <span>Delete Department</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipProvider>
             </div>
           </div>
+
           <CardDescription>
             Manage courses offered by this department.
           </CardDescription>
         </CardHeader>
-
         <CardContent className="flex-grow pb-2">
           <CourseList
             department={department}

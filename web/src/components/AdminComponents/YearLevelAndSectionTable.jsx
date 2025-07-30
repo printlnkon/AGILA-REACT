@@ -18,14 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, Layers } from "lucide-react";
@@ -64,8 +57,17 @@ export default function YearLevelAndSectionTable() {
             ...semesterDoc.data(),
           });
         } else {
-          setActiveSession(null);
-          toast.error("No active semester found. Please set one.");
+          setActiveSession({
+            id: sessionDoc.id,
+            ...sessionDoc.data(),
+            semesterId: null,
+            semesterName: null,
+          });
+          toast.error(
+            `No active semester found for the academic year ${
+              sessionDoc.data().acadYear
+            }.`
+          );
           setLoading(false);
         }
       } else {
@@ -170,8 +172,6 @@ export default function YearLevelAndSectionTable() {
   const getSelectedCourse = () =>
     courses.find((c) => c.id === selectedCourseId);
 
-  const isNoActiveSession = !activeSession;
-
   if (loading) {
     return (
       <div className="w-full">
@@ -234,6 +234,8 @@ export default function YearLevelAndSectionTable() {
     );
   }
 
+  const isNoActiveSession = activeSession && !activeSession.id;
+
   return (
     <div className="flex h-full w-full flex-col">
       <div className="mb-4 flex items-center justify-between">
@@ -263,7 +265,10 @@ export default function YearLevelAndSectionTable() {
               </p>
               {!isNoActiveSession ? (
                 <p className="text-sm font-bold text-primary">
-                  {activeSession.acadYear} | {activeSession.semesterName}
+                  {activeSession.acadYear} |{" "}
+                  {activeSession.semesterName
+                    ? ` ${activeSession.semesterName}`
+                    : "No Active Semester"}
                 </p>
               ) : (
                 <p className="text-sm text-destructive">

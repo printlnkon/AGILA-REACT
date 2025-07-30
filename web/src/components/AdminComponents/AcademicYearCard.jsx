@@ -2,6 +2,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -24,8 +26,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Edit,
   MoreHorizontal,
@@ -44,15 +50,14 @@ export default function AcademicYearCard({
 }) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editedAcadYear, setEditedAcadYear] = useState({
+    acadYear: acadYear.acadYear,
+  });
 
   const toDate = (timestamp) => {
     if (!timestamp) return null;
     return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   };
-
-  const [editedAcadYear, setEditedAcadYear] = useState({
-    acadYear: acadYear.acadYear,
-  });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -95,53 +100,60 @@ export default function AcademicYearCard({
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{acadYear.acadYear}</CardTitle>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 cursor-pointer"
-                disabled={isActivating}
-              >
-                <span className="sr-only">Open menu</span>
-                {isActivating ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="h-6 w-6" />
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0 cursor-pointer"
+                      disabled={isActivating}
+                    >
+                      <span className="sr-only">Open menu</span>
+                      {isActivating ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-6 w-6" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                {!isActive && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => onSetActive(acadYear)}
+                      className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                      disabled={isActive || isActivating}
+                    >
+                      <Check className="mr-2 h-4 w-4 text-green-600" />
+                      <span>Set as Active</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!isActive && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => onSetActive(acadYear)}
-                    className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                    disabled={isActive || isActivating}
-                  >
-                    <Check className="mr-2 h-4 w-4 text-green-600" />
-                    <span>Set as Active</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem
-                onClick={() => setShowEditDialog(true)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                <span>Edit</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                disabled={isActive}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={() => setShowEditDialog(true)}
+                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                >
+                  <Edit className="mr-2 h-4 w-4 text-blue-600" />
+                  <span>Edit</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                  disabled={isActive}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
         </div>
         <CardDescription>
           <Badge
@@ -173,13 +185,11 @@ export default function AcademicYearCard({
         </div>
       </CardContent>
 
-      {/* Edit Dialog */}
+      {/* edit dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[350px] md:max-w-[430px] lg:max-w-[450px] xl:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-blue-900">
-              Edit Academic Year
-            </DialogTitle>
+            <DialogTitle>Edit Academic Year</DialogTitle>
             <DialogDescription>
               Make changes to the academic year details.
             </DialogDescription>
@@ -215,7 +225,7 @@ export default function AcademicYearCard({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* delete dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>

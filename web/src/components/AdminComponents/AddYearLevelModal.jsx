@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { db } from "@/api/firebase";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Plus, LoaderCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   collection,
   addDoc,
@@ -8,7 +12,6 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Plus, LoaderCircle } from "lucide-react";
 
 const YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -135,8 +135,16 @@ export default function AddYearLevelModal({ course, session, disabled }) {
             disabled={isSubmitting}
             className="cursor-pointer"
           >
-            {isSubmitting && <LoaderCircle className="animate-spin" />}
-            Save
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin">
+                  <LoaderCircle />
+                </span>
+                Adding...
+              </>
+            ) : (
+              <>Add</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
