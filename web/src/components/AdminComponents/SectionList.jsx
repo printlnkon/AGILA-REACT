@@ -124,8 +124,8 @@ export default function SectionList({ yearLevel, course, session }) {
         </div>
 
         {sections.length === 0 && !loading && (
-          <p className="text-xs text-center text-muted-foreground py-2">
-            No sections yet.
+          <p className="text-sm text-center text-muted-foreground py-2">
+            No sections yet. Click "Add Section" to get started.
           </p>
         )}
         {sections.map((section) => (

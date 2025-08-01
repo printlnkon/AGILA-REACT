@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle, Plus } from "lucide-react";
 
-export default function AddDepartmentModal({ activeSession }) {
+export default function AddDepartmentModal({ activeSession, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,8 +49,8 @@ export default function AddDepartmentModal({ activeSession }) {
 
     if (!activeSession || !activeSession.id || !activeSession.semesterId) {
       toast.error(
-        `No active semester found for academic year ${
-          activeSession?.academicYear || "Unknown"
+        `No active semester found for Academic Year ${
+          activeSession?.acadYear || "Unknown"
         }.`
       );
       return;
@@ -99,7 +99,7 @@ export default function AddDepartmentModal({ activeSession }) {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer mr-2">
+        <Button className="cursor-pointer mr-2" disabled={disabled}>
           <Plus />
           Add Department
         </Button>
