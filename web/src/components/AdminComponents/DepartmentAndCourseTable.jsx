@@ -59,7 +59,7 @@ export default function DepartmentAndCourseTable() {
 
       if (semesterSnapshot.empty) {
         toast.error(
-          `No active semester found for the academic year ${academicYearData.acadYear}.`
+          `No active semester found for the Academic Year ${academicYearData.acadYear}.`
         );
         setActiveSession({
           ...academicYearData,
@@ -160,7 +160,7 @@ export default function DepartmentAndCourseTable() {
     };
   }, [fetchDepartments, activeSession]);
 
-  const isNoActiveSession = activeSession && !activeSession.id; 
+  const isNoActiveSession = activeSession && !activeSession.id;
 
   if (loading) {
     return (
@@ -262,7 +262,11 @@ export default function DepartmentAndCourseTable() {
           <div className="flex items-center py-4 gap-2">
             <AddDepartmentModal
               activeSession={activeSession}
-              disabled={isNoActiveSession}
+              disabled={
+                isNoActiveSession ||
+                !activeSession?.semesterName ||
+                activeSession.semesterName === "No Active Semester"
+              }
             />
           </div>
 

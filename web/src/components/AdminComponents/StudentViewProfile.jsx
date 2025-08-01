@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
+// A helper function to handle copying text to the clipboard.
 const handleCopyStudentNumber = (studentNumber) => {
   if (!studentNumber) {
     toast.error("Student Number not found");
     return;
   }
+  // Using the Clipboard API for modern browsers.
   navigator.clipboard
     .writeText(studentNumber)
     .then(() => {
@@ -24,37 +26,44 @@ const handleCopyStudentNumber = (studentNumber) => {
 export default function StudentViewProfile() {
   const { selectedStudent } = useStudentProfile();
 
-  if (!selectedStudent) return <div>No student selected.</div>;
+  // Display a message if no student data is available.
+  if (!selectedStudent) {
+    return (
+      <div className="flex items-center justify-center h-full p-4">
+        <p className="text-muted-foreground">No student selected.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
-      <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6">
-        <div className="grid auto-rows-min gap-2 sm:gap-4">
-          <div className="mb-4 flex items-center justify-between">
+      <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+        <div className="grid auto-rows-min gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Student Profile</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold">Student Profile</h1>
+              <p className="text-sm text-muted-foreground">
                 View and manage student details.
               </p>
             </div>
           </div>
         </div>
-        {/* go back btn */}
-        <div className="gap-2 space-y-4">
+
+        {/* go back button */}
+        <div className="flex">
           <Button
-            className="bg-primary cursor-pointer"
+            className="bg-primary cursor-pointer text-sm gap-2"
             onClick={() => window.history.back()}
           >
-            <ArrowLeft />
+            <ArrowLeft className="w-4 h-4" />
             Go Back
           </Button>
         </div>
 
-        {/* student info */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           {/* profile card */}
           <Card className="w-full max-w-sm mx-auto lg:mx-0">
-            <CardContent className="flex flex-col items-center">
+            <CardContent className="p-4 sm:p-6 flex flex-col items-center">
               {/* avatar */}
               <img
                 src={
@@ -64,19 +73,26 @@ export default function StudentViewProfile() {
                     : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede")
                 }
                 alt="Avatar"
-                className="w-32 h-32 mb-2 rounded-full"
+                className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src =
+                    "https://placehold.co/128x128/b6e3f4/4a4a4a?text=Student";
+                }}
               />
               <div className="flex flex-col items-center text-center w-full">
                 {/* name */}
-                <div className="text-xl font-semibold">
-                  {selectedStudent.firstName} {selectedStudent.middleName || ""}{" "}
+                <div className="text-lg sm:text-xl font-semibold">
+                  {selectedStudent.firstName} {selectedStudent.middleName || ""}
                   {selectedStudent.lastName}
                 </div>
                 {/* student no. */}
-                <div className="text-sm text-muted-foreground flex items-center gap-2 mb-2">
+                <div className="text-sm text-muted-foreground flex items-center gap-2 mb-4">
                   <span>Student No. {selectedStudent.studentNumber}</span>
                   <Button
-                    className="w-5 h-5 rounded-sm bg-primary/35 cursor-pointer"
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 rounded-md cursor-pointer"
                     onClick={() =>
                       handleCopyStudentNumber(selectedStudent.studentNumber)
                     }
@@ -84,20 +100,21 @@ export default function StudentViewProfile() {
                     <Copy className="w-3 h-3" />
                   </Button>
                 </div>
-                <Separator className="my-2 w-full" />
+                <Separator className="w-full" />
               </div>
-              <div className="flex flex-row w-full mt-2 gap-4 justify-between">
+
+              <div className="flex flex-col sm:flex-row w-full mt-4 gap-2">
                 {/* status */}
-                <div className="text-sm flex-1 flex justify-around">
-                  <Badge className="capitalize font-medium rounded-full px-4 py-2 bg-green-600 text-white">
-                    <span className="font-semibold">Status:</span>{" "}
+                <div className="text-sm flex-1 flex justify-center">
+                  <Badge className="capitalize font-medium rounded-md px-3 py-1 bg-green-100 text-green-800">
+                    <span className="font-semibold mr-1">Status:</span>
                     {selectedStudent.status || "N/A"}
                   </Badge>
                 </div>
-                {/* role */}
-                <div className="text-sm flex-1 flex justify-around">
-                  <Badge className="capitalize font-medium rounded-full px-4 py-2">
-                    <span className="font-semibold">Role:</span>{" "}
+                <div className="text-sm flex-1 flex justify-center">
+                  {/* role */}
+                  <Badge className="capitalize font-medium rounded-md px-3 py-1">
+                    <span className="font-semibold mr-1">Role:</span>
                     {selectedStudent.role || "N/A"}
                   </Badge>
                 </div>
@@ -106,52 +123,89 @@ export default function StudentViewProfile() {
           </Card>
 
           <div className="flex flex-col gap-4 w-full">
-            {/* student info */}
+            {/* student information card */}
             <Card className="w-full">
               <CardHeader>
-                <div className="font-semibold text-xl">Student Information</div>
+                <div className="font-semibold text-lg sm:text-xl">
+                  Student Information
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="divide-y ml-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 py-2 gap-y-2">
-                    <span className="font-semibold">First Name:</span>
-                    <span>{selectedStudent.firstName}</span>
-                    <span className="font-semibold">Last Name:</span>
-                    <span>{selectedStudent.lastName}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      First Name
+                    </p>
+                    <p className="text-sm">{selectedStudent.firstName}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Email:</span>
-                    <span>{selectedStudent.email}</span>
-                    <span className="font-semibold">Birthday:</span>
-                    <span>{selectedStudent.dateOfBirth}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Middle Name
+                    </p>
+                    <p className="text-sm">
+                      {selectedStudent.middleName || "N/A"}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Gender:</span>
-                    <span>{selectedStudent.gender}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Last Name
+                    </p>
+                    <p className="text-sm">{selectedStudent.lastName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Email
+                    </p>
+                    <p className="text-sm break-all">{selectedStudent.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Birthday
+                    </p>
+                    <p className="text-sm">{selectedStudent.dateOfBirth}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Gender
+                    </p>
+                    <p className="text-sm">{selectedStudent.gender}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            {/* academic info */}
+
+            {/* academic information card */}
             <Card className="w-full">
               <CardHeader>
-                <div className="font-semibold text-xl">
+                <div className="font-semibold text-lg sm:text-xl">
                   Academic Information
                 </div>
               </CardHeader>
-              <CardContent className="">
-                <div className="divide-y ml-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Year Level:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
-                    <span className="font-bold">Course:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Department
+                    </p>
+                    <p className="text-sm">{selectedStudent.departmentName}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Section:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
-                    <span className="font-semibold">Department:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Course
+                    </p>
+                    <p className="text-sm">{selectedStudent.courseName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Year Level
+                    </p>
+                    <p className="text-sm">{selectedStudent.yearLevelName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Section
+                    </p>
+                    <p className="text-sm">{selectedStudent.sectionName}</p>
                   </div>
                 </div>
               </CardContent>

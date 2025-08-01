@@ -1,5 +1,10 @@
+import React from "react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Card } from "@/components/ui/card";
+import { useLocation, Link } from "react-router-dom";
+import { ThemeToggle } from "@/utils/ThemeToggle";
+import { ThemeToggleDropdown } from "@/utils/ThemeToggleDropdown";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,99 +13,141 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useLocation, Link } from "react-router-dom";
-import React from "react";
-import { ThemeToggle } from "@/utils/ThemeToggle";
-import { ThemeToggleDropdown } from "@/utils/ThemeToggleDropdown";
 
 export default function Header() {
   const location = useLocation();
-  const pathnames = location.pathname.split("/").filter((x) => x);
+  // filter out empty strings from the path, and also the base 'admin' path
+  const pathnames = location.pathname
+    .split("/")
+    .filter((x) => x && x !== "admin");
 
   const customBreadcrumbNames = {
     // admin paths
     "academic-year": "Academic Year",
-    "semester": "Semester",
-    "departmentAndCourse": "Department and Course",
-    "yearLevelAndSection": "Year Level and Section",
-    "accounts": "Accounts",
+    semester: "Semester",
+    departmentAndCourse: "Department and Course",
+    yearLevelAndSection: "Year Level and Section",
+    accounts: "Accounts",
     "academic-heads": "Academic Heads",
     "program-heads": "Program Heads",
-    "teachers": "Teachers",
-    "students": "Students",
-    "archives": "Archives",
+    teachers: "Teachers",
+    students: "Students",
+    archives: "Archives",
   };
 
   const viewProfileBreadcrumbs = {
     "academic-heads": "Academic Head Profile",
     "program-heads": "Program Head Profile",
-    "students": "Student Profile",
-    "teachers": "Teacher Profile",
+    students: "Student Profile",
+    teachers: "Teacher Profile",
   };
 
-  // A simple function to capitalize the first letter.
+  // function to capitalize the first letter
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  // This condition ensures a separator only appears if there's more than just the base 'admin' path.
-  const showInitialSeparator = pathnames.length > 1;
-
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b">
-      <div className="flex items-center gap-2 px-3">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/admin">Home</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            {showInitialSeparator && <BreadcrumbSeparator />}
-            {pathnames.map((value, index) => {
-              // the last part of the path is the current page
-              const isLast = index === pathnames.length - 1;
-              // create the path for the link
-              const to = `/${pathnames.slice(0, index + 1).join("/")}`;
+    <Card className="sticky top-2 p-0 z-10">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-6 hidden sm:block" />
 
-              let name;
-              // map profile pages
-              if (viewProfileBreadcrumbs[pathnames[index - 1]] && isLast) {
-                name = viewProfileBreadcrumbs[pathnames[index - 1]];
-                // map custom names
-              } else {
-                name =
-                  customBreadcrumbNames[value] ||
-                  capitalize(value.replace(/-/g, " "));
-              }
+          {/* desktop breadcrumbs (hidden on small screens) */}
+          <Breadcrumb className="hidden md:flex">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/admin">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {pathnames.length > 0 && <BreadcrumbSeparator />}
+              {pathnames.map((value, index) => {
+                const isLast = index === pathnames.length - 1;
+                // reconstruct the path up to the current item
+                const to = `/admin/${pathnames.slice(0, index + 1).join("/")}`;
 
-              // Don't render the 'admin' path segment itself, as 'Home' covers it.
-              if (value.toLowerCase() === "admin" && index === 0) {
-                return null;
-              }
+                let name;
+                // check if the previous path segment indicates a profile view
+                if (isLast && viewProfileBreadcrumbs[pathnames[index - 1]]) {
+                  name = viewProfileBreadcrumbs[pathnames[index - 1]];
+                } else {
+                  // otherwise, use the custom name or capitalize the path value
+                  name =
+                    customBreadcrumbNames[value] ||
+                    capitalize(value.replace(/-/g, " "));
+                }
 
-              return (
-                <React.Fragment key={to}>
-                  <BreadcrumbItem>
-                    {isLast ? (
-                      <BreadcrumbPage>{name}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link to={to}>{name}</Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator />}
-                </React.Fragment>
-              );
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-      <div className="flex items-center gap-2 pr-3">
-        <ThemeToggleDropdown />
-        <ThemeToggle />
-      </div>
-    </header>
+                return (
+                  <React.Fragment key={to}>
+                    <BreadcrumbItem>
+                      {isLast ? (
+                        <BreadcrumbPage>{name}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link to={to}>{name}</Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                    {!isLast && <BreadcrumbSeparator />}
+                  </React.Fragment>
+                );
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          {/* mobile breadcrumbs (visible only on small screens) */}
+          <div className="flex items-center gap-1 md:hidden">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/admin">Home</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {pathnames.length > 1 && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>...</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+                {pathnames.length > 0 && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>
+                        {(() => {
+                          const lastValue = pathnames[pathnames.length - 1];
+                          const secondLastValue =
+                            pathnames[pathnames.length - 2];
+                          if (viewProfileBreadcrumbs[secondLastValue]) {
+                            return viewProfileBreadcrumbs[secondLastValue];
+                          }
+                          return (
+                            customBreadcrumbNames[lastValue] ||
+                            capitalize(lastValue.replace(/-/g, " "))
+                          );
+                        })()}
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* show different theme toggles based on screen size */}
+          <div className="hidden sm:flex items-center gap-2">
+            <ThemeToggleDropdown /> <ThemeToggle />
+          </div>
+          {/* show theme toggle only on small screens */}
+          <div className="flex sm:hidden items-center">
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+    </Card>
   );
 }

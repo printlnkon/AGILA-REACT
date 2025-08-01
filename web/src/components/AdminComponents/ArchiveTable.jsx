@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { format } from "date-fns";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/api/firebase";
 import { toast } from "sonner";
@@ -94,30 +95,30 @@ export default function ArchiveTable() {
   const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
 
   // Action handlers
-  const handleCopyId = (userId) => {
-    if (!userId) {
-      toast.error("User ID not found");
-      return;
-    }
-    navigator.clipboard
-      .writeText(userId)
-      .then(() => {
-        toast.success("User ID copied to clipboard");
-      })
-      .catch(() => {
-        toast.error("Failed to copy User ID");
-      });
-  };
+  // const handleCopyId = (userId) => {
+  //   if (!userId) {
+  //     toast.error("User ID not found");
+  //     return;
+  //   }
+  //   navigator.clipboard
+  //     .writeText(userId)
+  //     .then(() => {
+  //       toast.success("User ID copied to clipboard");
+  //     })
+  //     .catch(() => {
+  //       toast.error("Failed to copy User ID");
+  //     });
+  // };
 
-  const handleViewUser = (user) => {
-    if (!user) {
-      toast.error("User data not found");
-      return;
-    }
-    // You can implement a view modal here or navigate to a details page
-    toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-    console.log("User details:", user);
-  };
+  // const handleViewUser = (user) => {
+  //   if (!user) {
+  //     toast.error("User data not found");
+  //     return;
+  //   }
+  //   // You can implement a view modal here or navigate to a details page
+  //   toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
+  //   console.log("User details:", user);
+  // };
 
   const handleRestoreUser = async (user) => {
     if (!user || !user.id || !user.role) {
@@ -388,13 +389,15 @@ export default function ArchiveTable() {
         const lastName = row.original.lastName || "";
         const initials =
           (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
+        const gender = row.original.gender;
+        const defaultPhoto =
+          gender === "Female"
+            ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
+            : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
         return (
           <Avatar className="w-10 h-10">
-            {photoURL ? (
-              <AvatarImage src={photoURL} alt="Student Photo" />
-            ) : (
-              <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
-            )}
+            <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+            <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
           </Avatar>
         );
       },
@@ -452,6 +455,39 @@ export default function ArchiveTable() {
       },
     },
 
+    // date created
+    {
+      id: "Date Created",
+      accessorKey: "createdAt",
+      header: "Date Created",
+      cell: ({ row }) => {
+        const timestamp = row.original.createdAt;
+        if (!timestamp) return <div>-</div>;
+
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      },
+    },
+
+    // last updated
+    {
+      id: "Last Updated",
+      accessorKey: "updatedAt",
+      header: "Last Updated",
+      cell: ({ row }) => {
+        const timestamp = row.original.updatedAt;
+        if (!timestamp) return <div>-</div>;
+
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      },
+    },
     // status column
     {
       accessorKey: "status",
@@ -482,29 +518,29 @@ export default function ArchiveTable() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-10 w-12 p-0 cursor-pointer"
+                  className="h-10 w-10 p-0 cursor-pointer"
                 >
                   <span className="sr-only">Open menu</span>
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
+                {/* <DropdownMenuItem
                   onClick={() => handleCopyId(user.id)}
                   className="cursor-pointer"
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Copy ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
+                </DropdownMenuItem> */}
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem
                   onClick={() => handleViewUser(user)}
                   className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
                 >
                   <Eye className="mr-2 h-4 w-4 text-green-600" />
                   View
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator /> */}
                 <DropdownMenuItem
                   onClick={() => setShowRestoreDialog(true)}
                   className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
@@ -631,9 +667,6 @@ export default function ArchiveTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex items-center gap-2 py-4">
-          {/* skeleton for add user button */}
-          {/* <Skeleton className="h-9 w-28" /> */}
-
           {/* skeleton for search box */}
           <Skeleton className="relative max-w-sm flex-1 h-9" />
 
@@ -644,30 +677,36 @@ export default function ArchiveTable() {
 
         {/* skeleton for table */}
         <div className="rounded-md border">
+          {/* skeleton header row */}
           <div className="px-4">
             <div className="h-10 flex items-center">
-              {/* skeleton header row */}
-              <div className="flex w-full space-x-4 py-3">
+              <div className="flex w-full items-center space-x-6 py-3">
+                {/* skeletons for select */}
+                <Skeleton className="h-5 w-5 rounded-sm" />
+                {/* skeleton for photo */}
+                <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-4" style={{ width: "15%" }} />
+
+                {/* 6 flexible-width skeletons */}
                 {Array(6)
                   .fill(0)
-                  .map((_, i) => (
-                    <Skeleton
-                      key={i}
-                      className="h-4"
-                      style={{
-                        width:
-                          i === 0
-                            ? "5%"
-                            : i === 5
-                            ? "10%"
-                            : i === 1
-                            ? "25%"
-                            : i === 2
-                            ? "25%"
-                            : "15%",
-                      }}
-                    />
-                  ))}
+                  .map((_, colIndex) => {
+                    const remainingWidths = [
+                      "17%", // Name
+                      "20%", // Email
+                      "10%", // Date Created
+                      "10%", // Last Updated
+                      "5%", // Status
+                      "5%", // Actions
+                    ];
+                    return (
+                      <Skeleton
+                        key={colIndex}
+                        className="h-4"
+                        style={{ width: remainingWidths[colIndex] }}
+                      />
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -678,27 +717,33 @@ export default function ArchiveTable() {
               .fill(0)
               .map((_, rowIndex) => (
                 <div key={rowIndex} className="border-t px-4">
-                  <div className="flex w-full space-x-4 py-4">
+                  <div className="flex w-full items-center space-x-6 py-3">
+                    {/* skeletons for select */}
+                    <Skeleton className="h-5 w-5 rounded-md" />
+                    {/* skeleton for photo */}
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
+
+                    {/* 6 flexible-width skeletons */}
                     {Array(6)
                       .fill(0)
-                      .map((_, colIndex) => (
-                        <Skeleton
-                          key={colIndex}
-                          className="h-4"
-                          style={{
-                            width:
-                              colIndex === 0
-                                ? "5%"
-                                : colIndex === 5
-                                ? "10%"
-                                : colIndex === 1
-                                ? "25%"
-                                : colIndex === 2
-                                ? "25%"
-                                : "15%",
-                          }}
-                        />
-                      ))}
+                      .map((_, colIndex) => {
+                        const remainingWidths = [
+                          "17%", // Name
+                          "20%", // Email
+                          "10%", // Date Created
+                          "10%", // Last Updated
+                          "5%", // Status
+                          "5%", // Actions
+                        ];
+                        return (
+                          <Skeleton
+                            key={colIndex}
+                            className="h-4"
+                            style={{ width: remainingWidths[colIndex] }}
+                          />
+                        );
+                      })}
                   </div>
                 </div>
               ))}
@@ -712,13 +757,15 @@ export default function ArchiveTable() {
           <div className="flex flex-col items-start justify-end gap-4 py-4 sm:flex-row sm:items-center">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-end">
               <div className="flex items-center gap-2">
+                {/* skeleton for rows per page */}
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-16" />
               </div>
               <div className="flex items-center gap-1">
+                {/* skeleton for page btns */}
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-8 w-8" />
                 <Skeleton className="h-8 w-8" />
               </div>

@@ -229,17 +229,6 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
     ),
   },
 
-  // department column
-  {
-    id: "Department",
-    accessorKey: "departmentName",
-    header: "Department",
-    cell: ({ row }) => {
-      const departmentName = row.original.departmentName || "";
-      return <div className="">{departmentName || "N/A"}</div>;
-    },
-  },
-
   // date created
   {
     id: "Date Created",
