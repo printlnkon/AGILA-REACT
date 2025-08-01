@@ -106,7 +106,7 @@ export default function YearLevelCard({
           </div>
         </CardHeader>
 
-        <Card className="flex flex-col w-full max-w-3xl mx-auto">
+        <Card className="flex flex-col w-full mx-auto max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-3xl">
           <CardContent className="flex-grow">
             {/* render the list of sections */}
             <SectionList

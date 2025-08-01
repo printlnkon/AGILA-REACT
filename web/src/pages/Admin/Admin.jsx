@@ -16,7 +16,6 @@ export default function Admin() {
           {/* sidebar */}
           <SideBar />
           <SidebarInset>
-            <SidebarTrigger className="md:hidden" />
             {/* breadcrumbs */}
             <Header />
             {/* main */}

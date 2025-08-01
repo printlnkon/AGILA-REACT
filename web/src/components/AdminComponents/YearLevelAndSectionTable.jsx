@@ -21,9 +21,16 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, AlertTriangle, Layers } from "lucide-react";
+import { Info, AlertTriangle, Layers, Building2, BookOpen } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import AddYearLevelModal from "@/components/AdminComponents/AddYearLevelModal";
 import YearLevelCard from "@/components/AdminComponents/YearLevelCard";
+
+const getYearLevelNumber = (name) => {
+  // Match leading digits (e.g., "1" from "1st Year")
+  const match = name && name.match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+};
 
 export default function YearLevelAndSectionTable() {
   const [activeSession, setActiveSession] = useState(null);
@@ -186,10 +193,10 @@ export default function YearLevelAndSectionTable() {
         <div className="flex items-center gap-2 py-4">
           {/* skeleton for add year level button */}
           <Skeleton className="h-9 w-28" />
-          {/* skeleton for department dropdown */}
-          <Skeleton className="h-9 w-40" />
-          {/* skeleton for course dropdown */}
-          <Skeleton className="h-9 w-40" />
+        </div>
+        {/* skeleton for department and course filters */}
+        <div>
+          <Skeleton className="h-24 w-full mb-4 rounded-md" />
         </div>
 
         {/* skeleton for year level grid */}
@@ -285,7 +292,7 @@ export default function YearLevelAndSectionTable() {
       {!isNoActiveSession ? (
         <>
           {/* department filter */}
-          <div className="flex items-center gap-4 py-4">
+          <div className="flex flex-col gap-4 py-4">
             {/* add year level btn */}
             <div>
               <AddYearLevelModal
@@ -294,39 +301,60 @@ export default function YearLevelAndSectionTable() {
                 disabled={!selectedCourseId}
               />
             </div>
-            <Select
-              value={selectedDeptId}
-              onValueChange={setSelectedDeptId}
-              disabled={!activeSession}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.departmentName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* course filter */}
-            <Select
-              value={selectedCourseId}
-              onValueChange={setSelectedCourseId}
-              disabled={!selectedDeptId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Course" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.courseName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* department and course filters */}
+            <Card>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* department filter */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="mb-1">Department</Label>
+                    <span className="text-sm text-muted-foreground mb-2">
+                      Select a department to filter courses.
+                    </span>
+                    <Select
+                      value={selectedDeptId}
+                      onValueChange={setSelectedDeptId}
+                      disabled={!activeSession || departments.length === 0}
+                    >
+                      <SelectTrigger className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
+                        <SelectValue placeholder="Select Department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.departmentName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* course filter */}
+                  <div className="flex flex-col flex-1">
+                    <Label className="mb-1">Course</Label>
+                    <span className="text-sm text-muted-foreground mb-2">
+                      Select a course to filter year levels.
+                    </span>
+                    <Select
+                      value={selectedCourseId}
+                      onValueChange={setSelectedCourseId}
+                      disabled={!selectedDeptId}
+                    >
+                      <SelectTrigger className="w-full sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg">
+                        <SelectValue placeholder="Select Course" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.courseName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* content display */}
@@ -334,20 +362,27 @@ export default function YearLevelAndSectionTable() {
             {selectedCourseId ? (
               yearLevels.length > 0 ? (
                 // if yearlevels exist, render the grid
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-                  {yearLevels.map((yl) => (
-                    <YearLevelCard
-                      key={yl.id}
-                      yearLevel={yl}
-                      course={getSelectedCourse()}
-                      session={{
-                        ...activeSession,
-                        departmentId: selectedDeptId,
-                      }}
-                      onEdit={handleEditYearLevel}
-                      onDelete={handleDeleteYearLevel}
-                    />
-                  ))}
+                <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-2">
+                  {yearLevels
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        getYearLevelNumber(a.yearLevelName) -
+                        getYearLevelNumber(b.yearLevelName)
+                    )
+                    .map((yl) => (
+                      <YearLevelCard
+                        key={yl.id}
+                        yearLevel={yl}
+                        course={getSelectedCourse()}
+                        session={{
+                          ...activeSession,
+                          departmentId: selectedDeptId,
+                        }}
+                        onEdit={handleEditYearLevel}
+                        onDelete={handleDeleteYearLevel}
+                      />
+                    ))}
                 </div>
               ) : (
                 // if yearlevels is empty and not loading, render the empty state card
