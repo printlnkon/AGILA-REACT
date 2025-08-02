@@ -23,16 +23,15 @@ export default function Header() {
 
   const customBreadcrumbNames = {
     // admin paths
-    "academic-year": "Academic Year",
-    semester: "Semester",
-    departmentAndCourse: "Department and Course",
-    yearLevelAndSection: "Year Level and Section",
-    accounts: "Accounts",
+    "academicYearAndSemester": "School Year and Semester",
+    "departmentAndCourse": "Department and Course",
+    "yearLevelAndSection": "Year Level and Section",
+    "accounts": "Accounts",
     "academic-heads": "Academic Heads",
     "program-heads": "Program Heads",
-    teachers: "Teachers",
-    students: "Students",
-    archives: "Archives",
+    "teachers": "Teachers",
+    "students": "Students",
+    "archives": "Archives",
   };
 
   const viewProfileBreadcrumbs = {
