@@ -17,20 +17,19 @@ import Student from "@/pages/Student/Student";
 import Teacher from "@/pages/Teacher";
 import ProgramHead from "@/pages/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
-import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
+import Attendance from "@/components/StudentComponents/Attendance";
+import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Accounts from "@/components/AdminComponents/Accounts";
 import Schedules from "@/components/AdminComponents/Schedules";
-import AcademicYear from "@/components/AdminComponents/AcademicYear";
-import Semester from "@/components/AdminComponents/Semester";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
 import Students from "@/components/AdminComponents/Students";
+import AcademicYearAndSemester from "@/components/AdminComponents/AcademicYearAndSemester";
 import DepartmentAndCourse from "@/components/AdminComponents/DepartmentAndCourse";
-import Archives from "@/components/AdminComponents/Archives";
 import YearLevelAndSection from "@/components/AdminComponents/YearLevelAndSection";
-import Attendance from "@/components/StudentComponents/Attendance";
+import Archives from "@/components/AdminComponents/Archives";
 import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadViewProfile";
 import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
 import TeacherViewProfile from "@/components/AdminComponents/TeacherViewProfile";
@@ -44,8 +43,8 @@ const routeTitles = {
   "/login": "AGILA | Login",
   "/": "AGILA | Welcome",
   "/admin": "AGILA | Admin - Dashboard",
-  "/admin/academic-year": "AGILA | Admin - Academic Year",
-  "/admin/semester": "AGILA | Admin - Semester",
+  "/admin/academicYearAndSemester":
+    "AGILA | Admin - School Year and Semester",
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
   "/admin/accounts": "AGILA | Admin - Accounts",
@@ -83,8 +82,10 @@ function AppContent() {
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="academic-year" element={<AcademicYear />} />
-        <Route path="semester" element={<Semester />} />
+        <Route
+          path="academicYearAndSemester"
+          element={<AcademicYearAndSemester />}
+        />
         <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
         <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
         <Route path="accounts" element={<Accounts />} />
