@@ -1,9 +1,9 @@
+// SemesterCard.jsx
 import { useState } from "react";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Label } from "@/components/ui/label";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/api/firebase";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -33,159 +40,153 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Edit,
   MoreHorizontal,
-  Trash2,
-  Check,
-  Calendar as CalendarIcon,
   LoaderCircle,
+  Check,
+  Edit,
+  Trash2,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
+const getStatusConfig = (status) => {
+  const config = {
+    Active: "bg-green-600 text-white hover:bg-green-700",
+    Archived: "bg-red-600 text-white hover:bg-red-700",
+    Upcoming: "bg-blue-600 text-white hover:bg-blue-700",
+  };
+  return config[status] || "bg-gray-500 text-white";
+};
+
+const toDate = (timestamp) => {
+  if (!timestamp) return null;
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date;
+};
 
 export default function SemesterCard({
   semester,
-  onEdit,
-  onDelete,
   onSetActive,
-  isActivating = false,
+  onDelete,
+  isActivating,
+  academicYearId,
+  onDataRefresh,
 }) {
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isStartDatePickerOpen, setStartDatePickerOpen] = useState(false);
-  const [isEndDatePickerOpen, setEndDatePickerOpen] = useState(false);
-
-  const toDate = (timestamp) => {
-    if (!timestamp) return null;
-    return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  };
-
-  const [editedSemester, setEditedSemester] = useState({
+  const statusConfig = getStatusConfig(semester.status);
+  const [isDeleteOpen, setDeleteOpen] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
+  const [editedData, setEditedData] = useState({
     semesterName: semester.semesterName,
     startDate: toDate(semester.startDate),
     endDate: toDate(semester.endDate),
   });
+  const [isSubmitting, setSubmitting] = useState(false);
 
-  const handleSelectChange = (value) => {
-    setEditedSemester((prev) => ({ ...prev, semesterName: value }));
+  // Sync state with props when the dialog is opened
+  const handleEditOpenChange = (isOpen) => {
+    if (isOpen) {
+      setEditedData({
+        semesterName: semester.semesterName,
+        startDate: toDate(semester.startDate),
+        endDate: toDate(semester.endDate),
+      });
+    }
+    setEditOpen(isOpen);
   };
 
-  const handleDateChange = (date, field) => {
-    setEditedSemester((prev) => ({ ...prev, [field]: date }));
-    if (field === "startDate") {
-      setStartDatePickerOpen(false);
-    } else if (field === "endDate") {
-      setEndDatePickerOpen(false);
+  const handleSaveChanges = async () => {
+    if (
+      !editedData.semesterName ||
+      !editedData.startDate ||
+      !editedData.endDate
+    ) {
+      toast.error("Please fill all fields.");
+      return;
+    }
+    if (new Date(editedData.startDate) >= new Date(editedData.endDate)) {
+      toast.error("End date must be after the start date.");
+      return;
+    }
+    setSubmitting(true);
+    const semRef = doc(
+      db,
+      "academic_years",
+      academicYearId,
+      "semesters",
+      semester.id
+    );
+    try {
+      await updateDoc(semRef, {
+        semesterName: editedData.semesterName,
+        startDate: format(editedData.startDate, "yyyy-MM-dd"),
+        endDate: format(editedData.endDate, "yyyy-MM-dd"),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Semester updated successfully!");
+      onDataRefresh();
+      handleEditOpenChange(false);
+    } catch (error) {
+      toast.error("Failed to update semester.");
+      console.error("Error updating semester: ", error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleEdit = () => {
-    onEdit(semester, editedSemester);
-    setShowEditDialog(false);
-  };
-
-  const handleDelete = () => {
+  const handleDeleteClick = () => {
     onDelete(semester);
-    setShowDeleteDialog(false);
+    setDeleteOpen(false);
   };
-
-  const getStatusConfig = (status) => {
-    const statusConfig = {
-      Active: {
-        variant: "default",
-        className: "bg-green-600 text-white",
-      },
-      Archived: {
-        variant: "default",
-        className: "bg-red-600 text-white",
-      },
-      Upcoming: {
-        variant: "outline",
-        className: "bg-blue-900 text-white",
-      },
-    };
-    return statusConfig[status] || statusConfig.Upcoming;
-  };
-
-  const isActive = semester.status === "Active";
-  const statusConfig = getStatusConfig(semester.status);
 
   return (
-    <Card className="transition-all hover:shadow-md">
+    <Card className="transition-all hover:shadow-lg">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-xl">{semester.semesterName}</CardTitle>
-
-          <TooltipProvider>
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="h-8 w-8 p-0 cursor-pointer"
-                      disabled={isActivating}
-                    >
-                      <span className="sr-only">Open menu</span>
-                      {isActivating ? (
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <MoreHorizontal className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top">View More Actions</TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="end">
-                {!isActive && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => onSetActive(semester)}
-                      className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                      disabled={isActive || isActivating}
-                    >
-                      <Check className="mr-2 h-4 w-4 text-green-600" />
-                      <span>Set as Active</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
+          <CardTitle className="text-lg">{semester.semesterName}</CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                disabled={isActivating}
+              >
+                {isActivating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
                 )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {semester.status !== "Active" && (
                 <DropdownMenuItem
-                  onClick={() => setShowEditDialog(true)}
-                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                  onClick={() => onSetActive(semester)}
+                  className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
                 >
-                  <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                  <span>Edit</span>
+                  <Check className="mr-2 h-4 w-4" /> Set as Active
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                  disabled={isActive}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                  <span>Delete Permanently</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TooltipProvider>
+              )}
+              <DropdownMenuItem
+                onClick={() => handleEditOpenChange(true)}
+                className="text-blue-600 cursor-pointer focus:bg-blue-50 focus:text-blue-700"
+              >
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setDeleteOpen(true)}
+                className="text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-700"
+                disabled={semester.status === "Active"}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <CardDescription>
-          <Badge
-            variant={statusConfig.variant}
-            className={statusConfig.className}
-          >
+          <Badge variant="default" className={statusConfig}>
             {semester.status}
           </Badge>
         </CardDescription>
@@ -193,148 +194,18 @@ export default function SemesterCard({
       <CardContent>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Start Date:</span>
-            <span>
-              {semester.startDate
-                ? format(toDate(semester.startDate), "MMMM d, yyyy")
-                : "-"}
-            </span>
+            <span className="text-muted-foreground">Start:</span>
+            <span>{format(toDate(semester.startDate), "MMM d, yyyy")}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">End Date:</span>
-            <span>
-              {semester.endDate
-                ? format(toDate(semester.endDate), "MMMM d, yyyy")
-                : "-"}
-            </span>
+            <span className="text-muted-foreground">End:</span>
+            <span>{format(toDate(semester.endDate), "MMM d, yyyy")}</span>
           </div>
         </div>
       </CardContent>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-blue-900">Edit Semester</DialogTitle>
-            <DialogDescription>
-              Make changes to the semester details.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="Semester" className="text-right">
-                Semester
-              </Label>
-              <div className="col-span-3">
-                <Select
-                  onValueChange={handleSelectChange}
-                  value={editedSemester.semesterName}
-                >
-                  <SelectTrigger id="semesterName" className="w-full">
-                    <SelectValue placeholder="Select a semester" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1st Semester">1st Semester</SelectItem>
-                    <SelectItem value="2nd Semester">2nd Semester</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {/* start date */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="startDate" className="text-right pt-2">
-                Start Date
-              </Label>
-              <div className="col-span-3">
-                <Popover
-                  open={isStartDatePickerOpen}
-                  onOpenChange={setStartDatePickerOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      id="startDate"
-                      className={`w-full justify-between ${
-                        !editedSemester.startDate ? "text-muted-foreground" : ""
-                      }`}
-                    >
-                      {editedSemester.startDate ? (
-                        format(editedSemester.startDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editedSemester.startDate}
-                      captionLayout="dropdown"
-                      onSelect={(date) => handleDateChange(date, "startDate")}
-                      className="text-primary"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            {/* end date */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="endDate" className="text-right pt-2">
-                End Date
-              </Label>
-              <div className="col-span-3">
-                <Popover
-                  open={isEndDatePickerOpen}
-                  onOpenChange={setEndDatePickerOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      id="endDate"
-                      className={`w-full justify-between ${
-                        !editedSemester.endDate ? "text-muted-foreground" : ""
-                      }`}
-                    >
-                      {editedSemester.endDate ? (
-                        format(editedSemester.endDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                      <CalendarIcon className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editedSemester.endDate}
-                      captionLayout="dropdown"
-                      onSelect={(date) => handleDateChange(date, "endDate")}
-                      className="text-primary"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          </div>
-          {/* cancel and save btn */}
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowEditDialog(false)}
-              className="cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} className="cursor-pointer bg-primary">
-              <Check /> Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
@@ -345,19 +216,116 @@ export default function SemesterCard({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteDialog(false)}
-              className="cursor-pointer"
-            >
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              className="cursor-pointer"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+            <Button variant="destructive" onClick={handleDeleteClick}>
+              {" "}
+              <Trash2 className="mr-2 h-4 w-4" /> Delete{" "}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Semester Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Semester</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="semesterName" className="text-right">
+                Semester
+              </Label>
+              <Select
+                value={editedData.semesterName}
+                onValueChange={(value) =>
+                  setEditedData((prev) => ({ ...prev, semesterName: value }))
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a semester" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1st Semester">1st Semester</SelectItem>
+                  <SelectItem value="2nd Semester">2nd Semester</SelectItem>
+                  <SelectItem value="Mid-Year">Mid-Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Start Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`col-span-3 font-normal justify-start ${
+                      !editedData.startDate && "text-muted-foreground"
+                    }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {editedData.startDate ? (
+                      format(editedData.startDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={editedData.startDate}
+                    onSelect={(date) =>
+                      setEditedData((prev) => ({ ...prev, startDate: date }))
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">End Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`col-span-3 font-normal justify-start ${
+                      !editedData.endDate && "text-muted-foreground"
+                    }`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {editedData.endDate ? (
+                      format(editedData.endDate, "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={editedData.endDate}
+                    onSelect={(date) =>
+                      setEditedData((prev) => ({ ...prev, endDate: date }))
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => handleEditOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveChanges} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <LoaderCircle className="animate-spin mr-2" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

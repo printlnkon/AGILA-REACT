@@ -1,9 +1,8 @@
+// AcademicYearCard.jsx
 import { useState } from "react";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -23,233 +22,152 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Edit,
+  Plus,
   MoreHorizontal,
-  Trash2,
   Check,
+  Trash2,
+  CalendarDays,
   LoaderCircle,
 } from "lucide-react";
+import SemesterCard from "@/components/AdminComponents/SemesterCard";
+
+const toDate = (timestamp) => {
+  if (!timestamp) return null;
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date;
+};
+
+const getStatusConfig = (status) => {
+  const config = {
+    Active: "bg-green-600 text-white hover:bg-green-700",
+    Archived: "bg-red-600 text-white hover:bg-red-700",
+    Upcoming: "bg-blue-600 text-white hover:bg-blue-700",
+  };
+  return config[status] || "bg-gray-500 text-white";
+};
 
 export default function AcademicYearCard({
   acadYear,
-  onEdit,
-  onDelete,
   onSetActive,
-  isActivating = false,
-  isActive = false,
+  onDelete,
+  onAddSemesterClick,
+  isActivating,
+  handleSetActiveSemester,
+  handleDeleteSemester,
+  actionLoading,
+  onDataRefresh,
 }) {
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editedAcadYear, setEditedAcadYear] = useState({
-    acadYear: acadYear.acadYear,
-  });
-
-  const toDate = (timestamp) => {
-    if (!timestamp) return null;
-    return timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditedAcadYear((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleEdit = () => {
-    onEdit(acadYear, editedAcadYear);
-    setShowEditDialog(false);
-  };
-
-  const handleDelete = () => {
-    onDelete(acadYear);
-    setShowDeleteDialog(false);
-  };
-
-  const getStatusConfig = (status) => {
-    const statusConfig = {
-      Active: {
-        variant: "default",
-        className: "bg-green-600 text-white",
-      },
-      Archived: {
-        variant: "default",
-        className: "bg-red-600 text-white",
-      },
-      Upcoming: {
-        variant: "outline",
-        className: "bg-blue-900 text-white",
-      },
-    };
-    return statusConfig[status] || statusConfig.Upcoming;
-  };
-
-  // Use the isActive prop that is passed from the parent
   const statusConfig = getStatusConfig(acadYear.status);
+  const [isDeleteOpen, setDeleteOpen] = useState(false);
+
+  const handleDeleteClick = () => {
+    onDelete(acadYear);
+    setDeleteOpen(false);
+  };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="flex flex-col">
+      <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{acadYear.acadYear}</CardTitle>
-          <TooltipProvider>
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="h-8 w-8 p-0 cursor-pointer"
-                      disabled={isActivating}
-                    >
-                      <span className="sr-only">Open menu</span>
-                      {isActivating ? (
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <MoreHorizontal className="h-6 w-6" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top">View More Actions</TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="end">
-                {!isActive && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => onSetActive(acadYear)}
-                      className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                      disabled={isActive || isActivating}
-                    >
-                      <Check className="mr-2 h-4 w-4 text-green-600" />
-                      <span>Set as Active</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem
-                  onClick={() => setShowEditDialog(true)}
-                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-                >
-                  <Edit className="mr-2 h-4 w-4 text-blue-600" />
-                  <span>Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                  disabled={isActive}
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                  <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TooltipProvider>
+          <Badge className={statusConfig}>{acadYear.status}</Badge>
         </div>
-        <CardDescription>
-          <Badge
-            variant={statusConfig.variant}
-            className={statusConfig.className}
-          >
-            {acadYear.status}
-          </Badge>
+        <CardDescription className="flex justify-between items-center">
+          <span>
+            Created:{" "}
+            {acadYear.createdAt
+              ? format(toDate(acadYear.createdAt), "MMMM d, yyyy")
+              : "N/A"}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0 cursor-pointer"
+                disabled={isActivating}
+              >
+                {isActivating ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {acadYear.status !== "Active" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => onSetActive(acadYear)}
+                    className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
+                  >
+                    <Check className="mr-2 h-4 w-4" /> Set as Active
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => setDeleteOpen(true)}
+                className="cursor-pointer text-destructive"
+                disabled={acadYear.status === "Active"}
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Date Created:</span>
-            <span>
-              {acadYear.createdAt
-                ? format(toDate(acadYear.createdAt), "MMMM d, yyyy")
-                : "-"}
-            </span>
+
+      <CardContent className="flex-grow">
+        <Button onClick={onAddSemesterClick} className="mb-4 cursor-pointer">
+          <Plus className="h-4 w-4" /> Add Semester
+        </Button>
+        {acadYear.semesters.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            {acadYear.semesters.map((semester) => (
+              <SemesterCard
+                key={semester.id}
+                semester={semester}
+                onSetActive={(sem) => handleSetActiveSemester(sem, acadYear.id)}
+                onDelete={(sem) => handleDeleteSemester(sem, acadYear.id)}
+                isActivating={actionLoading === semester.id}
+                academicYearId={acadYear.id}
+                onDataRefresh={onDataRefresh}
+              />
+            ))}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Last Updated:</span>
-            <span>
-              {acadYear.updatedAt
-                ? format(toDate(acadYear.updatedAt), "MMMM d, yyyy")
-                : "-"}
-            </span>
+        ) : (
+          <div className="text-center text-sm text-muted-foreground py-8 border-2 border-dashed rounded-lg mt-4">
+            <CalendarDays className="mx-auto h-8 w-8 text-gray-400" />
+            <p className="mt-2 font-semibold">No semesters found.</p>
+            <p>Click "Add Semester" to get started.</p>
           </div>
-        </div>
+        )}
       </CardContent>
 
-      {/* edit dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[350px] md:max-w-[430px] lg:max-w-[450px] xl:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Academic Year</DialogTitle>
-            <DialogDescription>
-              Make changes to the academic year details.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="acadYear" className="text-right">
-                Academic Year
-              </Label>
-              <Input
-                id="acadYear"
-                name="acadYear"
-                value={editedAcadYear.acadYear}
-                onChange={handleInputChange}
-                className="col-span-3"
-                placeholder="e.g., S.Y - 2024-2025"
-              />
-            </div>
-          </div>
-          {/* cancel and save btn */}
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowEditDialog(false)}
-              className="cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} className="cursor-pointer bg-primary">
-              <Check /> Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* delete dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog open={isDeleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete the academic year "
-              <strong>{acadYear.acadYear}</strong>"? This action cannot be
-              undone.
+              <strong>{acadYear.acadYear}</strong>"? This will also delete all
+              its semesters. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteDialog(false)}
-              className="cursor-pointer"
-            >
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDelete}
               className="cursor-pointer"
+              onClick={handleDeleteClick}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> Delete
             </Button>
           </DialogFooter>
         </DialogContent>
