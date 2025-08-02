@@ -76,8 +76,8 @@ const items = {
       url: "#",
       items: [
         {
-          title: "Academic Year",
-          url: "/admin/academic-year",
+          title: "School Year and Semester",
+          url: "/admin/academicYearAndSemester",
           icon: BookOpen,
           // items: [
           //   {
@@ -87,18 +87,18 @@ const items = {
           //   },
           // ],
         },
-        {
-          title: "Semester",
-          url: "/admin/semester",
-          icon: Calendar,
-          // items: [
-          //   {
-          //     title: "View Semesters",
-          //     url: "/admin/semester",
-          //     icon: UsersRound,
-          //   },
-          // ],
-        },
+        // {
+        //   title: "Semester",
+        //   url: "/admin/semester",
+        //   icon: Calendar,
+        //   items: [
+        //     {
+        //       title: "View Semesters",
+        //       url: "/admin/semester",
+        //       icon: UsersRound,
+        //     },
+        //   ],
+        // },
         {
           title: "Department and Course",
           url: "/admin/departmentAndCourse",
