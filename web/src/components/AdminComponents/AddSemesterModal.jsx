@@ -19,13 +19,13 @@ import {
 import {
   Select,
   SelectContent,
-  SelectItem,
+  SelectItem, 
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { LoaderCircle, Calendar as CalendarIcon, Check } from "lucide-react";
+import { LoaderCircle, Calendar as CalendarIcon } from "lucide-react";
 
 export default function AddSemesterModal({
   open,
