@@ -1,6 +1,7 @@
 // AcademicYearCard.jsx
 import { useState } from "react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -32,7 +34,16 @@ import {
   Trash2,
   CalendarDays,
   LoaderCircle,
+  Edit,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import SemesterCard from "@/components/AdminComponents/SemesterCard";
 
 const toDate = (timestamp) => {
@@ -54,19 +65,59 @@ export default function AcademicYearCard({
   acadYear,
   onSetActive,
   onDelete,
+  onUpdate,
+  onAcademicYearAdded,
   onAddSemesterClick,
   isActivating,
   handleSetActiveSemester,
   handleDeleteSemester,
   actionLoading,
   onDataRefresh,
+  existingYears,
 }) {
   const statusConfig = getStatusConfig(acadYear.status);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
+  const [editedYearName, setEditedYearName] = useState(acadYear.acadYear);
+  const [loading, setLoading] = useState(false);
 
   const handleDeleteClick = () => {
     onDelete(acadYear);
     setDeleteOpen(false);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editedYearName) {
+      toast.error("School Year name is required.");
+      return;
+    }
+
+    const yearFormat = /^S\.Y - \d{4}-\d{4}$/;
+    if (!yearFormat.test(editedYearName)) {
+      toast.error("Invalid format. Please use 'S.Y - YYYY-YYYY'.");
+      return;
+    }
+
+    if (
+      editedYearName !== acadYear.acadYear &&
+      existingYears.includes(editedYearName)
+    ) {
+      toast.error("This school year already exists.");
+      return;
+    }
+
+    setLoading(true);
+    // Assuming `onUpdate` is a new prop function passed from the parent
+    const success = await onUpdate(acadYear.id, editedYearName);
+    setLoading(false);
+
+    if (success) {
+      toast.success("Academic year updated successfully.");
+      setEditOpen(false);
+    } else {
+      toast.error("Failed to update academic year.");
+    }
   };
 
   return (
@@ -83,41 +134,57 @@ export default function AcademicYearCard({
               ? format(toDate(acadYear.createdAt), "MMMM d, yyyy")
               : "N/A"}
           </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 cursor-pointer"
-                disabled={isActivating}
-              >
-                {isActivating ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4" />
+
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0 cursor-pointer"
+                      disabled={isActivating}
+                    >
+                      {isActivating ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setEditOpen(true)}
+                  className="cursor-pointer"
+                  disabled={acadYear.status === "Active"}
+                >
+                  <Edit className="mr-2 h-4 w-4" /> Edit
+                </DropdownMenuItem>
+                {acadYear.status !== "Active" && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => onSetActive(acadYear)}
+                      className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
+                    >
+                      <Check className="mr-2 h-4 w-4" /> Set as Active
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {acadYear.status !== "Active" && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => onSetActive(acadYear)}
-                    className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
-                  >
-                    <Check className="mr-2 h-4 w-4" /> Set as Active
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuItem
-                onClick={() => setDeleteOpen(true)}
-                className="cursor-pointer text-destructive"
-                disabled={acadYear.status === "Active"}
-              >
-                <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="cursor-pointer text-destructive"
+                  disabled={acadYear.status === "Active"}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
         </CardDescription>
       </CardHeader>
 
@@ -159,7 +226,11 @@ export default function AcademicYearCard({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteOpen(false)}
+              className="cursor-pointer"
+            >
               Cancel
             </Button>
             <Button
@@ -167,9 +238,58 @@ export default function AcademicYearCard({
               className="cursor-pointer"
               onClick={handleDeleteClick}
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Academic Year</DialogTitle>
+            <DialogDescription>
+              Make changes to the academic year.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit}>
+            <div className="grid gap-4 py-4">
+              <Label htmlFor="yearName">School Year</Label>
+              <Input
+                id="yearName"
+                value={editedYearName}
+                onChange={(e) => setEditedYearName(e.target.value)}
+                placeholder="e.g., S.Y - 2025-2026"
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <span className="animate-spin">
+                      <LoaderCircle />
+                    </span>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </Card>

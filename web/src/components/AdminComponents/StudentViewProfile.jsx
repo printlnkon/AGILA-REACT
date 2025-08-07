@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import StudentEditViewProfile from "@/components/AdminComponents/StudentEditViewProfile";
 
 // A helper function to handle copying text to the clipboard.
 const handleCopyStudentNumber = (studentNumber) => {
@@ -24,13 +26,52 @@ const handleCopyStudentNumber = (studentNumber) => {
 };
 
 export default function StudentViewProfile() {
-  const { selectedStudent } = useStudentProfile();
+  const { selectedStudent, updateStudentProfile } = useStudentProfile();
+  const [isEditing, setIsEditing] = useState(false);
+
+  // save changes to the student profile
+  const handleSaveChanges = async (updatedStudentData) => {
+    const success = await updateStudentProfile(updatedStudentData);
+    if (success) {
+      setIsEditing(false); // switch back to view mode after saving
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false); // switch back to view mode without saving
+    toast.info("Editing cancelled.");
+  };
 
   // Display a message if no student data is available.
   if (!selectedStudent) {
     return (
       <div className="flex items-center justify-center h-full p-4">
         <p className="text-muted-foreground">No student selected.</p>
+      </div>
+    );
+  }
+
+  // render edit profile view
+  if (isEditing) {
+    return (
+      <div className="w-full p-4 lg:p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              Edit Student Profile
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Update and manage student details.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <StudentEditViewProfile
+            student={selectedStudent}
+            onSave={handleSaveChanges}
+            onCancel={handleCancelEdit}
+          />
+        </div>
       </div>
     );
   }
@@ -49,8 +90,8 @@ export default function StudentViewProfile() {
           </div>
         </div>
 
-        {/* go back button */}
-        <div className="flex">
+        <div className="flex justify-between">
+          {/* go back button */}
           <Button
             className="bg-primary cursor-pointer text-sm gap-2"
             onClick={() => window.history.back()}
@@ -58,6 +99,16 @@ export default function StudentViewProfile() {
             <ArrowLeft className="w-4 h-4" />
             Go Back
           </Button>
+          {/* edit profle */}
+          <div className="ml-2">
+            <Button
+              onClick={() => setIsEditing(true)}
+              className="cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+              Edit Profile
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
