@@ -1,8 +1,17 @@
 import { db, auth, storage } from "@/api/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useState, useCallback } from "react";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  getDocs,
+  onSnapshot,
+  where,
+} from "firebase/firestore";
+import { useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,12 +52,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-const DEPARTMENTS = {
-  IT: "Information Technology",
-  CS: "Computer Science",
-  CPE: "Computer Engineering",
-};
+// Import the active session hook/context (you'll need to create this if not available)
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
   TEACHER: "Teacher",
@@ -62,6 +67,13 @@ const INITIAL_FORM_DATA = {
   gender: "",
   role: ROLES.TEACHER,
   department: "",
+  departmentName: "",
+  section: "",
+  sectionName: "",
+  yearLevel: "",
+  yearLevelName: "",
+  course: "",
+  courseName: "",
 };
 
 const MIN_AGE = 25;
@@ -120,6 +132,9 @@ const validateForm = (formData, date) => {
   if (!formData.gender) errors.gender = "Gender is required";
   if (!formData.role) errors.role = "Role is required";
   if (!formData.department) errors.department = "Department is required";
+  if (!formData.yearLevel) errors.yearLevel = "Year Level is required";
+  if (!formData.course) errors.course = "Course is required";
+  if (!formData.section) errors.section = "Section is required";
   return errors;
 };
 
@@ -132,6 +147,137 @@ export default function AddTeacherModal({ onUserAdded }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [yearLevels, setYearLevels] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Get the active session from context
+  const { activeSession } = useActiveSession();
+
+  // fetch departments when dialog opens and activeSession is available
+  useEffect(() => {
+    if (!dialogOpen || !activeSession) return;
+
+    setIsLoading(true);
+    const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+    const departmentsRef = collection(db, departmentsPath);
+
+    const unsubscribe = onSnapshot(departmentsRef, (snapshot) => {
+      const departmentsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        departmentName: doc.data().departmentName,
+        ...doc.data(),
+      }));
+
+      setDepartments(departmentsData);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [dialogOpen, activeSession]);
+
+  // fetch courses when department is selected
+  useEffect(() => {
+    if (!activeSession || !formData.department) {
+      setCourses([]);
+      return;
+    }
+    setIsLoading(true);
+    const coursesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses`;
+    const coursesRef = collection(db, coursesPath);
+
+    const fetchCourses = async () => {
+      try {
+        const snapshot = await getDocs(coursesRef);
+        const coursesData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          courseName: doc.data().courseName,
+          ...doc.data(),
+        }));
+        setCourses(coursesData);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to fetch courses");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [activeSession, formData.department]);
+
+  // fetch year levels
+  useEffect(() => {
+    if (!activeSession || !formData.department || !formData.course) {
+      setYearLevels([]);
+      return;
+    }
+
+    setIsLoading(true);
+    const yearLevelsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses/${formData.course}/year_levels`;
+    const yearLevelsRef = collection(db, yearLevelsPath);
+
+    const fetchYearLevels = async () => {
+      try {
+        const snapshot = await getDocs(yearLevelsRef);
+
+        const yearLevelsData = snapshot.docs.map((doc) => {
+          return {
+            id: doc.id,
+            yearLevelName: doc.data().yearLevelName,
+            ...doc.data(),
+          };
+        });
+
+        setYearLevels(yearLevelsData);
+      } catch (error) {
+        console.error("Error fetching year levels:", error);
+        toast.error("Failed to fetch year levels");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchYearLevels();
+  }, [activeSession, formData.department, formData.course]);
+
+  // fetch sections when course is selected
+  useEffect(() => {
+    if (
+      !activeSession ||
+      !formData.department ||
+      !formData.course ||
+      !formData.yearLevel
+    ) {
+      setSections([]);
+      return;
+    }
+
+    setIsLoading(true);
+    const sectionsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses/${formData.course}/year_levels/${formData.yearLevel}/sections`;
+    const sectionsRef = collection(db, sectionsPath);
+
+    const fetchSections = async () => {
+      try {
+        const snapshot = await getDocs(sectionsRef);
+        const sectionsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          sectionName: doc.data().sectionName,
+          ...doc.data(),
+        }));
+        setSections(sectionsData);
+      } catch (error) {
+        console.error("Error fetching sections:", error);
+        toast.error("Failed to fetch sections");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSections();
+  }, [activeSession, formData.department, formData.course, formData.yearLevel]);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -144,6 +290,7 @@ export default function AddTeacherModal({ onUserAdded }) {
     setDate(undefined);
     setFormErrors({});
     setIsSubmitting(false);
+    setPhoto(null);
   }, []);
 
   const handleDialogChange = useCallback(
@@ -178,8 +325,25 @@ export default function AddTeacherModal({ onUserAdded }) {
   );
 
   const handleSelectChange = useCallback(
-    (id, value) => {
-      setFormData((prev) => ({ ...prev, [id]: value }));
+    (id, value, name = "") => {
+      const updates = { [id]: value };
+
+      // Reset dependent fields when parent changes
+      if (id === "department") {
+        updates.course = "";
+        updates.section = "";
+        updates.departmentName = name;
+      } else if (id === "course") {
+        updates.section = "";
+        updates.courseName = name;
+      } else if (id === "yearLevel") {
+        updates.section = "";
+        updates.yearLevelName = name;
+      } else if (id === "section") {
+        updates.sectionName = name;
+      }
+
+      setFormData((prev) => ({ ...prev, ...updates }));
       clearFieldError(id);
     },
     [clearFieldError]
@@ -250,6 +414,15 @@ export default function AddTeacherModal({ onUserAdded }) {
         email,
         password,
         department: formData.department,
+        departmentName: formData.departmentName,
+        course: formData.course,
+        courseName: formData.courseName,
+        yearLevel: formData.yearLevel,
+        yearLevelName: formData.yearLevelName,
+        section: formData.section,
+        sectionName: formData.sectionName,
+        academicYearId: activeSession ? activeSession.id : "",
+        semesterId: activeSession ? activeSession.semesterId : "",
         status: "active",
         role: formData.role,
         createdAt: serverTimestamp(),
@@ -262,7 +435,7 @@ export default function AddTeacherModal({ onUserAdded }) {
       toast.success(
         `User ${formData.firstName} ${formData.lastName} created successfully!`,
         {
-          description: `Added as ${formData.role} in the ${formData.department} department.`,
+          description: `Added as ${formData.role} in the ${formData.departmentName} department.`,
           duration: 5000,
         }
       );
@@ -302,7 +475,7 @@ export default function AddTeacherModal({ onUserAdded }) {
           Add Teacher
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
+      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Add User</DialogTitle>
           <DialogDescription>
@@ -379,7 +552,7 @@ export default function AddTeacherModal({ onUserAdded }) {
                 <FormError message={formErrors.suffix} />
               </div>
               {/* photo upload */}
-              <div className="space-y-1 md:col-span-4">
+              <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -446,6 +619,191 @@ export default function AddTeacherModal({ onUserAdded }) {
             </div>
           </div>
 
+          {/* academic information */}
+          <div className="flex items-center mb-2">
+            <h3 className="font-medium">Academic Information</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Provide the teacher's academic details.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* department */}
+            <div className="space-y-1">
+              <Label htmlFor="department">
+                Assign to Department <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !activeSession || isLoading || departments.length === 0
+                }
+                onValueChange={(value) => {
+                  const dept = departments.find((d) => d.id === value);
+                  handleSelectChange(
+                    "department",
+                    value,
+                    dept?.departmentName || ""
+                  );
+                }}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !activeSession
+                        ? "No active session"
+                        : departments.length === 0
+                        ? "No departments available"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.department} />
+            </div>
+            {/* course */}
+            <div className="space-y-1">
+              <Label htmlFor="course">
+                Assign to Course <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !formData.department || courses.length === 0 || isLoading
+                }
+                onValueChange={(value) => {
+                  const course = courses.find((c) => c.id === value);
+                  handleSelectChange("course", value, course?.courseName || "");
+                }}
+              >
+                <SelectTrigger id="course" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !formData.department
+                        ? "Select department first"
+                        : courses.length === 0
+                        ? "No courses available"
+                        : "Select Course"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.courseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.course} />
+            </div>
+            {/* year level */}
+            <div className="space-y-1">
+              <Label htmlFor="yearLevel">
+                Assign to Year Level <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !formData.course || yearLevels.length === 0 || isLoading
+                }
+                onValueChange={(value) => {
+                  const yearLevel = yearLevels.find((yl) => yl.id === value);
+                  handleSelectChange(
+                    "yearLevel",
+                    value,
+                    yearLevel?.yearLevelName || ""
+                  );
+                }}
+              >
+                <SelectTrigger id="yearLevel" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !formData.course
+                        ? "Select course first"
+                        : yearLevels.length === 0
+                        ? "No year levels available"
+                        : "Select Year Level"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearLevels
+                    .sort((a, b) => {
+                      const getYearLevel = (name) => {
+                        const match = name.match(/^(\d+)/);
+                        return match ? parseInt(match[0], 10) : 0;
+                      };
+                      return (
+                        getYearLevel(a.yearLevelName) -
+                        getYearLevel(b.yearLevelName)
+                      );
+                    })
+                    .map((level) => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {level.yearLevelName}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.yearLevel} />
+            </div>
+
+            {/* section */}
+            <div className="space-y-1">
+              <Label htmlFor="section">
+                Assign to Section <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !formData.course || sections.length === 0 || isLoading
+                }
+                onValueChange={(value) => {
+                  const section = sections.find((s) => s.id === value);
+                  handleSelectChange(
+                    "section",
+                    value,
+                    section?.sectionName || ""
+                  );
+                }}
+              >
+                <SelectTrigger id="section" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !formData.course
+                        ? "Select course first"
+                        : sections.length === 0
+                        ? "No sections available"
+                        : "Select Section"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((section) => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.sectionName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.section} />
+            </div>
+          </div>
+
           <div>
             <div className="flex items-center mb-2">
               <h3 className="font-medium">System Access</h3>
@@ -480,30 +838,6 @@ export default function AddTeacherModal({ onUserAdded }) {
                 </Select>
                 <FormError message={formErrors.role} />
               </div>
-              {/* department */}
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                      <SelectItem key={key} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
-              </div>
             </div>
           </div>
 
@@ -520,7 +854,7 @@ export default function AddTeacherModal({ onUserAdded }) {
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !activeSession}
             >
               {isSubmitting ? (
                 <>

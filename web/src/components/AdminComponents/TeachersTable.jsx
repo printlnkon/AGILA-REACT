@@ -210,13 +210,25 @@ const createColumns = (handleArchiveUser, handleViewTeacherProfile) => [
     id: "Date Created",
     accessorKey: "createdAt",
     header: "Date Created",
-    cell: ({ row }) => {
+     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -228,9 +240,21 @@ const createColumns = (handleArchiveUser, handleViewTeacherProfile) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -365,9 +389,8 @@ export default function TeachersTable() {
       return;
     }
     setSelectedTeacher(user);
-    navigate(`/admin/teachers/profile`)
-    console.log("User details:", user);
-  }
+    navigate(`/admin/teachers/profile`);
+  };
 
   const fetchUsers = async () => {
     setLoading(true);

@@ -95,31 +95,6 @@ export default function ArchiveTable() {
   const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
 
   // Action handlers
-  // const handleCopyId = (userId) => {
-  //   if (!userId) {
-  //     toast.error("User ID not found");
-  //     return;
-  //   }
-  //   navigator.clipboard
-  //     .writeText(userId)
-  //     .then(() => {
-  //       toast.success("User ID copied to clipboard");
-  //     })
-  //     .catch(() => {
-  //       toast.error("Failed to copy User ID");
-  //     });
-  // };
-
-  // const handleViewUser = (user) => {
-  //   if (!user) {
-  //     toast.error("User data not found");
-  //     return;
-  //   }
-  //   // You can implement a view modal here or navigate to a details page
-  //   toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  //   console.log("User details:", user);
-  // };
-
   const handleRestoreUser = async (user) => {
     if (!user || !user.id || !user.role) {
       toast.error("Invalid user data");
@@ -346,6 +321,32 @@ export default function ArchiveTable() {
     }
   };
 
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+
+    try {
+      // For Firestore Timestamps
+      if (timestamp.toDate && typeof timestamp.toDate === "function") {
+        return format(timestamp.toDate(), "MMMM do, yyyy");
+      }
+
+      // For ISO strings or timestamp numbers
+      if (typeof timestamp === "string" || typeof timestamp === "number") {
+        return format(new Date(timestamp), "MMMM do, yyyy");
+      }
+
+      // For Date objects
+      if (timestamp instanceof Date) {
+        return format(timestamp, "MMMM do, yyyy");
+      }
+
+      return "-";
+    } catch (error) {
+      console.error("Date formatting error:", error, timestamp);
+      return "-";
+    }
+  };
+
   // initial data loading
   useEffect(() => {
     fetchArchivedUsers();
@@ -461,14 +462,7 @@ export default function ArchiveTable() {
       accessorKey: "createdAt",
       header: "Date Created",
       cell: ({ row }) => {
-        const timestamp = row.original.createdAt;
-        if (!timestamp) return <div>-</div>;
-
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div>{formatDate(row.original.createdAt)}</div>;
       },
     },
 
@@ -478,14 +472,7 @@ export default function ArchiveTable() {
       accessorKey: "updatedAt",
       header: "Last Updated",
       cell: ({ row }) => {
-        const timestamp = row.original.updatedAt;
-        if (!timestamp) return <div>-</div>;
-
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div>{formatDate(row.original.updatedAt)}</div>;
       },
     },
     // status column
@@ -525,22 +512,6 @@ export default function ArchiveTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {/* <DropdownMenuItem
-                  onClick={() => handleCopyId(user.id)}
-                  className="cursor-pointer"
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy ID
-                </DropdownMenuItem> */}
-                {/* <DropdownMenuSeparator /> */}
-                {/* <DropdownMenuItem
-                  onClick={() => handleViewUser(user)}
-                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                >
-                  <Eye className="mr-2 h-4 w-4 text-green-600" />
-                  View
-                </DropdownMenuItem>
-                <DropdownMenuSeparator /> */}
                 <DropdownMenuItem
                   onClick={() => setShowRestoreDialog(true)}
                   className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
@@ -815,7 +786,7 @@ export default function ArchiveTable() {
               variant="destructive"
               size="sm"
               onClick={() => setShowBatchDeleteDialog(true)}
-              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+              className="cursor-pointer"
             >
               <Trash2 />
               Batch Delete
@@ -1163,7 +1134,7 @@ export default function ArchiveTable() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchRestoreDialog(false)}
                   className="cursor-pointer"
                 >
@@ -1176,7 +1147,7 @@ export default function ArchiveTable() {
                     setShowBatchRestoreDialog(false);
                   }}
                 >
-                  <RotateCcw /> Restore All
+                  Restore All
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1198,20 +1169,21 @@ export default function ArchiveTable() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchDeleteDialog(false)}
                   className="cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                  variant="destructive"
+                  className=" cursor-pointer"
                   onClick={() => {
                     handleBatchDeleteUser();
                     setShowBatchDeleteDialog(false);
                   }}
                 >
-                  <Trash2 /> Delete All
+                  Delete All
                 </Button>
               </DialogFooter>
             </DialogContent>

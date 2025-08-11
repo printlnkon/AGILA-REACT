@@ -4,7 +4,6 @@ import { doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Card,
@@ -42,10 +41,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// Import the new components
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AddCourseModal from "@/components/AdminComponents/AddCourseModal";
 import CourseList from "@/components/AdminComponents/CourseList";
+import TeacherList from "@/components/AdminComponents/TeacherList";
 
 export default function DepartmentCard({ department, onDelete }) {
   // State for this component is now much simpler
@@ -55,6 +54,7 @@ export default function DepartmentCard({ department, onDelete }) {
     department.departmentName
   );
   const [courseCount, setCourseCount] = useState(0); // State to hold the course count
+  const [teacherCount, setTeacherCount] = useState(0); // Added teacher count state
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Department Handlers remain here
@@ -111,14 +111,10 @@ export default function DepartmentCard({ department, onDelete }) {
       <Card className="w-full flex flex-col">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <CardTitle className="text-xl">
+            <CardTitle className="text-lg sm:text-xl">
               {department.departmentName}
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {courseCount} {courseCount === 1 ? "Course" : "Courses"}
-              </Badge>
-
               <TooltipProvider>
                 <DropdownMenu>
                   <Tooltip>
@@ -158,27 +154,44 @@ export default function DepartmentCard({ department, onDelete }) {
             </div>
           </div>
 
-          <CardDescription>
-            Manage courses offered by this department.
-          </CardDescription>
+          <CardDescription>Manage courses in this department.</CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow pb-2">
-          <CourseList
-            department={department}
-            onCourseCountChange={setCourseCount}
-          />
-        </CardContent>
 
-        <CardFooter className="pt-2">
-          <AddCourseModal
-            department={department}
-            activeSession={{
-              id: department.academicYearId,
-              semesterId: department.semesterId,
-            }}
-            disabled={!department.academicYearId}
-          />
-        </CardFooter>
+        {/* tabs for courses and teachers */}
+        <Tabs defaultValue="courses" className="w-full flex flex-col flex-grow">
+          <TabsList className="ml-2 sm:ml-6 grid grid-cols-2">
+            <TabsTrigger value="courses">Courses ({courseCount})</TabsTrigger>
+            <TabsTrigger value="teachers">Teachers ({teacherCount})</TabsTrigger>
+          </TabsList>
+          {/* courses */}
+          <TabsContent value="courses" className="p-0 flex flex-grow flex-col">
+            <CardContent className="flex-grow pb-2">
+              <CourseList
+                department={department}
+                onCourseCountChange={setCourseCount}
+              />
+            </CardContent>
+            <CardFooter className="pt-2">
+              <AddCourseModal
+                department={department}
+                activeSession={{
+                  id: department.academicYearId,
+                  semesterId: department.semesterId,
+                }}
+                disabled={!department.academicYearId}
+              />
+            </CardFooter>
+          </TabsContent>
+          {/* teachers */}
+          <TabsContent value="teachers" className="p-0">
+            <CardContent className="flex-grow pb-2 overflow-auto">
+              <TeacherList
+                department={{ ...department, departmentId: department.id }}
+                onTeacherCountChange={setTeacherCount}
+              />
+            </CardContent>
+          </TabsContent>
+        </Tabs>
       </Card>
 
       {/* edit department dialog */}

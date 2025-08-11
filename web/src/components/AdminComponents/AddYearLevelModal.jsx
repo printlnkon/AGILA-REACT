@@ -69,6 +69,8 @@ export default function AddYearLevelModal({ course, session, disabled }) {
 
       await addDoc(yearLevelsRef, {
         yearLevelName: yearLevelName.trim(),
+        courseId: course.id,
+        departmentId: session.departmentId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

@@ -34,6 +34,7 @@ import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadVi
 import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
 import TeacherViewProfile from "@/components/AdminComponents/TeacherViewProfile";
 import StudentViewProfile from "@/components/AdminComponents/StudentViewProfile";
+import { ActiveSessionProvider } from "@/context/ActiveSessionContext";
 import { AcademicHeadProfileProvider } from "@/context/AcademicHeadProfileContext";
 import { ProgramHeadProfileProvider } from "@/context/ProgramHeadProfileContext";
 import { StudentProfileProvider } from "@/context/StudentProfileContext";
@@ -43,8 +44,7 @@ const routeTitles = {
   "/login": "AGILA | Login",
   "/": "AGILA | Welcome",
   "/admin": "AGILA | Admin - Dashboard",
-  "/admin/academicYearAndSemester":
-    "AGILA | Admin - School Year and Semester",
+  "/admin/academicYearAndSemester": "AGILA | Admin - School Year and Semester",
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
   "/admin/accounts": "AGILA | Admin - Accounts",
@@ -82,10 +82,7 @@ function AppContent() {
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route
-          path="academicYearAndSemester"
-          element={<AcademicYearAndSemester />}
-        />
+        <Route path="academicYearAndSemester" element={<AcademicYearAndSemester />}/>
         <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
         <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
         <Route path="accounts" element={<Accounts />} />
@@ -93,14 +90,8 @@ function AppContent() {
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
-        <Route
-          path="academic-heads/profile"
-          element={<AcademicHeadViewProfile />}
-        />
-        <Route
-          path="program-heads/profile"
-          element={<ProgramHeadViewProfile />}
-        />
+        <Route path="academic-heads/profile" element={<AcademicHeadViewProfile />}/>
+        <Route path="program-heads/profile" element={<ProgramHeadViewProfile />}/>
         <Route path="teachers/profile" element={<TeacherViewProfile />} />
         <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
@@ -157,17 +148,19 @@ function App() {
       <Toaster richColors />
       <ErrorMessage>
         <AuthProvider>
-          <AcademicHeadProfileProvider>
-            <ProgramHeadProfileProvider>
-              <TeacherProfileProvider>
-                <StudentProfileProvider>
-                  <Router>
-                    <AppContent />
-                  </Router>
-                </StudentProfileProvider>
-              </TeacherProfileProvider>
-            </ProgramHeadProfileProvider>
-          </AcademicHeadProfileProvider>
+          <ActiveSessionProvider>
+            <AcademicHeadProfileProvider>
+              <ProgramHeadProfileProvider>
+                <TeacherProfileProvider>
+                  <StudentProfileProvider>
+                    <Router>
+                      <AppContent />
+                    </Router>
+                  </StudentProfileProvider>
+                </TeacherProfileProvider>
+              </ProgramHeadProfileProvider>
+            </AcademicHeadProfileProvider>
+          </ActiveSessionProvider>
         </AuthProvider>
       </ErrorMessage>
     </>

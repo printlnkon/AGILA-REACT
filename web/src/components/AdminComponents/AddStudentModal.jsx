@@ -49,6 +49,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
   STUDENT: "Student",
@@ -60,7 +61,7 @@ const INITIAL_FORM_DATA = {
   lastName: "",
   suffix: "",
   gender: "",
-  role: "",
+  role: ROLES.STUDENT, // Set default role to STUDENT
   department: "",
   departmentName: "",
   course: "",
@@ -141,7 +142,6 @@ const validateForm = (formData, date) => {
 
   const dateError = validateDateOfBirth(date);
   if (dateError) errors.dateOfBirth = dateError;
-
   if (!formData.gender) errors.gender = "Gender is required";
   if (!formData.role) errors.role = "Role is required";
   if (!formData.department) errors.department = "Department is required";
@@ -152,7 +152,7 @@ const validateForm = (formData, date) => {
   return errors;
 };
 
-export default function AddStudentModal({ onUserAdded, activeSession }) {
+export default function AddStudentModal({ onUserAdded }) {
   const today = new Date();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [date, setDate] = useState(undefined);
@@ -165,68 +165,55 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
   const [courses, setCourses] = useState([]);
   const [yearLevels, setYearLevels] = useState([]);
   const [sections, setSections] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchDepartments = useCallback(() => {
-    if (!activeSession || !activeSession.id || !activeSession.semesterId) {
-      setDepartments([]);
-      return;
-    }
-    try {
-      const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
-      const departmentsRef = collection(db, departmentsPath);
+  // Use the active session context
+  const { activeSession, loading: sessionLoading } = useActiveSession();
 
-      return onSnapshot(
-        departmentsRef,
-        (snapshot) => {
-          const depts = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            academicYearId: activeSession.id,
-            semesterId: activeSession.semesterId,
-          }));
-          depts.sort((a, b) =>
-            a.departmentName.localeCompare(b.departmentName)
-          );
-          // console.log("Fetched departments:", depts);
-          setDepartments(depts);
-        },
-        (error) => {
-          console.error("Error in departments listener:", error);
-          toast.error("Failed to listen for department updates.");
-        }
-      );
-    } catch (error) {
-      console.error("Error setting up departments listener:", error);
-      toast.error("Failed to fetch departments.");
-    }
-  }, [activeSession]);
+  // Fetch departments when dialog opens and activeSession is available
   useEffect(() => {
-    let unsubscribe;
-    if (activeSession && activeSession.id && activeSession.semesterId) {
-      unsubscribe = fetchDepartments();
-    } else {
-      setDepartments([]);
+    if (!dialogOpen || !activeSession) {
+      return () => {};
     }
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
+
+    setIsLoading(true);
+    const departmentsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+    const departmentsRef = collection(db, departmentsPath);
+
+    const unsubscribe = onSnapshot(
+      departmentsRef,
+      (snapshot) => {
+        const depts = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          academicYearId: activeSession.id,
+          semesterId: activeSession.semesterId,
+        }));
+        depts.sort((a, b) => a.departmentName.localeCompare(b.departmentName));
+        setDepartments(depts);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("Error in departments listener:", error);
+        toast.error("Failed to listen for department updates.");
+        setIsLoading(false);
       }
-    };
-  }, [fetchDepartments, activeSession]);
+    );
 
-  // / fetch courses when department changes
+    return unsubscribe;
+  }, [dialogOpen, activeSession]);
+
+  // Fetch courses when department changes
   useEffect(() => {
-    if (
-      !formData.department ||
-      !activeSession ||
-      !activeSession.id ||
-      !activeSession.semesterId
-    ) {
+    if (!formData.department || !activeSession) {
       setCourses([]);
-      return;
+      return () => {};
     }
+
+    setIsLoading(true);
     const coursesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses`;
     const coursesRef = collection(db, coursesPath);
+
     const unsubscribe = onSnapshot(
       coursesRef,
       (snapshot) => {
@@ -235,31 +222,29 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
           ...doc.data(),
         }));
         setCourses(courseList);
+        setIsLoading(false);
       },
       (error) => {
         setCourses([]);
-        toast.error(
-          "Failed to load courses for department." + " " + error.message
-        );
+        toast.error("Failed to load courses for department: " + error.message);
+        setIsLoading(false);
       }
     );
-    return () => unsubscribe();
+
+    return unsubscribe;
   }, [formData.department, activeSession]);
 
-  // fetch year levels when department or course changes
+  // Fetch year levels when department or course changes
   useEffect(() => {
-    if (
-      !formData.department ||
-      !formData.course ||
-      !activeSession ||
-      !activeSession.id ||
-      !activeSession.semesterId
-    ) {
+    if (!formData.department || !formData.course || !activeSession) {
       setYearLevels([]);
-      return;
+      return () => {};
     }
+
+    setIsLoading(true);
     const yearLevelsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses/${formData.course}/year_levels`;
     const yearLevelsRef = collection(db, yearLevelsPath);
+
     const unsubscribe = onSnapshot(
       yearLevelsRef,
       (snapshot) => {
@@ -268,32 +253,34 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
           ...doc.data(),
         }));
         setYearLevels(yearLevelList);
+        setIsLoading(false);
       },
       (error) => {
         setYearLevels([]);
-        toast.error(
-          "Failed to load year levels for course." + " " + error.message
-        );
+        toast.error("Failed to load year levels for course: " + error.message);
+        setIsLoading(false);
       }
     );
-    return () => unsubscribe();
+
+    return unsubscribe;
   }, [formData.department, formData.course, activeSession]);
 
-  // fetch sections when department, course, or year level changes
+  // Fetch sections when department, course, or year level changes
   useEffect(() => {
     if (
       !formData.department ||
       !formData.course ||
       !formData.yearLevel ||
-      !activeSession ||
-      !activeSession.id ||
-      !activeSession.semesterId
+      !activeSession
     ) {
       setSections([]);
-      return;
+      return () => {};
     }
+
+    setIsLoading(true);
     const sectionsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${formData.department}/courses/${formData.course}/year_levels/${formData.yearLevel}/sections`;
     const sectionsRef = collection(db, sectionsPath);
+
     const unsubscribe = onSnapshot(
       sectionsRef,
       (snapshot) => {
@@ -302,15 +289,16 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
           ...doc.data(),
         }));
         setSections(sectionList);
+        setIsLoading(false);
       },
       (error) => {
         setSections([]);
-        toast.error(
-          "Failed to load sections for year level." + " " + error.message
-        );
+        toast.error("Failed to load sections for year level: " + error.message);
+        setIsLoading(false);
       }
     );
-    return () => unsubscribe();
+
+    return unsubscribe;
   }, [formData.department, formData.course, formData.yearLevel, activeSession]);
 
   const handlePhotoChange = (e) => {
@@ -362,71 +350,36 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
   );
 
   const handleSelectChange = useCallback(
-    (id, value) => {
+    (id, value, name = "") => {
+      const updates = { [id]: value };
+
+      // Reset dependent fields when parent changes
       if (id === "department") {
-        const selectedDept = departments.find((dept) => dept.id === value);
-        setFormData((prev) => ({
-          ...prev,
-          department: value,
-          departmentName: selectedDept ? selectedDept.departmentName : "",
-          // Reset dependent fields
-          course: "",
-          courseName: "",
-          yearLevel: "",
-          yearLevelName: "",
-          section: "",
-          sectionName: "",
-        }));
+        updates.course = "";
+        updates.courseName = "";
+        updates.yearLevel = "";
+        updates.yearLevelName = "";
+        updates.section = "";
+        updates.sectionName = "";
+        updates.departmentName = name;
+      } else if (id === "course") {
+        updates.yearLevel = "";
+        updates.yearLevelName = "";
+        updates.section = "";
+        updates.sectionName = "";
+        updates.courseName = name;
+      } else if (id === "yearLevel") {
+        updates.section = "";
+        updates.sectionName = "";
+        updates.yearLevelName = name;
+      } else if (id === "section") {
+        updates.sectionName = name;
       }
-      if (id === "course") {
-        const selectedCourse = courses.find((course) => course.id === value);
-        setFormData((prev) => ({
-          ...prev,
-          course: value,
-          courseName: selectedCourse ? selectedCourse.courseName : "",
-          // Reset dependent fields
-          yearLevel: "",
-          yearLevelName: "",
-          section: "",
-          sectionName: "",
-        }));
-      }
-      if (id === "yearLevel") {
-        const selectedYearLevel = yearLevels.find(
-          (level) => level.id === value
-        );
-        setFormData((prev) => ({
-          ...prev,
-          yearLevel: value,
-          yearLevelName: selectedYearLevel
-            ? selectedYearLevel.yearLevelName
-            : "",
-          // Reset dependent fields
-          section: "",
-          sectionName: "",
-        }));
-      }
-      if (id === "section") {
-        const selectedSection = sections.find(
-          (section) => section.id === value
-        );
-        setFormData((prev) => ({
-          ...prev,
-          section: value,
-          sectionName: selectedSection ? selectedSection.sectionName : "",
-        }));
-      }
-      if (
-        id !== "department" &&
-        id !== "course" &&
-        id !== "yearLevel" &&
-        id !== "section"
-      ) {
-        setFormData((prev) => ({ ...prev, [id]: value }));
-      }
+
+      setFormData((prev) => ({ ...prev, ...updates }));
       clearFieldError(id);
     },
-    [departments, courses, yearLevels, sections, clearFieldError]
+    [clearFieldError]
   );
 
   const handleDateSelect = useCallback(
@@ -454,7 +407,7 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
       return;
     }
 
-    if (!activeSession || !activeSession.id || !activeSession.semesterId) {
+    if (!activeSession) {
       toast.error("Active academic session not found. Cannot add student.", {
         description:
           "Please ensure an active academic year and semester are set.",
@@ -559,10 +512,7 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
   };
 
   const isDepartmentSelectDisabled =
-    !activeSession ||
-    !activeSession.id ||
-    !activeSession.semesterId ||
-    departments.length === 0;
+    !activeSession || sessionLoading || departments.length === 0 || isLoading;
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -580,6 +530,23 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             <span className="text-red-500">*</span> are required.
           </DialogDescription>
         </DialogHeader>
+
+        {!activeSession && !sessionLoading && (
+          <div className="bg-amber-50 border border-amber-200 rounded p-3 text-amber-800">
+            <p className="font-medium">No active academic session found</p>
+            <p className="text-sm mt-1">
+              Please set an academic year and semester as active in the Academic
+              Year &amp; Semester section.
+            </p>
+          </div>
+        )}
+
+        {sessionLoading && (
+          <div className="text-center py-3">
+            <LoaderCircle className="animate-spin inline mr-2" />
+            Loading academic session...
+          </div>
+        )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
@@ -735,23 +702,28 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             {/* department */}
             <div className="space-y-1">
               <Label htmlFor="department">
-                Department <span className="text-red-500">*</span>
+                Assign to Department <span className="text-red-500">*</span>
               </Label>
               <Select
                 required
-                disabled={
-                  isDepartmentSelectDisabled || departments.length === 0
-                }
-                onValueChange={(value) =>
-                  handleSelectChange("department", value)
-                }
+                disabled={isDepartmentSelectDisabled}
+                onValueChange={(value) => {
+                  const dept = departments.find((d) => d.id === value);
+                  handleSelectChange(
+                    "department",
+                    value,
+                    dept?.departmentName || ""
+                  );
+                }}
                 value={formData.department}
               >
                 <SelectTrigger id="department" className="w-full">
                   <SelectValue
                     placeholder={
-                      isDepartmentSelectDisabled
-                        ? "No active departments"
+                      !activeSession
+                        ? "No active session"
+                        : isLoading
+                        ? "Loading departments..."
                         : departments.length === 0
                         ? "No departments available"
                         : "Select Department"
@@ -759,9 +731,9 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments.map((depts) => (
-                    <SelectItem key={depts.id} value={depts.id}>
-                      {depts.departmentName}
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.departmentName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -771,19 +743,24 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             {/* course */}
             <div className="space-y-1">
               <Label htmlFor="course">
-                Course <span className="text-red-500">*</span>
+                Assign to Course <span className="text-red-500">*</span>
               </Label>
               <Select
                 required
-                disabled={isDepartmentSelectDisabled || courses.length === 0}
-                onValueChange={(value) => handleSelectChange("course", value)}
+                disabled={!formData.department || isLoading}
+                onValueChange={(value) => {
+                  const course = courses.find((c) => c.id === value);
+                  handleSelectChange("course", value, course?.courseName || "");
+                }}
                 value={formData.course}
               >
                 <SelectTrigger id="course" className="w-full">
                   <SelectValue
                     placeholder={
-                      isDepartmentSelectDisabled
-                        ? "No active courses"
+                      !formData.department
+                        ? "Select department first"
+                        : isLoading
+                        ? "Loading courses..."
                         : courses.length === 0
                         ? "No courses available"
                         : "Select Course"
@@ -807,21 +784,28 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             {/* year level */}
             <div className="space-y-1">
               <Label htmlFor="yearLevel">
-                Year Level <span className="text-red-500">*</span>
+                Assign to Year Level <span className="text-red-500">*</span>
               </Label>
               <Select
                 required
-                disabled={isDepartmentSelectDisabled || yearLevels.length === 0}
-                onValueChange={(value) =>
-                  handleSelectChange("yearLevel", value)
-                }
+                disabled={!formData.course || isLoading}
+                onValueChange={(value) => {
+                  const yearLevel = yearLevels.find((yl) => yl.id === value);
+                  handleSelectChange(
+                    "yearLevel",
+                    value,
+                    yearLevel?.yearLevelName || ""
+                  );
+                }}
                 value={formData.yearLevel}
               >
-                <SelectTrigger id="department" className="w-full">
+                <SelectTrigger id="yearLevel" className="w-full">
                   <SelectValue
                     placeholder={
-                      isDepartmentSelectDisabled
-                        ? "No active year levels"
+                      !formData.course
+                        ? "Select course first"
+                        : isLoading
+                        ? "Loading year levels..."
                         : yearLevels.length === 0
                         ? "No year levels available"
                         : "Select Year Level"
@@ -829,11 +813,22 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {yearLevels.map((level) => (
-                    <SelectItem key={level.id} value={level.id}>
-                      {level.yearLevelName}
-                    </SelectItem>
-                  ))}
+                  {yearLevels
+                    .sort((a, b) => {
+                      const getYearLevel = (name) => {
+                        const match = name.match(/^(\d+)/);
+                        return match ? parseInt(match[0], 10) : 0;
+                      };
+                      return (
+                        getYearLevel(a.yearLevelName) -
+                        getYearLevel(b.yearLevelName)
+                      );
+                    })
+                    .map((level) => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {level.yearLevelName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <FormError message={formErrors.yearLevel} />
@@ -841,19 +836,28 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             {/* section */}
             <div className="space-y-1">
               <Label htmlFor="section">
-                Section <span className="text-red-500">*</span>
+                Assign to Section <span className="text-red-500">*</span>
               </Label>
               <Select
                 required
-                disabled={isDepartmentSelectDisabled || sections.length === 0}
-                onValueChange={(value) => handleSelectChange("section", value)}
+                disabled={!formData.yearLevel || isLoading}
+                onValueChange={(value) => {
+                  const section = sections.find((s) => s.id === value);
+                  handleSelectChange(
+                    "section",
+                    value,
+                    section?.sectionName || ""
+                  );
+                }}
                 value={formData.section}
               >
                 <SelectTrigger id="section" className="w-full">
                   <SelectValue
                     placeholder={
-                      isDepartmentSelectDisabled
-                        ? "No active sections"
+                      !formData.yearLevel
+                        ? "Select year level first"
+                        : isLoading
+                        ? "Loading sections..."
                         : sections.length === 0
                         ? "No sections available"
                         : "Select Section"
@@ -907,7 +911,7 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <DialogClose asChild>
               <Button
                 variant="ghost"
@@ -920,7 +924,7 @@ export default function AddStudentModal({ onUserAdded, activeSession }) {
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={isSubmitting || isDepartmentSelectDisabled}
+              disabled={isSubmitting || !activeSession || isLoading}
             >
               {isSubmitting ? (
                 <>
