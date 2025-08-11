@@ -270,9 +270,21 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -285,9 +297,21 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -640,8 +664,8 @@ export default function AccountsTable() {
                 {/* skeletons for select */}
                 <Skeleton className="h-5 w-5 rounded-sm" />
                 {/* skeleton for photo */}
-                <Skeleton className="h-4" style={{ width: "15%" }} />
                 <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-4" style={{ width: "15%" }} />
 
                 {/* 6 flexible-width skeletons */}
                 {Array(6)
@@ -677,8 +701,8 @@ export default function AccountsTable() {
                     {/* skeletons for select */}
                     <Skeleton className="h-5 w-5 rounded-md" />
                     {/* skeleton for photo */}
-                    <Skeleton className="h-4" style={{ width: "15%" }} />
                     <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
 
                     {/* 6 flexible-width skeletons */}
                     {Array(6)

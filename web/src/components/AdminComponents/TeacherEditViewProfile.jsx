@@ -20,8 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function StudentEditViewProfile({
-  student,
+export default function TeacherEditViewProfile({
+  teacher,
   onSave,
   onCancel,
   academicData,
@@ -31,37 +31,37 @@ export default function StudentEditViewProfile({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   useEffect(() => {
-    if (student && academicData) {
-      // Find the IDs based on the student's names
+    if (teacher && academicData) {
+      // Find the IDs based on the teacher's names
       const department = academicData.departments.find(
-        (d) => d.departmentName === student.departmentName
+        (d) => d.departmentName === teacher.departmentName
       );
       const course = academicData.courses.find(
-        (c) => c.courseName === student.courseName
+        (c) => c.courseName === teacher.courseName
       );
       const yearLevel = academicData.yearLevels.find(
-        (y) => y.yearLevelName === student.yearLevelName
+        (y) => y.yearLevelName === teacher.yearLevelName
       );
       const section = academicData.sections.find(
-        (s) => s.sectionName === student.sectionName
+        (s) => s.sectionName === teacher.sectionName
       );
 
       setFormData({
-        ...student,
+        ...teacher,
         departmentId: department?.id || "",
         courseId: course?.id || "",
         yearLevelId: yearLevel?.id || "",
         sectionId: section?.id || "",
       });
     }
-  }, [student, academicData]);
+  }, [teacher, academicData]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  // New handler for select inputs
+  // Handler for select inputs
   const handleSelectChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -83,12 +83,13 @@ export default function StudentEditViewProfile({
   };
 
   const handleSaveChanges = () => {
+    // Basic validation
     if (!formData.firstName || !formData.lastName) {
       toast.error("First name and last name are required");
       return;
     }
 
-    const updatedStudentData = {
+    const updatedTeacherData = {
       ...formData,
       departmentName:
         academicData.departments.find((d) => d.id === formData.departmentId)
@@ -103,7 +104,7 @@ export default function StudentEditViewProfile({
         academicData.sections.find((s) => s.id === formData.sectionId)
           ?.sectionName || "",
     };
-    onSave(updatedStudentData);
+    onSave(updatedTeacherData);
   };
 
   if (
@@ -121,15 +122,15 @@ export default function StudentEditViewProfile({
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      {/* student information card */}
+      {/* teacher information card */}
       <Card className="w-full">
         <CardHeader>
           <div className="font-semibold text-lg sm:text-xl">
-            Edit Student Information
+            Edit Teacher Information
           </div>
         </CardHeader>
 
-        {/* student information */}
+        {/* teacher information */}
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
             {/* first name */}
@@ -253,6 +254,8 @@ export default function StudentEditViewProfile({
                     }}
                     captionLayout="dropdown"
                     initialFocus
+                    fromYear={1950}
+                    toYear={new Date().getFullYear() - 25} // Minimum age for teachers
                   />
                 </PopoverContent>
               </Popover>
