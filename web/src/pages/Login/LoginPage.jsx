@@ -20,7 +20,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      console.log("Attempting to log in with:", { email });
       const userRole = await login(email, password);
 
       if (rememberMe) {

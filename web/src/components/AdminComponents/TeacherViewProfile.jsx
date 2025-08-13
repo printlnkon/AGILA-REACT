@@ -148,6 +148,7 @@ export default function TeacherViewProfile() {
     );
   }
 
+  // edit profile mode
   if (isEditing) {
     return (
       <div className="w-full p-4 lg:p-6">
@@ -174,7 +175,7 @@ export default function TeacherViewProfile() {
     );
   }
 
-  // View profile mode
+  // view profile mode
   return (
     <div className="w-full">
       <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
@@ -191,11 +192,12 @@ export default function TeacherViewProfile() {
 
         <div className="flex justify-between">
           <Button
-            className="bg-primary cursor-pointer text-sm gap-2"
+            variant="outline"
+            className="cursor-pointer text-sm gap-2"
             onClick={() => window.history.back()}
           >
             <ArrowLeft className="w-4 h-4" />
-            Go Back
+            Previous
           </Button>
           <div className="ml-2">
             <Button
@@ -209,6 +211,7 @@ export default function TeacherViewProfile() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* display profile picture */}
           <Card className="w-full max-w-sm mx-auto lg:mx-0">
             <CardContent className="p-4 sm:p-6 flex flex-col items-center">
               <img
@@ -266,6 +269,7 @@ export default function TeacherViewProfile() {
           </Card>
 
           <div className="flex flex-col gap-4 w-full">
+            {/* display teach info */}
             <Card className="w-full">
               <CardHeader>
                 <div className="font-semibold text-lg sm:text-xl">
@@ -321,7 +325,7 @@ export default function TeacherViewProfile() {
                 </div>
               </CardContent>
             </Card>
-
+            {/* display acad info */}
             <Card className="w-full">
               <CardHeader>
                 <div className="font-semibold text-lg sm:text-xl">
