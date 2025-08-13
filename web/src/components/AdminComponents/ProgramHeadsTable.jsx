@@ -99,11 +99,6 @@ const handleCopyEmployeeNo = (employeeNo) => {
     .catch(() => toast.error("Failed to copy Employee No."));
 };
 
-// const handleEditUser = (user) => {
-//   if (!user) return toast.error("User not found");
-//   toast.info(`Edit Program Head: ${user.firstName} ${user.lastName}`);
-// };
-
 const searchGlobalFilter = (row, columnId, filterValue) => {
   const id = row.original.id?.toLowerCase() || "";
   const email = row.original.email?.toLowerCase() || "";
@@ -218,9 +213,21 @@ const createColumns = (handleArchiveUser, handleViewProgramHeadProfile) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -232,9 +239,21 @@ const createColumns = (handleArchiveUser, handleViewProgramHeadProfile) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -365,12 +384,11 @@ export default function ProgramHeadsTable() {
   // handle viewing student profile
   const handleViewProgramHeadProfile = (user) => {
     if (!user) {
-      toast.error("User data not found"); 
+      toast.error("User data not found");
       return;
     }
     setSelectedProgramHead(user);
     navigate(`/admin/program-heads/profile`);
-    console.log("User details:", user);
   };
 
   const fetchUsers = async () => {
@@ -475,7 +493,10 @@ export default function ProgramHeadsTable() {
     }
   };
 
-  const columns = createColumns(handleArchiveUser, handleViewProgramHeadProfile);
+  const columns = createColumns(
+    handleArchiveUser,
+    handleViewProgramHeadProfile
+  );
   const table = useReactTable({
     data: users,
     columns,
