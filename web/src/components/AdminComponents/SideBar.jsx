@@ -1,5 +1,4 @@
 import {
-  Calendar,
   LayoutDashboard,
   Settings,
   UsersRound,
@@ -8,12 +7,11 @@ import {
   ChevronRight,
   Archive,
   BookOpen,
-  LibraryBig,
   ChevronsUpDown,
   Bell,
   Layers,
   Building2,
-  LayoutList,
+  BookText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -102,7 +100,7 @@ const items = {
         {
           title: "Department and Course",
           url: "/admin/departmentAndCourse",
-          icon:  Building2,
+          icon: Building2,
           // items: [
           //   {
           //     title: "View Courses",
@@ -135,54 +133,18 @@ const items = {
           //   },
           // ],
         },
-        // {
-        //   title: "Section",
-        //   url: "/admin/section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-        //   title: "Course",
-        //   url: "/admin/course-section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-        //   title: "Course and Section",
-        //   url: "/admin/course-section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-          //   title: "Section",
-          //   url: "#",
-        //   icon: LayoutTemplate,
-        //   items: [
-        //     {
-        //       title: "View Sections",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
+        {
+          title: "Subject",
+          url: "/admin/subject",
+          icon: BookText,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
         // {
         //   title: "Schedules",
         //   url: "/admin/schedules",

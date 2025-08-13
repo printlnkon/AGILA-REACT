@@ -101,17 +101,6 @@ const handleCopyEmployeeNo = (employeeNo) => {
     .catch(() => toast.error("Failed to copy Employee No."));
 };
 
-const handleViewUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Viewing: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Edit Academic Head: ${user.firstName} ${user.lastName}`);
-};
-
 const searchGlobalFilter = (row, columnId, filterValue) => {
   const id = row.original.id?.toLowerCase() || "";
   const email = row.original.email?.toLowerCase() || "";
@@ -226,9 +215,21 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -240,9 +241,21 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -378,7 +391,6 @@ export default function AcademicHeadsTable() {
     }
     setSelectedAcademicHead(user);
     navigate(`/admin/academic-heads/profile`);
-    console.log("User details:", user);
   };
 
   const fetchUsers = async () => {

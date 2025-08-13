@@ -44,12 +44,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const DEPARTMENTS = {
-  IT: "Information Technology",
-  CS: "Computer Science",
-  CPE: "Computer Engineering",
-};
-
 const ROLES = {
   ACADEMIC_HEAD: "Academic Head",
 };
@@ -61,7 +55,6 @@ const INITIAL_FORM_DATA = {
   suffix: "",
   gender: "",
   role: ROLES.ACADEMIC_HEAD,
-  department: "",
 };
 
 const MIN_AGE = 25;
@@ -119,7 +112,6 @@ const validateForm = (formData, date) => {
   if (dateError) errors.dateOfBirth = dateError;
   if (!formData.gender) errors.gender = "Gender is required";
   if (!formData.role) errors.role = "Role is required";
-  if (!formData.department) errors.department = "Department is required";
   return errors;
 };
 
@@ -251,7 +243,6 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
         dateOfBirth: date.toISOString().split("T")[0],
         email,
         password,
-        department: formData.department,
         status: "active",
         role: formData.role,
         createdAt: serverTimestamp(),
@@ -304,11 +295,11 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
           Add Academic Head
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
+      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Add User</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. All fields marked with
+            Add a new user to the system. All fields marked with{" "}
             <span className="text-red-500">*</span> are required.
           </DialogDescription>
         </DialogHeader>
@@ -381,7 +372,7 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
                 <FormError message={formErrors.suffix} />
               </div>
               {/* photo upload */}
-              <div className="space-y-1 md:col-span-4">
+              <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -483,30 +474,6 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
                   </SelectContent>
                 </Select>
                 <FormError message={formErrors.role} />
-              </div>
-              {/* department */}
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                      <SelectItem key={key} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
               </div>
             </div>
           </div>

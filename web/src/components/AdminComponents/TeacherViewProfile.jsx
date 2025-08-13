@@ -213,7 +213,7 @@ export default function TeacherViewProfile() {
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           {/* display profile picture */}
           <Card className="w-full max-w-sm mx-auto lg:mx-0">
-            <CardContent className="p-4 sm:p-6 flex flex-col items-center">
+            <CardContent className="p-4 md:p-1 flex flex-col items-center">
               <img
                 src={
                   selectedTeacher.photoURL ||

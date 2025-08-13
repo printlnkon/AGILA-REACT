@@ -1,8 +1,14 @@
 import { db, auth, storage } from "@/api/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useState, useCallback } from "react";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -43,12 +49,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-const DEPARTMENTS = {
-  IT: "Information Technology",
-  CS: "Computer Science",
-  CPE: "Computer Engineering",
-};
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
   PROGRAM_HEAD: "Program Head",
@@ -62,6 +63,7 @@ const INITIAL_FORM_DATA = {
   gender: "",
   role: ROLES.PROGRAM_HEAD,
   department: "",
+  departmentName: "",
 };
 
 const MIN_AGE = 25;
@@ -124,6 +126,7 @@ const validateForm = (formData, date) => {
 };
 
 export default function AddProgramHeadModal({ onUserAdded }) {
+  const { activeSession, loading: sessionLoading } = useActiveSession();
   const today = new Date();
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [date, setDate] = useState(undefined);
@@ -132,6 +135,37 @@ export default function AddProgramHeadModal({ onUserAdded }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+
+  // fetch departments when the modal opens
+  useEffect(() => {
+    async function fetchDepartments() {
+      if (dialogOpen && activeSession?.id && activeSession?.semesterId) {
+        setIsLoadingDepartments(true);
+        try {
+          const departmentsCollection = collection(
+            db,
+            `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`
+          );
+          const departmentsSnapshot = await getDocs(departmentsCollection);
+          const departmentsList = departmentsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            departmentName: doc.data().departmentName,
+            ...doc.data(),
+          }));
+          setDepartments(departmentsList);
+        } catch (error) {
+          console.error("Error fetching departments:", error);
+          toast.error("Failed to load departments");
+        } finally {
+          setIsLoadingDepartments(false);
+        }
+      }
+    }
+
+    fetchDepartments();
+  }, [dialogOpen, activeSession]);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -251,6 +285,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
         email,
         password,
         department: formData.department,
+        departmentName: formData.departmentName,
         status: "active",
         role: formData.role,
         createdAt: serverTimestamp(),
@@ -263,7 +298,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
       toast.success(
         `User ${formData.firstName} ${formData.lastName} created successfully!`,
         {
-          description: `Added as ${formData.role} in the ${formData.department} department.`,
+          description: `Added as ${formData.role} in the ${formData.departmentName} department.`,
           duration: 5000,
         }
       );
@@ -303,7 +338,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
           Add Program Head
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
+      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Add User</DialogTitle>
           <DialogDescription>
@@ -380,7 +415,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
                 <FormError message={formErrors.suffix} />
               </div>
               {/* photo upload */}
-              <div className="space-y-1 md:col-span-4">
+              <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -393,8 +428,8 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* Gender and Date of Birth */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* gender */}
             <div className="space-y-1">
               <Label htmlFor="gender">
                 Gender <span className="text-red-500">*</span>
@@ -415,6 +450,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="date">
+                {/* date of birth */}
                 Date of Birth <span className="text-red-500">*</span>
               </Label>
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -446,7 +482,71 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* System Access */}
+          {/* academic information */}
+          <div className="flex items-center mb-2">
+            <h3 className="font-medium">Academic Information</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Provide the program head's academic details.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* department */}
+            <div className="space-y-1">
+              <Label htmlFor="department">
+                Assign to Department <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !activeSession ||
+                  isLoadingDepartments ||
+                  departments.length === 0
+                }
+                onValueChange={(value) => {
+                  const dept = departments.find((d) => d.id === value);
+                  handleSelectChange("department", value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    department: value,
+                    departmentName: dept?.departmentName || "",
+                  }));
+                  clearFieldError("department");
+                }}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      sessionLoading || !activeSession
+                        ? "Loading session data..."
+                        : !activeSession.semesterId
+                        ? "No active semester available"
+                        : isLoadingDepartments
+                        ? "Loading departments..."
+                        : departments.length === 0
+                        ? "No departments available"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.departmentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.department} />
+            </div>
+          </div>
+
           <div>
             <div className="flex items-center mb-2">
               <h3 className="font-medium">System Access</h3>
@@ -462,6 +562,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
               </TooltipProvider>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* system access */}
               <div className="space-y-1">
                 <Label htmlFor="role">
                   Role <span className="text-red-500">*</span>
@@ -481,29 +582,6 @@ export default function AddProgramHeadModal({ onUserAdded }) {
                   </SelectContent>
                 </Select>
                 <FormError message={formErrors.role} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                      <SelectItem key={key} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
               </div>
             </div>
           </div>

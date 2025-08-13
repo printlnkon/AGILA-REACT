@@ -29,6 +29,7 @@ import Students from "@/components/AdminComponents/Students";
 import AcademicYearAndSemester from "@/components/AdminComponents/AcademicYearAndSemester";
 import DepartmentAndCourse from "@/components/AdminComponents/DepartmentAndCourse";
 import YearLevelAndSection from "@/components/AdminComponents/YearLevelAndSection";
+import Subject from "@/components/AdminComponents/Subject";
 import Archives from "@/components/AdminComponents/Archives";
 import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadViewProfile";
 import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
@@ -47,6 +48,7 @@ const routeTitles = {
   "/admin/academicYearAndSemester": "AGILA | Admin - School Year and Semester",
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
+  "/admin/subjects": "AGILA | Admin - Subjects",
   "/admin/accounts": "AGILA | Admin - Accounts",
   "/admin/academic-heads": "AGILA | Admin - Academic Heads",
   "/admin/program-heads": "AGILA | Admin - Program Heads",
@@ -85,6 +87,7 @@ function AppContent() {
         <Route path="academicYearAndSemester" element={<AcademicYearAndSemester />}/>
         <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
         <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
+        <Route path="subject" element={<Subject />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="academic-heads" element={<AcademicHeads />} />
         <Route path="program-heads" element={<ProgramHeads />} />

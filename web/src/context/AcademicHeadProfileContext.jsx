@@ -1,3 +1,6 @@
+import { db } from "@/api/firebase";
+import { toast } from "sonner";
+import { doc, updateDoc } from "firebase/firestore";
 import { useEffect, createContext, useContext, useState } from "react";
 
 const AcademicHeadProfileContext = createContext();
@@ -17,15 +20,49 @@ export function AcademicHeadProfileProvider({ children }) {
   const setSelectedAcademicHead = (academicHead) => {
     setSelectedAcademicHeadState(academicHead);
     if (academicHead) {
-      localStorage.setItem("selectedAcademicHead", JSON.stringify(academicHead));
+      localStorage.setItem(
+        "selectedAcademicHead",
+        JSON.stringify(academicHead)
+      );
     } else {
       localStorage.removeItem("selectedAcademicHead");
     }
   };
 
+  // update academic head data in the database
+  const updateAcademicHeadProfile = async (updatedData) => {
+    if (!updatedData || !updatedData.id) {
+      toast.error("Invalid academic head data.");
+      return;
+    }
+
+    try {
+      const academicHeadDocRef = doc(
+        db,
+        "users/academic_head/accounts",
+        updatedData.id
+      );
+      await updateDoc(academicHeadDocRef, {
+        ...updatedData,
+        updatedAt: new Date(),
+      });
+
+      setSelectedAcademicHead(updatedData); // update context state
+      toast.success("Academic head profile updated successfully.");
+      return true;
+    } catch (error) {
+      toast.error("Failed to update academic head profile.");
+      return false;
+    }
+  };
+
   return (
     <AcademicHeadProfileContext.Provider
-      value={{ selectedAcademicHead, setSelectedAcademicHead }}
+      value={{
+        selectedAcademicHead,
+        setSelectedAcademicHead,
+        updateAcademicHeadProfile,
+      }}
     >
       {children}
     </AcademicHeadProfileContext.Provider>
