@@ -1,21 +1,21 @@
-// AcademicYearAndSemesterTable.jsx
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import { CalendarDays, Plus, LoaderCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/api/firebase";
+import { toast } from "sonner";
+import { CalendarDays } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   collection,
   query,
   getDocs,
   doc,
   writeBatch,
+  updateDoc,
   deleteDoc,
   addDoc,
   serverTimestamp,
   orderBy,
 } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
 import AddAcademicYearModal from "@/components/AdminComponents/AddAcademicYearModal";
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
 import AcademicYearCard from "@/components/AdminComponents/AcademicYearCard";
@@ -146,7 +146,7 @@ export default function AcademicYearAndSemesterTable() {
     try {
       await batch.commit();
       toast.success(
-        `"${acadYearToActivate.acadYear}" is now the active academic year.`
+        `${acadYearToActivate.acadYear} is now the active academic year.`
       );
       fetchAcademicData();
     } catch (error) {
@@ -154,6 +154,21 @@ export default function AcademicYearAndSemesterTable() {
       toast.error("Failed to set active academic year.");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleUpdateAcademicYear = async (id, editedYearName) => {
+    try {
+      const acadYearRef = doc(db, "academic_years", id);
+      await updateDoc(acadYearRef, {
+        acadYear: editedYearName,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(`School Year updated to "${editedYearName}"`);
+      fetchAcademicData();
+    } catch (error) {
+      console.error("Error updating academic year: ", error);
+      toast.error("Failed to update academic year.");
     }
   };
 
@@ -238,7 +253,7 @@ export default function AcademicYearAndSemesterTable() {
     try {
       await batch.commit();
       toast.success(
-        `"${semesterToActivate.semesterName}" is now the active semester.`
+        `${semesterToActivate.semesterName} is now the active semester.`
       );
       fetchAcademicData();
     } catch (error) {
@@ -317,6 +332,7 @@ export default function AcademicYearAndSemesterTable() {
               key={acadYear.id}
               acadYear={acadYear}
               onSetActive={handleSetActiveAcademicYear}
+              onUpdate={handleUpdateAcademicYear}
               onDelete={handleDeleteAcademicYear}
               onAddSemesterClick={() => openAddSemesterModal(acadYear)}
               isActivating={actionLoading === acadYear.id}
@@ -324,6 +340,7 @@ export default function AcademicYearAndSemesterTable() {
               handleDeleteSemester={handleDeleteSemester}
               actionLoading={actionLoading}
               onDataRefresh={fetchAcademicData}
+              existingYears={academicYears.map((ay) => ay.acadYear)}
             />
           ))}
         </div>
@@ -331,9 +348,9 @@ export default function AcademicYearAndSemesterTable() {
         <Card className="py-12 mt-4">
           <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
             <CalendarDays className="h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium">No academic years found.</p>
+            <p className="text-lg font-medium">No school years found.</p>
             <p className="text-sm text-muted-foreground">
-              Click "Add Academic Year" to create one.
+              Click "Add School Year" to create one.
             </p>
           </CardContent>
         </Card>

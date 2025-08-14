@@ -1,4 +1,19 @@
+import { db } from "@/api/firebase";
+import { doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Edit,
+  Trash2,
+  X,
+  LoaderCircle,
+  MoreHorizontal,
+  Plus,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -16,19 +31,18 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Form Error component for edit dialog
 const FormError = ({ message }) => {
@@ -57,10 +71,6 @@ const validateForm = (data) => {
     errors.subjectName = "Subject name must be at least 3 characters";
   }
 
-  if (!data.department) {
-    errors.department = "Department is required";
-  }
-
   if (data.units === "" || isNaN(data.units)) {
     errors.units = "Valid unit value is required";
   } else if (Number(data.units) < 1 || Number(data.units) > 6) {
@@ -72,7 +82,6 @@ const validateForm = (data) => {
 
 export default function SubjectCard({
   subject,
-  departments,
   onSubjectUpdated,
   onSubjectDeleted,
 }) {
@@ -86,25 +95,6 @@ export default function SubjectCard({
   const handleChange = (e) => {
     const { id, value } = e.target;
     setSubjectFormData((prev) => ({ ...prev, [id]: value }));
-    if (formErrors[id]) {
-      setFormErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[id];
-        return newErrors;
-      });
-    }
-  };
-
-  // Handle select changes for edit dialog
-  const handleSelectChange = (id, value) => {
-    const dept = departments.find((d) => d.id === value);
-    setSubjectFormData((prev) => ({
-      ...prev,
-      [id]: value,
-      ...(id === "department"
-        ? { departmentName: dept?.departmentName || "" }
-        : {}),
-    }));
     if (formErrors[id]) {
       setFormErrors((prev) => {
         const newErrors = { ...prev };
@@ -131,17 +121,53 @@ export default function SubjectCard({
     }
 
     try {
-      // Mock successful update
-      console.log("Subject updated:", subjectFormData);
+      // Create a clean update object by removing undefined values and metadata fields
+      const {
+        // Remove metadata fields that shouldn't be updated
+        id,
+        academicYearId,
+        semesterId,
+        departmentId,
+        courseId,
+        yearLevelId,
+        departmentName,
+        courseName,
+        yearLevelName, // Remove reference names
+        createdAt,
+        updatedAt, // Remove timestamps if they exist
+        ...updateData
+      } = subjectFormData;
 
-      // Call the parent component's update handler
-      onSubjectUpdated(subjectFormData);
+      // Convert units to number if it exists
+      if (updateData.units) {
+        updateData.units = Number(updateData.units);
+      }
+
+      // Remove any undefined values
+      Object.keys(updateData).forEach((key) => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
+      await updateDoc(
+        doc(
+          db,
+          `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`
+        ),
+        updateData
+      );
+
+      // Include the ID for the parent component
+      onSubjectUpdated({ ...updateData, id: subject.id });
 
       toast.success("Subject updated successfully");
       setEditDialogOpen(false);
     } catch (err) {
       console.error("Error updating subject:", err);
-      toast.error("Failed to update subject");
+      toast.error("Failed to update subject", {
+        description: err.message || "An unexpected error occurred",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -150,10 +176,12 @@ export default function SubjectCard({
   // Handle delete subject confirmation
   const handleDeleteSubject = async () => {
     try {
-      // Mock successful deletion
-      console.log("Subject deleted:", subject.id);
-
-      // Call the parent component's delete handler
+      await deleteDoc(
+        doc(
+          db,
+          `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`
+        )
+      );
       onSubjectDeleted(subject.id);
 
       toast.success("Subject deleted successfully");
@@ -169,56 +197,55 @@ export default function SubjectCard({
       <Card className="w-full transition-all hover:shadow-md">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-lg font-bold">
-                {/* subj name */}
-                {subject.subjectName}
-              </CardTitle>
-              <CardDescription className="text-sm font-mono mt-1">
-                {/* subj code */}
-                {subject.subjectCode}
-                {/* subj description */}
-                {subject.description && (
-                  <div className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                    {subject.description}
-                  </div>
-                )}
-              </CardDescription>
-            </div>
-            <span className="font-medium text-muted-foreground">Units:</span>
-            <span>{subject.units}</span>
+            <CardTitle className="text-xl font-bold">
+              {/* subj name */}
+              {subject.subjectName}
+            </CardTitle>
+            <Badge className="font-medium">Units: {subject.units}</Badge>
           </div>
+          <CardDescription className="flex justify-between items-center">
+            <span>
+              {subject.subjectCode}
+              <br />
+              {subject.description}
+            </span>
+
+            <TooltipProvider>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0 cursor-pointer"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">View More Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setEditDialogOpen(true)}
+                    className="text-primary cursor-pointer"
+                  >
+                    <Edit className="mr-2 h-4 w-4 text-primary" />
+                    <span>Edit</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    <span>Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TooltipProvider>
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1">
-            <div className="text-sm">
-              <span className="font-medium text-muted-foreground">
-                Department:
-              </span>{" "}
-              <span>{subject.departmentName}</span>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="pt-1 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => setEditDialogOpen(true)}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
-        </CardFooter>
       </Card>
 
       {/* edit subject dialog */}
@@ -283,32 +310,6 @@ export default function SubjectCard({
                 />
                 <FormError message={formErrors.units} />
               </div>
-
-              {/* department */}
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                  value={subjectFormData.department}
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.departmentName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
-              </div>
             </div>
 
             {/* description */}
@@ -322,37 +323,27 @@ export default function SubjectCard({
               />
             </div>
 
-            {/* active status */}
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="isActive"
-                checked={subjectFormData.isActive}
-                onCheckedChange={(checked) => {
-                  setSubjectFormData((prev) => ({
-                    ...prev,
-                    isActive: checked,
-                  }));
-                }}
-              />
-              <label
-                htmlFor="isActive"
-                className="text-sm font-medium leading-none cursor-pointer"
-              >
-                Active
-              </label>
-            </div>
-
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                className="cursor-pointer"
                 onClick={() => setEditDialogOpen(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Changes"}
+              <Button className="cursor-pointer" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin">
+                      <LoaderCircle />
+                    </span>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -365,18 +356,26 @@ export default function SubjectCard({
           <DialogHeader>
             <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete **{subject.subjectName} (
-              {subject.subjectCode})**? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <strong>
+                {subject.subjectName} ({subject.subjectCode})
+              </strong>
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 pt-4">
             <Button
-              variant="outline"
+              variant="ghost"
+              className="cursor-pointer"
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteSubject}>
+            <Button
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={handleDeleteSubject}
+            >
               Delete
             </Button>
           </div>

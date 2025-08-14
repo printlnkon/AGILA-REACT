@@ -84,7 +84,10 @@ function AppContent() {
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="academicYearAndSemester" element={<AcademicYearAndSemester />}/>
+        <Route
+          path="academicYearAndSemester"
+          element={<AcademicYearAndSemester />}
+        />
         <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
         <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
         <Route path="subject" element={<Subject />} />
@@ -93,8 +96,8 @@ function AppContent() {
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
-        <Route path="academic-heads/profile" element={<AcademicHeadViewProfile />}/>
-        <Route path="program-heads/profile" element={<ProgramHeadViewProfile />}/>
+        <Route path="academic-heads/profile" element={<AcademicHeadViewProfile />} />
+        <Route path="program-heads/profile" element={<ProgramHeadViewProfile />} />
         <Route path="teachers/profile" element={<TeacherViewProfile />} />
         <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
