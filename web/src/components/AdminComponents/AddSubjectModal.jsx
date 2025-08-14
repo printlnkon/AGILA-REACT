@@ -1,5 +1,13 @@
-// AddSubjectModal.jsx
+
+import { db } from "@/api/firebase";
 import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { X, Plus, } from "lucide-react";
+import { useActiveSession } from "@/context/ActiveSessionContext";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import {
   Dialog,
   DialogTrigger,
@@ -9,10 +17,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,9 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { X, BookText } from "lucide-react";
-import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const INITIAL_SUBJECT_DATA = {
   subjectCode: "",
@@ -45,18 +46,28 @@ const FormError = ({ message }) => {
   );
 };
 
+// Helper function to get year level number for sorting
+const getYearLevelNumber = (name) => {
+  const match = name && name.match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+};
+
 export default function AddSubjectModal({
   isOpen,
   onOpenChange,
   onSubjectAdded,
+  session,
 }) {
   const [subjectFormData, setSubjectFormData] = useState(INITIAL_SUBJECT_DATA);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [departments, setDepartments] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [yearLevels, setYearLevels] = useState([]);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isLoadingYearLevels, setIsLoadingYearLevels] = useState(false);
 
-  // Get the active session from context
   const { activeSession } = useActiveSession();
 
   useEffect(() => {
@@ -67,22 +78,32 @@ export default function AddSubjectModal({
     }
   }, [isOpen]);
 
-  // Mock function to fetch departments - replace with actual API call
+  useEffect(() => {
+    if (session.selectedDeptId && isOpen) {
+      fetchCourses(session.selectedDeptId);
+    } else {
+      setCourses([]);
+    }
+  }, [session.selectedDeptId, isOpen]);
+
+  useEffect(() => {
+    if (session.selectedCourseId && isOpen) {
+      fetchYearLevels(session.selectedDeptId, session.selectedCourseId);
+    } else {
+      setYearLevels([]);
+    }
+  }, [session.selectedCourseId, isOpen]);
+
   const fetchDepartments = async () => {
+    if (!activeSession || !activeSession.semesterId) return;
     setIsLoadingDepartments(true);
     try {
-      // Replace with actual API call
-      // Example: const response = await fetch('/api/departments');
-      // const data = await response.json();
-
-      // Mock data for testing
-      const data = [
-        { id: "1", departmentName: "Computer Science" },
-        { id: "2", departmentName: "Mathematics" },
-        { id: "3", departmentName: "English" },
-        { id: "4", departmentName: "Physics" },
-      ];
-
+      const deptPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
+      const querySnapshot = await getDocs(collection(db, deptPath));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setDepartments(data);
     } catch (err) {
       console.error("Error fetching departments:", err);
@@ -92,7 +113,44 @@ export default function AddSubjectModal({
     }
   };
 
-  // Handle form input changes
+  const fetchCourses = async (deptId) => {
+    if (!activeSession || !activeSession.semesterId || !deptId) return;
+    setIsLoadingCourses(true);
+    try {
+      const coursePath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${deptId}/courses`;
+      const querySnapshot = await getDocs(collection(db, coursePath));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setCourses(data);
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      toast.error("Failed to load courses");
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  const fetchYearLevels = async (deptId, courseId) => {
+    if (!activeSession || !activeSession.semesterId || !deptId || !courseId) return;
+    setIsLoadingYearLevels(true);
+    try {
+      const yearLevelPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${deptId}/courses/${courseId}/year_levels`;
+      const querySnapshot = await getDocs(collection(db, yearLevelPath));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setYearLevels(data);
+    } catch (err) {
+      console.error("Error fetching year levels:", err);
+      toast.error("Failed to load year levels");
+    } finally {
+      setIsLoadingYearLevels(false);
+    }
+  };
+
   const handleChange = (e) => {
     const { id, value } = e.target;
     setSubjectFormData((prev) => ({ ...prev, [id]: value }));
@@ -105,12 +163,10 @@ export default function AddSubjectModal({
     }
   };
 
-  // Handle select changes
-  const handleSelectChange = (id, value, name = "") => {
+  const handleSelectChange = (id, value) => {
     setSubjectFormData((prev) => ({
       ...prev,
       [id]: value,
-      ...(id === "department" ? { departmentName: name } : {}),
     }));
     if (formErrors[id]) {
       setFormErrors((prev) => {
@@ -121,7 +177,6 @@ export default function AddSubjectModal({
     }
   };
 
-  // Validate form
   const validateForm = (data) => {
     const errors = {};
 
@@ -147,10 +202,17 @@ export default function AddSubjectModal({
       errors.units = "Units must be between 1 and 6";
     }
 
+    if (!session.selectedCourseId) {
+      errors.course = "Course is required";
+    }
+
+    if (!session.selectedYearLevelId) {
+      errors.yearLevel = "Year Level is required";
+    }
+
     return errors;
   };
 
-  // Handle add subject form submission
   const handleAddSubject = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -166,26 +228,24 @@ export default function AddSubjectModal({
       return;
     }
 
+    if (!session.selectedYearLevelId) {
+      toast.error("Please select a year level to add a subject.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Replace with actual API call
-      // Example:
-      // const response = await fetch('/api/subjects', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(subjectFormData)
-      // });
-      // if (!response.ok) throw new Error('Failed to add subject');
+      const subjectPath = `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.selectedDeptId}/courses/${session.selectedCourseId}/year_levels/${session.selectedYearLevelId}/subjects`;
 
-      // Mock successful submission
-      console.log("Subject added:", subjectFormData);
-
-      // Add the new subject to the local state with a mock ID
-      const newSubject = {
+      const newSubjectData = {
         ...subjectFormData,
-        id: Date.now().toString(), // Mock ID generation
+        units: Number(subjectFormData.units),
+        createdAt: serverTimestamp(),
       };
 
-      onSubjectAdded(newSubject);
+      const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
+
+      onSubjectAdded({ ...newSubjectData, id: docRef.id });
       toast.success("Subject added successfully");
       onOpenChange(false);
       setSubjectFormData(INITIAL_SUBJECT_DATA);
@@ -197,11 +257,13 @@ export default function AddSubjectModal({
     }
   };
 
+  const isDisabled = !activeSession || isLoadingDepartments || departments.length === 0 || !session.selectedYearLevelId;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
-          <BookText className="h-4 w-4" /> Add Subject
+        <Button className="cursor-pointer" disabled={!session || !session.selectedYearLevelId}>
+          <Plus className="h-4 w-4" /> Add Subject
         </Button>
       </DialogTrigger>
       <DialogContent className="w-full sm:max-w-xl md:max-w-2xl">
@@ -272,18 +334,9 @@ export default function AddSubjectModal({
               </Label>
               <Select
                 required
-                disabled={
-                  !activeSession ||
-                  isLoadingDepartments ||
-                  departments.length === 0
-                }
+                disabled={isDisabled}
                 onValueChange={(value) => {
-                  const dept = departments.find((d) => d.id === value);
-                  handleSelectChange(
-                    "department",
-                    value,
-                    dept?.departmentName || ""
-                  );
+                  handleSelectChange("department", value);
                 }}
                 value={subjectFormData.department}
               >
@@ -293,10 +346,10 @@ export default function AddSubjectModal({
                       !activeSession
                         ? "No active session"
                         : isLoadingDepartments
-                        ? "Loading departments..."
-                        : departments.length === 0
-                        ? "No departments available"
-                        : "Select Department"
+                          ? "Loading departments..."
+                          : departments.length === 0
+                            ? "No departments available"
+                            : "Select Department"
                     }
                   />
                 </SelectTrigger>
@@ -311,6 +364,59 @@ export default function AddSubjectModal({
               <FormError message={formErrors.department} />
             </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* course */}
+            <div className="space-y-1">
+              <Label htmlFor="course">
+                Course <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={!session.selectedDeptId || isLoadingCourses}
+                onValueChange={(value) => handleSelectChange("course", value)}
+                value={subjectFormData.course}
+              >
+                <SelectTrigger id="course" className="w-full">
+                  <SelectValue placeholder="Select Course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.courseName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.course} />
+            </div>
+            {/* year level */}
+            <div className="space-y-1">
+              <Label htmlFor="yearLevel">
+                Year Level <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                required
+                disabled={!session.selectedCourseId || isLoadingYearLevels}
+                onValueChange={(value) => handleSelectChange("yearLevel", value)}
+                value={subjectFormData.yearLevel}
+              >
+                <SelectTrigger id="yearLevel" className="w-full">
+                  <SelectValue placeholder="Select Year Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearLevels
+                    .slice()
+                    .sort((a, b) => getYearLevelNumber(a.yearLevelName) - getYearLevelNumber(b.yearLevelName))
+                    .map((yl) => (
+                      <SelectItem key={yl.id} value={yl.id}>
+                        {yl.yearLevelName}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.yearLevel} />
+            </div>
+          </div>
 
           {/* description */}
           <div className="space-y-1">
@@ -323,36 +429,17 @@ export default function AddSubjectModal({
             />
           </div>
 
-          {/* active status */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isActive"
-              checked={subjectFormData.isActive}
-              onCheckedChange={(checked) => {
-                setSubjectFormData((prev) => ({
-                  ...prev,
-                  isActive: checked,
-                }));
-              }}
-            />
-            <label
-              htmlFor="isActive"
-              className="text-sm font-medium leading-none cursor-pointer"
-            >
-              Active
-            </label>
-          </div>
-
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="cursor-pointer"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="cursor-pointer" disabled={isSubmitting || isDisabled}>
               {isSubmitting ? "Adding..." : "Add Subject"}
             </Button>
           </DialogFooter>

@@ -171,23 +171,26 @@ export default function SubjectCard({
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-lg font-bold">
+                {/* subj name */}
                 {subject.subjectName}
               </CardTitle>
               <CardDescription className="text-sm font-mono mt-1">
+                {/* subj code */}
                 {subject.subjectCode}
+                {/* subj description */}
+                {subject.description && (
+                  <div className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                    {subject.description}
+                  </div>
+                )}
               </CardDescription>
             </div>
-            <Badge variant={subject.isActive ? "default" : "secondary"}>
-              {subject.isActive ? "Active" : "Inactive"}
-            </Badge>
+            <span className="font-medium text-muted-foreground">Units:</span>
+            <span>{subject.units}</span>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-sm">
-              <span className="font-medium text-muted-foreground">Units:</span>{" "}
-              <span>{subject.units}</span>
-            </div>
+          <div className="grid grid-cols-1">
             <div className="text-sm">
               <span className="font-medium text-muted-foreground">
                 Department:
@@ -195,11 +198,6 @@ export default function SubjectCard({
               <span>{subject.departmentName}</span>
             </div>
           </div>
-          {subject.description && (
-            <div className="mt-2 text-sm text-muted-foreground line-clamp-2">
-              {subject.description}
-            </div>
-          )}
         </CardContent>
         <CardFooter className="pt-1 flex justify-end gap-2">
           <Button
