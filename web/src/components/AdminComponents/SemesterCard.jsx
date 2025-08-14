@@ -1,9 +1,12 @@
-// SemesterCard.jsx
 import { useState } from "react";
-import { format } from "date-fns";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/api/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -11,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -40,8 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
 import {
   MoreHorizontal,
   LoaderCircle,
@@ -56,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const getStatusConfig = (status) => {
   const config = {
@@ -80,6 +80,7 @@ export default function SemesterCard({
   academicYearId,
   onDataRefresh,
 }) {
+  const { activeSession } = useActiveSession();
   const statusConfig = getStatusConfig(semester.status);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
@@ -89,6 +90,8 @@ export default function SemesterCard({
     endDate: toDate(semester.endDate),
   });
   const [isSubmitting, setSubmitting] = useState(false);
+
+  const isActiveSemester = semester.status == "Active";
 
   // Sync state with props when the dialog is opened
   const handleEditOpenChange = (isOpen) => {
@@ -174,7 +177,7 @@ export default function SemesterCard({
               </Tooltip>
 
               <DropdownMenuContent align="end">
-                {semester.status !== "Active" && (
+                {!isActiveSemester && (
                   <DropdownMenuItem
                     onClick={() => onSetActive(semester)}
                     className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"

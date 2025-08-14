@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -42,8 +44,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import SemesterCard from "@/components/AdminComponents/SemesterCard";
 
 const toDate = (timestamp) => {
@@ -66,7 +66,6 @@ export default function AcademicYearCard({
   onSetActive,
   onDelete,
   onUpdate,
-  onAcademicYearAdded,
   onAddSemesterClick,
   isActivating,
   handleSetActiveSemester,
@@ -108,16 +107,10 @@ export default function AcademicYearCard({
     }
 
     setLoading(true);
-    // Assuming `onUpdate` is a new prop function passed from the parent
-    const success = await onUpdate(acadYear.id, editedYearName);
+    // prop function passed from the parent
+    await onUpdate(acadYear.id, editedYearName);
     setLoading(false);
-
-    if (success) {
-      toast.success("Academic year updated successfully.");
-      setEditOpen(false);
-    } else {
-      toast.error("Failed to update academic year.");
-    }
+    setEditOpen(false);
   };
 
   return (
@@ -160,7 +153,6 @@ export default function AcademicYearCard({
                 <DropdownMenuItem
                   onClick={() => setEditOpen(true)}
                   className="cursor-pointer"
-                  disabled={acadYear.status === "Active"}
                 >
                   <Edit className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
@@ -172,9 +164,9 @@ export default function AcademicYearCard({
                     >
                       <Check className="mr-2 h-4 w-4" /> Set as Active
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setDeleteOpen(true)}
                   className="cursor-pointer text-destructive"

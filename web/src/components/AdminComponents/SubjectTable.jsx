@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, BookText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,10 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  collection,
-  onSnapshot,
-} from "firebase/firestore";
 import { useActiveSession } from "@/context/ActiveSessionContext";
 import AddSubjectModal from "@/components/AdminComponents/AddSubjectModal";
 import SubjectCard from "@/components/AdminComponents/SubjectCard";
@@ -28,6 +24,7 @@ const getYearLevelNumber = (name) => {
 };
 
 export default function SubjectTable() {
+  const { activeSession, loading: sessionLoading } = useActiveSession();
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -38,22 +35,27 @@ export default function SubjectTable() {
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedYearLevelId, setSelectedYearLevelId] = useState("");
 
-  const { activeSession, loading: sessionLoading } = useActiveSession();
-
   // Effect to get departments for the active session
   useEffect(() => {
-    if (!activeSession || !activeSession.semesterId) {
-      setDepartments([]);
+    if (sessionLoading) {
       return;
     }
+
+    if (!activeSession || !activeSession.semesterId) {
+      setDepartments([]);
+      setLoading(false);
+      return;
+    }
+
     const deptPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
     const unsubscribe = onSnapshot(collection(db, deptPath), (snapshot) => {
       setDepartments(
         snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
       );
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [activeSession]);
+  }, [activeSession, sessionLoading]);
 
   // Effect to get courses when a department is selected
   useEffect(() => {
@@ -77,19 +79,22 @@ export default function SubjectTable() {
       return;
     }
     const yearLevelPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDeptId}/courses/${selectedCourseId}/year_levels`;
-    const unsubscribe = onSnapshot(collection(db, yearLevelPath), (snapshot) => {
-      const levels = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setYearLevels(levels);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, yearLevelPath),
+      (snapshot) => {
+        const levels = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setYearLevels(levels);
+      }
+    );
     return () => unsubscribe();
   }, [selectedCourseId, activeSession, selectedDeptId]);
 
   // Effect to fetch subjects when a year level is selected
   useEffect(() => {
-    if (!selectedYearLevelId) {
+    if (!selectedYearLevelId || !activeSession || !activeSession.semesterId) {
       setSubjects([]);
       setLoading(false);
       return;
@@ -102,6 +107,13 @@ export default function SubjectTable() {
         const fetchedSubjects = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
+          academicYearId: activeSession.id,
+          semesterId: activeSession.semesterId,
+          semesterName: activeSession.semesterName,
+          departmentId: selectedDeptId,
+          departmentName: activeSession.departmentName,
+          courseId: selectedCourseId,
+          yearLevelId: selectedYearLevelId,
         }));
         setSubjects(fetchedSubjects);
         setLoading(false);
@@ -127,9 +139,10 @@ export default function SubjectTable() {
     setSubjects(subjects.filter((subject) => subject.id !== deletedId));
   };
 
-  const isNoActiveSession = !activeSession || !activeSession.id || !activeSession.semesterId;
+  const isNoActiveSession = !activeSession || !activeSession.id;
+  const isNoActiveSemester = activeSession && !activeSession.semesterId;
 
-  if (sessionLoading || loading) {
+  if (loading || sessionLoading) {
     return (
       <div className="w-full">
         <div className="mb-4">
@@ -196,17 +209,20 @@ export default function SubjectTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Subjects for Active School Year and Semester"
-                  : "No Active School Year or Semester"}
+                  ? "Subjects for Active Academic Year and Semester"
+                  : "No Active Academic Year"}
               </p>
               {!isNoActiveSession ? (
                 <p className="text-sm font-bold text-primary">
-                  {activeSession.acadYear} | {activeSession.semesterName}
+                  {activeSession.acadYear} |{" "}
+                  {!isNoActiveSemester
+                    ? activeSession.semesterName
+                    : "No Active Semester"}
                 </p>
               ) : (
                 <p className="text-sm text-destructive">
-                  Please go to the School Year module and set an active session
-                  to manage subjects.
+                  Please go to the Academic Year module and set an active
+                  session to manage subjects.
                 </p>
               )}
             </div>
@@ -214,7 +230,7 @@ export default function SubjectTable() {
         </Card>
       </div>
 
-      {!isNoActiveSession ? (
+      {!isNoActiveSession && !isNoActiveSemester ? (
         <>
           <div className="flex flex-col gap-4 py-4">
             <div>
@@ -224,22 +240,30 @@ export default function SubjectTable() {
                 onSubjectAdded={(newSubject) =>
                   setSubjects([...subjects, newSubject])
                 }
-                session={{ ...activeSession, selectedDeptId, selectedCourseId, selectedYearLevelId }}
+                session={{
+                  ...activeSession,
+                  selectedDeptId,
+                  selectedCourseId,
+                  selectedYearLevelId,
+                }}
               />
             </div>
+            {/* department, year level, and course filters */}
             <Card>
               <CardContent>
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* department filter */}
                   <div className="flex flex-col flex-1">
-                    <Label className="mb-1">Department</Label>
-                    <span className="text-sm text-muted-foreground mb-2">
+                    <Label className="mb-1 text-sm sm:text-base">
+                      Department
+                    </Label>
+                    <span className="text-xs sm:text-sm text-muted-foreground mb-2">
                       Select a department to filter courses.
                     </span>
                     <Select
                       value={selectedDeptId}
                       onValueChange={setSelectedDeptId}
-                      disabled={!activeSession || departments.length === 0}
+                      disabled={departments.length === 0}
                     >
                       <SelectTrigger className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
                         <SelectValue placeholder="Select Department" />
@@ -256,8 +280,9 @@ export default function SubjectTable() {
 
                   {/* course filter */}
                   <div className="flex flex-col flex-1">
-                    <Label className="mb-1">Course</Label>
-                    <span className="text-sm text-muted-foreground mb-2">
+                    <Label className="mb-1 text-sm sm:text-base">Course</Label>{" "}
+                    <span className="text-xs sm:text-sm text-muted-foreground mb-2">
+                      {" "}
                       Select a course to filter year levels.
                     </span>
                     <Select
@@ -280,8 +305,11 @@ export default function SubjectTable() {
 
                   {/* year level filter */}
                   <div className="flex flex-col flex-1">
-                    <Label className="mb-1">Year Level</Label>
-                    <span className="text-sm text-muted-foreground mb-2">
+                    <Label className="mb-1 text-sm sm:text-base">
+                      Year Level
+                    </Label>{" "}
+                    <span className="text-xs sm:text-sm text-muted-foreground mb-2">
+                      {" "}
                       Select a year level to filter subjects.
                     </span>
                     <Select
@@ -293,11 +321,18 @@ export default function SubjectTable() {
                         <SelectValue placeholder="Select Year Level" />
                       </SelectTrigger>
                       <SelectContent>
-                        {yearLevels.map((yl) => (
-                          <SelectItem key={yl.id} value={yl.id}>
-                            {yl.yearLevelName}
-                          </SelectItem>
-                        ))}
+                        {yearLevels
+                          .slice()
+                          .sort(
+                            (a, b) =>
+                              getYearLevelNumber(a.yearLevelName) -
+                              getYearLevelNumber(b.yearLevelName)
+                          )
+                          .map((yl) => (
+                            <SelectItem key={yl.id} value={yl.id}>
+                              {yl.yearLevelName}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -314,7 +349,6 @@ export default function SubjectTable() {
                     <SubjectCard
                       key={subject.id}
                       subject={subject}
-                      departments={departments}
                       onSubjectUpdated={handleSubjectUpdated}
                       onSubjectDeleted={handleSubjectDeleted}
                     />
@@ -322,11 +356,9 @@ export default function SubjectTable() {
                 </div>
               ) : (
                 <Card className="py-12">
-                  <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
+                  <CardContent className="flex flex-col items-center justify-center space-y-2">
                     <BookText className="h-12 w-12 text-muted-foreground" />
-                    <p className="text-lg font-medium">
-                      No subjects found.
-                    </p>
+                    <p className="text-lg font-medium">No subjects found.</p>
                     <p className="text-center text-muted-foreground">
                       Click "Add Subject" to get started.
                     </p>
@@ -335,19 +367,31 @@ export default function SubjectTable() {
               )
             ) : (
               <Card className="py-12">
-                <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
+                <CardContent className="flex flex-col items-center justify-center space-y-2">
                   <BookText className="h-12 w-12 text-muted-foreground" />
                   <p className="text-lg font-medium">
                     No department, course, and year level selected.
                   </p>
                   <p className="text-center text-muted-foreground">
-                    Please select a department, course, and year level to see subjects.
+                    Please select a department, course, and year level to see
+                    subjects.
                   </p>
                 </CardContent>
               </Card>
             )}
           </div>
         </>
+      ) : isNoActiveSemester && !isNoActiveSession ? (
+        <Card className="py-12">
+          <CardContent className="flex flex-col items-center justify-center space-y-2">
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <p className="text-lg font-medium">No Active Semester</p>
+            <p className="text-center text-muted-foreground">
+              Please set an active semester in the Academic Year module to
+              manage subjects.
+            </p>
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );
