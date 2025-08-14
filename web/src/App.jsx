@@ -48,7 +48,7 @@ const routeTitles = {
   "/admin/academicYearAndSemester": "AGILA | Admin - School Year and Semester",
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
-  "/admin/subjects": "AGILA | Admin - Subjects",
+  "/admin/subject": "AGILA | Admin - Subjects",
   "/admin/accounts": "AGILA | Admin - Accounts",
   "/admin/academic-heads": "AGILA | Admin - Academic Heads",
   "/admin/program-heads": "AGILA | Admin - Program Heads",
