@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { isValid } from "date-fns";
 import {
   collection,
   getDocs,
@@ -82,6 +83,7 @@ import {
 } from "@/components/ui/pagination";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -259,10 +261,17 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else {
+        date = new Date(timestamp);
+      }
+
+      if (!isValid(date)) return <div>-</div>;
+
       return <div>{format(date, "MMMM do, yyyy")}</div>;
-    },
+    }
   },
 
   // last updated
@@ -274,10 +283,17 @@ const createColumns = (handleArchiveUser) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else {
+        date = new Date(timestamp);
+      }
+
+      if (!isValid(date)) return <div>-</div>;
+
       return <div>{format(date, "MMMM do, yyyy")}</div>;
-    },
+    }
   },
 
   // status column
@@ -401,6 +417,8 @@ export default function StudentsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState(null);
 
   const handleArchiveUser = async (user) => {
     if (!user || !user.id || !user.role) {
@@ -707,7 +725,13 @@ export default function StudentsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddStudentModal onUserAdded={fetchUsers} />
+        <AddStudentModal
+          onUserAdded={(userInfo) => {
+            fetchUsers();
+            setNewUserInfo(userInfo); // trigger face dialog
+            setShowFaceDialog(true);
+          }}
+        />
         <AddUserBulkUpload />
 
         {/* archive selected button */}
@@ -717,7 +741,7 @@ export default function StudentsTable() {
               variant="ghost"
               size="sm"
               onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer"
+              className="text-amber-600 hover:text-amber-800 cursor-pointer" 
             >
               <X />
               Clear selection
@@ -1058,6 +1082,12 @@ export default function StudentsTable() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {/* Face Recognition Dialog */}
+          <FaceRecognition
+            open={showFaceDialog}
+            onClose={() => setShowFaceDialog(false)}
+            userInfo={newUserInfo}
+          />
         </div>
       </div>
     </div>

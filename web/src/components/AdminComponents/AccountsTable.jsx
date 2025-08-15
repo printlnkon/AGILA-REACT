@@ -79,7 +79,9 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import { isValid } from "date-fns";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
+import TryRecognition from "@/components/AdminComponents/TestRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -238,33 +240,47 @@ const createColumns = (handleArchiveUser) => [
 
   // date created
   {
-    id: "Date Created",
-    accessorKey: "createdAt",
-    header: "Date Created",
-    cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      id: "Date Created",
+      accessorKey: "createdAt",
+      header: "Date Created",
+      cell: ({ row }) => {
+        const timestamp = row.original.createdAt;
+        if (!timestamp) return <div>-</div>;
+  
+        let date;
+        if (timestamp.toDate) {
+          date = timestamp.toDate();
+        } else {
+          date = new Date(timestamp);
+        }
+  
+        if (!isValid(date)) return <div>-</div>;
+  
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      }
     },
-  },
 
   // last updated
   {
-    id: "Last Updated",
-    accessorKey: "updatedAt",
-    header: "Last Updated",
-    cell: ({ row }) => {
-      const timestamp = row.original.updatedAt;
-      if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      id: "Last Updated",
+      accessorKey: "updatedAt",
+      header: "Last Updated",
+      cell: ({ row }) => {
+        const timestamp = row.original.updatedAt;
+        if (!timestamp) return <div>-</div>;
+  
+        let date;
+        if (timestamp.toDate) {
+          date = timestamp.toDate();
+        } else {
+          date = new Date(timestamp);
+        }
+  
+        if (!isValid(date)) return <div>-</div>;
+  
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      }
     },
-  },
 
   // status column
   {
@@ -729,6 +745,9 @@ export default function AccountsTable() {
             </Button>
           </div>
         )}
+
+        {/* try recog */}
+        <TryRecognition />
 
         {/* export format */}
         <ExportExcelFormat />

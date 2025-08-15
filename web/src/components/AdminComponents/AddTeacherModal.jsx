@@ -267,7 +267,14 @@ export default function AddTeacherModal({ onUserAdded }) {
         }
       );
 
-      if (onUserAdded) onUserAdded();
+      if (onUserAdded) onUserAdded({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: email,
+        employeeNumber,
+        id: userId
+      });
+      
       handleDialogChange(false);
     } catch (error) {
       console.error("Error creating user:", error);

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { isValid } from "date-fns";
 import {
   collection,
   getDocs,
@@ -82,6 +83,7 @@ import {
 } from "@/components/ui/pagination";
 import AddProgramHeadModal from "@/components/AdminComponents/AddProgramHeadModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) return toast.error("Employee No. not found");
@@ -207,32 +209,46 @@ const createColumns = (handleArchiveUser) => [
   },
 
   {
-    id: "Date Created",
-    accessorKey: "createdAt",
-    header: "Date Created",
-    cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      id: "Date Created",
+      accessorKey: "createdAt",
+      header: "Date Created",
+      cell: ({ row }) => {
+        const timestamp = row.original.createdAt;
+        if (!timestamp) return <div>-</div>;
+  
+        let date;
+        if (timestamp.toDate) {
+          date = timestamp.toDate();
+        } else {
+          date = new Date(timestamp);
+        }
+  
+        if (!isValid(date)) return <div>-</div>;
+  
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      }
     },
-  },
 
   {
-    id: "Last Updated",
-    accessorKey: "updatedAt",
-    header: "Last Updated",
-    cell: ({ row }) => {
-      const timestamp = row.original.updatedAt;
-      if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      id: "Last Updated",
+      accessorKey: "updatedAt",
+      header: "Last Updated",
+      cell: ({ row }) => {
+        const timestamp = row.original.updatedAt;
+        if (!timestamp) return <div>-</div>;
+  
+        let date;
+        if (timestamp.toDate) {
+          date = timestamp.toDate();
+        } else {
+          date = new Date(timestamp);
+        }
+  
+        if (!isValid(date)) return <div>-</div>;
+  
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      }
     },
-  },
 
   {
     accessorKey: "status",
@@ -350,6 +366,8 @@ export default function ProgramHeadsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -612,7 +630,13 @@ export default function ProgramHeadsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddProgramHeadModal onUserAdded={fetchUsers} />
+        <AddProgramHeadModal
+          onUserAdded={(userInfo) => {
+            fetchUsers();
+            setNewUserInfo(userInfo);
+            setShowFaceDialog(true);
+          }}
+        />
         <AddUserBulkUpload role="program_head" onUserAdded={fetchUsers} />
 
         {/* archive selected button */}
@@ -966,6 +990,12 @@ export default function ProgramHeadsTable() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {/* Face Recognition Dialog */}
+          <FaceRecognition
+            open={showFaceDialog}
+            onClose={() => setShowFaceDialog(false)}
+            userInfo={newUserInfo}
+          />
         </div>
       </div>
     </div>
