@@ -291,12 +291,60 @@ export default function AcademicYearAndSemesterTable() {
     setAddSemesterModalOpen(true);
   };
 
+  // Loading Skeleton Component
+  const LoadingSkeleton = () => {
+    return (
+      <div className="w-full p-4 space-y-4">
+        <div className="mb-4">
+          {/* header */}
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="mt-2 h-4 w-80" />
+        </div>
+        <div className="flex items-center gap-2 py-4">
+          <Skeleton className="h-9 w-40" />
+        </div>
+        {/* skeleton for academicyearcard */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-9 w-full mt-2" />
+              {/* skeleton for semestercard */}
+              <div className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="border rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="border rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <LoadingSkeleton />;
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
@@ -358,51 +406,3 @@ export default function AcademicYearAndSemesterTable() {
     </div>
   );
 }
-
-// Loading Skeleton Component
-const LoadingSkeleton = () => {
-  return (
-    <div className="w-full">
-      <div className="mb-4">
-        {/* header */}
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="mt-2 h-4 w-80" />
-      </div>
-      <div className="flex items-center gap-2 py-4">
-        <Skeleton className="h-9 w-40" />
-      </div>
-      {/* skeleton for academicyearcard */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {[...Array(2)].map((_, i) => (
-          <div key={i} className="border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-7 w-32" />
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-9 w-full mt-2" />
-            {/* skeleton for semestercard */}
-            <div className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};

@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, Layers } from "lucide-react";
@@ -139,7 +140,7 @@ export default function YearLevelAndSectionTable() {
 
   if (loading || sessionLoading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
@@ -203,7 +204,7 @@ export default function YearLevelAndSectionTable() {
   const isNoActiveSemester = activeSession && !activeSession.semesterId;
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Year Level and Section</h1>
@@ -262,6 +263,10 @@ export default function YearLevelAndSectionTable() {
             </div>
             {/* department and course filters */}
             <Card>
+              <CardHeader>
+                <CardTitle>Filter Year Level and Section</CardTitle>
+              </CardHeader>
+              <Separator />
               <CardContent>
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* department filter */}

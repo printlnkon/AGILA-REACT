@@ -20,7 +20,9 @@ import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Attendance from "@/components/StudentComponents/Attendance";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
+import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
+import ViewClassList from "@/components/AdminComponents/ViewClassList";
 import Schedules from "@/components/AdminComponents/Schedules";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
@@ -35,6 +37,7 @@ import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadVi
 import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
 import TeacherViewProfile from "@/components/AdminComponents/TeacherViewProfile";
 import StudentViewProfile from "@/components/AdminComponents/StudentViewProfile";
+import { ClassListProvider } from "@/context/ClassListContext";
 import { ActiveSessionProvider } from "@/context/ActiveSessionContext";
 import { AcademicHeadProfileProvider } from "@/context/AcademicHeadProfileContext";
 import { ProgramHeadProfileProvider } from "@/context/ProgramHeadProfileContext";
@@ -45,6 +48,8 @@ const routeTitles = {
   "/login": "AGILA | Login",
   "/": "AGILA | Welcome",
   "/admin": "AGILA | Admin - Dashboard",
+  "/admin/classes": "AGILA | Admin - Classes",
+  "/admin/classes/view": "AGILA | Admin - View Class List",
   "/admin/academicYearAndSemester": "AGILA | Admin - School Year and Semester",
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
@@ -84,6 +89,8 @@ function AppContent() {
         }
       >
         <Route index element={<AdminDashboard />} />
+        <Route path="classes" element={<Classes />}></Route>
+        <Route path="classes/view" element={<ViewClassList />} />
         <Route
           path="academicYearAndSemester"
           element={<AcademicYearAndSemester />}
@@ -96,8 +103,14 @@ function AppContent() {
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
-        <Route path="academic-heads/profile" element={<AcademicHeadViewProfile />} />
-        <Route path="program-heads/profile" element={<ProgramHeadViewProfile />} />
+        <Route
+          path="academic-heads/profile"
+          element={<AcademicHeadViewProfile />}
+        />
+        <Route
+          path="program-heads/profile"
+          element={<ProgramHeadViewProfile />}
+        />
         <Route path="teachers/profile" element={<TeacherViewProfile />} />
         <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
@@ -159,9 +172,11 @@ function App() {
               <ProgramHeadProfileProvider>
                 <TeacherProfileProvider>
                   <StudentProfileProvider>
-                    <Router>
-                      <AppContent />
-                    </Router>
+                    <ClassListProvider>
+                      <Router>
+                        <AppContent />
+                      </Router>
+                    </ClassListProvider>
                   </StudentProfileProvider>
                 </TeacherProfileProvider>
               </ProgramHeadProfileProvider>
