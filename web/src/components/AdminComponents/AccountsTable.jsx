@@ -612,7 +612,7 @@ export default function AccountsTable() {
 
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
@@ -738,7 +738,7 @@ export default function AccountsTable() {
 
   // main content
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>

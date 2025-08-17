@@ -120,7 +120,9 @@ export default function SectionList({ yearLevel, course, session }) {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <h4 className="font-semibold text-lg">Sections</h4>
-          <Badge className="rounded-md">{sections.length}</Badge>
+          <Badge className="rounded-md">
+            Total Sections: {sections.length}
+          </Badge>
         </div>
 
         {sections.length === 0 && !loading && (
@@ -220,9 +222,7 @@ export default function SectionList({ yearLevel, course, session }) {
                   Saving...
                 </>
               ) : (
-                <>
-                  <Check /> Save Changes
-                </>
+                <>Save Changes</>
               )}
             </Button>
           </DialogFooter>
@@ -263,9 +263,7 @@ export default function SectionList({ yearLevel, course, session }) {
                   Deleting...
                 </>
               ) : (
-                <>
-                  <Trash2 /> Delete
-                </>
+                <>Delete</>
               )}
             </Button>
           </DialogFooter>

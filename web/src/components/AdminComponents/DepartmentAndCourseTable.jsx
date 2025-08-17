@@ -83,7 +83,7 @@ export default function DepartmentAndCourseTable() {
 
   if (loading || sessionLoading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
@@ -134,7 +134,7 @@ export default function DepartmentAndCourseTable() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Department and Course</h1>

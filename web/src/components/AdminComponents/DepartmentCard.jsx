@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -115,6 +116,7 @@ export default function DepartmentCard({ department, onDelete }) {
               {department.departmentName}
             </CardTitle>
             <div className="flex items-center gap-2">
+              
               <TooltipProvider>
                 <DropdownMenu>
                   <Tooltip>

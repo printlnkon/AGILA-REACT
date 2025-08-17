@@ -23,6 +23,7 @@ export default function Header() {
 
   const customBreadcrumbNames = {
     // admin paths
+    "classes": "Classes",
     "academicYearAndSemester": "School Year and Semester",
     "departmentAndCourse": "Department and Course",
     "yearLevelAndSection": "Year Level and Section",
@@ -36,10 +37,11 @@ export default function Header() {
   };
 
   const viewProfileBreadcrumbs = {
+    "classes": "Class List",
     "academic-heads": "Academic Head Profile",
     "program-heads": "Program Head Profile",
-    students: "Student Profile",
-    teachers: "Teacher Profile",
+    "students": "Student Profile",
+    "teachers": "Teacher Profile",
   };
 
   // function to capitalize the first letter

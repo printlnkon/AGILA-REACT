@@ -519,7 +519,7 @@ export default function TeachersTable() {
 
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
@@ -641,7 +641,7 @@ export default function TeachersTable() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>

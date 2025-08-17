@@ -74,7 +74,7 @@ export default function AcademicHeadViewProfile() {
 
   // view profile mode
   return (
-    <div className="w-full">
+    <div className="w-full p-4 lg:p-6">
       <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
         <div className="grid auto-rows-min gap-4">
           <div className="flex items-center justify-between">

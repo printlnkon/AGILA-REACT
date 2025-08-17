@@ -214,12 +214,12 @@ export default function StudentViewProfile() {
 
   // view profile mode
   return (
-    <div className="w-full">
+    <div className="w-full p-4 lg:p-6">
       <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
         <div className="grid auto-rows-min gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Student Profile</h1>
+              <h1 className="text-2xl sm:text-2xl font-bold">Student Profile</h1>
               <p className="text-sm text-muted-foreground">
                 View student details.
               </p>

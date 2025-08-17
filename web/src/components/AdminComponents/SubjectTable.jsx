@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Info, AlertTriangle, BookText } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -144,7 +145,8 @@ export default function SubjectTable() {
 
   if (loading || sessionLoading) {
     return (
-      <div className="w-full">
+      // header loading
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
@@ -155,6 +157,28 @@ export default function SubjectTable() {
         <div className="flex items-center gap-2 py-4">
           <Skeleton className="h-9 w-28" />
         </div>
+
+        {/* filter loading */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <Separator />
+          <CardContent className="py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+              {Array(3)
+                .fill(0)
+                .map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-2">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+        {/* content loading */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
           {Array(3)
             .fill(0)
@@ -165,20 +189,14 @@ export default function SubjectTable() {
               >
                 <div className="flex justify-between items-start pb-2">
                   <div>
-                    <Skeleton className="h-6 w-32 mb-1" />
-                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-6 w-32 mb-4" />
+                    <Skeleton className="h-4 w-40 mb-1" />
+                    <Skeleton className="h-4 w-46" />
                   </div>
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-5 w-16 rounded-full" />
                     <Skeleton className="h-8 w-8 rounded-md" />
                   </div>
-                </div>
-                <div className="flex-grow pb-2">
-                  <Skeleton className="h-8 w-full mb-2" />
-                  <Skeleton className="h-8 w-full mb-2" />
-                </div>
-                <div>
-                  <Skeleton className="h-9 w-32" />
                 </div>
               </div>
             ))}
@@ -188,7 +206,7 @@ export default function SubjectTable() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Subjects</h1>
@@ -250,6 +268,10 @@ export default function SubjectTable() {
             </div>
             {/* department, year level, and course filters */}
             <Card>
+              <CardHeader>
+                <CardTitle>Filter Subjects</CardTitle>
+              </CardHeader>
+              <Separator />
               <CardContent>
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* department filter */}

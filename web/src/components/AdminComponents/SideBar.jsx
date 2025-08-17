@@ -12,6 +12,7 @@ import {
   Layers,
   Building2,
   BookText,
+  LayoutList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,17 @@ const items = {
           title: "Home",
           url: "/admin",
           icon: LayoutDashboard,
+        },
+      ],
+    },
+    {
+      title: "Classes",
+      url: "#",
+      items: [
+        {
+          title: "Classes",
+          url: "/admin/classes",
+          icon: LayoutList,
         },
       ],
     },
