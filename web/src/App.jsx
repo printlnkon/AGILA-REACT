@@ -23,7 +23,6 @@ import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
 import ViewClassList from "@/components/AdminComponents/ViewClassList";
-import Schedules from "@/components/AdminComponents/Schedules";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
@@ -32,6 +31,7 @@ import AcademicYearAndSemester from "@/components/AdminComponents/AcademicYearAn
 import DepartmentAndCourse from "@/components/AdminComponents/DepartmentAndCourse";
 import YearLevelAndSection from "@/components/AdminComponents/YearLevelAndSection";
 import Subject from "@/components/AdminComponents/Subject";
+import Schedule from "@/components/AdminComponents/Schedule";
 import Archives from "@/components/AdminComponents/Archives";
 import AcademicHeadViewProfile from "@/components/AdminComponents/AcademicHeadViewProfile";
 import ProgramHeadViewProfile from "@/components/AdminComponents/ProgramHeadViewProfile";
@@ -54,6 +54,7 @@ const routeTitles = {
   "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
   "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
   "/admin/subject": "AGILA | Admin - Subjects",
+  "/admin/schedule": "AGILA | Admin - Schedule",
   "/admin/accounts": "AGILA | Admin - Accounts",
   "/admin/academic-heads": "AGILA | Admin - Academic Heads",
   "/admin/program-heads": "AGILA | Admin - Program Heads",
@@ -98,6 +99,7 @@ function AppContent() {
         <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
         <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
         <Route path="subject" element={<Subject />} />
+        <Route path="schedule" element={<Schedule />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="academic-heads" element={<AcademicHeads />} />
         <Route path="program-heads" element={<ProgramHeads />} />
@@ -114,7 +116,6 @@ function AppContent() {
         <Route path="teachers/profile" element={<TeacherViewProfile />} />
         <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
-        <Route path="schedules" element={<Schedules />} />
       </Route>
 
       <Route
