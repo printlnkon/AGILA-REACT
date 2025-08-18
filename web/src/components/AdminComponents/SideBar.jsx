@@ -13,6 +13,7 @@ import {
   Building2,
   BookText,
   LayoutList,
+  CalendarCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -149,6 +150,18 @@ const items = {
           title: "Subject",
           url: "/admin/subject",
           icon: BookText,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
+        {
+          title: "Schedule",
+          url: "/admin/schedule",
+          icon: CalendarCheck,
           // items: [
           //   {
           //     title: "View Courses",

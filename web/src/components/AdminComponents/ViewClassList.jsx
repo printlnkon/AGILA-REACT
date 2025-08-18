@@ -199,13 +199,12 @@ export default function ViewClassList() {
               </ScrollArea>
             </Card>
           ) : (
-            <Card className="py-16">
+            <Card>
               <CardContent className="flex flex-col items-center justify-center space-y-3">
-                <Users className="h-16 w-16 text-muted-foreground opacity-20" />
-                <p className="text-xl font-medium">No students found</p>
+                <Users className="h-16 w-16" />
+                <p className="text-xl font-medium">No students found.</p>
                 <p className="text-center text-muted-foreground max-w-md">
-                  There are no students enrolled in this section yet. Students
-                  will appear here once they are assigned to this section.
+                  There are no students enrolled in this section yet.
                 </p>
               </CardContent>
             </Card>

@@ -381,9 +381,9 @@ export default function AddTeacherModal({ onUserAdded }) {
       const password = `@${formData.lastName
         .charAt(0)
         .toUpperCase()}${formData.lastName.slice(1)}.${format(
-        date,
-        "yyyyddMM"
-      )}`;
+          date,
+          "yyyyddMM"
+        )}`;
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -595,9 +595,8 @@ export default function AddTeacherModal({ onUserAdded }) {
                   <Button
                     variant="outline"
                     id="date"
-                    className={`w-full justify-between ${
-                      !date ? "text-muted-foreground" : ""
-                    }`}
+                    className={`w-full justify-between ${!date ? "text-muted-foreground" : ""
+                      }`}
                   >
                     {date ? format(date, "PPP") : "Select a date"}
                     <CalendarIcon className="h-4 w-4" />
@@ -659,8 +658,8 @@ export default function AddTeacherModal({ onUserAdded }) {
                       !activeSession
                         ? "No active session"
                         : departments.length === 0
-                        ? "No departments available"
-                        : "Select Department"
+                          ? "No departments available"
+                          : "Select Department"
                     }
                   />
                 </SelectTrigger>
@@ -695,8 +694,8 @@ export default function AddTeacherModal({ onUserAdded }) {
                       !formData.department
                         ? "Select department first"
                         : courses.length === 0
-                        ? "No courses available"
-                        : "Select Course"
+                          ? "No courses available"
+                          : "Select Course"
                     }
                   />
                 </SelectTrigger>
@@ -735,8 +734,8 @@ export default function AddTeacherModal({ onUserAdded }) {
                       !formData.course
                         ? "Select course first"
                         : yearLevels.length === 0
-                        ? "No year levels available"
-                        : "Select Year Level"
+                          ? "No year levels available"
+                          : "Select Year Level"
                     }
                   />
                 </SelectTrigger>
@@ -787,17 +786,33 @@ export default function AddTeacherModal({ onUserAdded }) {
                       !formData.course
                         ? "Select course first"
                         : sections.length === 0
-                        ? "No sections available"
-                        : "Select Section"
+                          ? "No sections available"
+                          : "Select Section"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {sections.map((section) => (
-                    <SelectItem key={section.id} value={section.id}>
-                      {section.sectionName}
-                    </SelectItem>
-                  ))}
+                  {sections.sort((a, b) => {
+                    // extract number from section names (e.g., "BT-101" => 101)
+                    const getSectionNumber = (name) => {
+                      const match = name.match(/\d+/);
+                      return match ? parseInt(match[0], 10) : 0;
+                    };
+                    // sort section prefix (e.g, "BT")
+                    const prefixA = a.sectionName.split("-")[0];
+                    const prefixB = b.sectionName.split("-")[0];
+                    if (prefixA !== prefixB) {
+                      return prefixA.localeCompare(prefixB);
+                    }
+
+                    // sort by section number
+                    return getSectionNumber(a.sectionName) - getSectionNumber(b.sectionName)
+                  })
+                    .map((section) => (
+                      <SelectItem key={section.id} value={section.id}>
+                        {section.sectionName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <FormError message={formErrors.section} />
