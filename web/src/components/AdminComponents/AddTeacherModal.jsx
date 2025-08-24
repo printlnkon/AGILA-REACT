@@ -879,7 +879,7 @@ export default function AddTeacherModal({ onUserAdded }) {
                   Adding User...
                 </>
               ) : (
-                "Add User"
+                "Add"
               )}
             </Button>
           </div>

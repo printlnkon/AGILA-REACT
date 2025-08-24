@@ -252,7 +252,7 @@ export default function YearLevelAndSectionTable() {
       {!isNoActiveSession && !isNoActiveSemester ? (
         <>
           {/* department filter */}
-          <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-4">
             {/* add year level btn */}
             <div>
               <AddYearLevelModal
@@ -366,7 +366,7 @@ export default function YearLevelAndSectionTable() {
                 <CardContent className="flex flex-col items-center justify-center space-y-2">
                   <Layers className="h-12 w-12 text-muted-foreground" />
                   <p className="text-lg font-medium">
-                    No department and course selected.
+                    No filters selected.
                   </p>
                   <p className="text-center text-muted-foreground">
                     Please select a department and course to see the year levels

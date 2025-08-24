@@ -390,14 +390,9 @@ export default function ArchiveTable() {
         const lastName = row.original.lastName || "";
         const initials =
           (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-        const gender = row.original.gender;
-        const defaultPhoto =
-          gender === "Female"
-            ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-            : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
         return (
           <Avatar className="w-10 h-10">
-            <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+            <AvatarImage src={photoURL || initials} alt="Student Photo" />
             <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
           </Avatar>
         );
@@ -559,7 +554,7 @@ export default function ArchiveTable() {
                     }}
                     className="cursor-pointer"
                   >
-                    <Trash2 /> Delete Permanently
+                    Delete Permanently
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -596,7 +591,7 @@ export default function ArchiveTable() {
                       setShowRestoreDialog(false);
                     }}
                   >
-                    <RotateCcw /> Restore
+                    Restore
                   </Button>
                 </DialogFooter>
               </DialogContent>

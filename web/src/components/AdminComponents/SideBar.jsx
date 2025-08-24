@@ -13,7 +13,7 @@ import {
   Building2,
   BookText,
   LayoutList,
-  CalendarCheck,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -161,14 +161,14 @@ const items = {
         {
           title: "Schedule",
           url: "/admin/schedule",
-          icon: CalendarCheck,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
+          icon: CalendarDays,
+          items: [
+            {
+              title: "Rooms",
+              url: "#",
+              // icon: UsersRound,
+            },
+          ],
         },
         // {
         //   title: "Schedules",

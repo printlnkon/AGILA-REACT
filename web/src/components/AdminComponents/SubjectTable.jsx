@@ -227,8 +227,8 @@ export default function SubjectTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Subjects for Active Academic Year and Semester"
-                  : "No Active Academic Year"}
+                  ? "Subjects for Active School Year and Semester"
+                  : "No Active School Year"}
               </p>
               {!isNoActiveSession ? (
                 <p className="text-sm font-bold text-primary">
@@ -239,8 +239,8 @@ export default function SubjectTable() {
                 </p>
               ) : (
                 <p className="text-sm text-destructive">
-                  Please go to the Academic Year module and set an active
-                  session to manage subjects.
+                  Please go to the School Year module and set an active session
+                  to manage subjects.
                 </p>
               )}
             </div>
@@ -250,7 +250,7 @@ export default function SubjectTable() {
 
       {!isNoActiveSession && !isNoActiveSemester ? (
         <>
-          <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-4">
             <div>
               <AddSubjectModal
                 isOpen={addDialogOpen}
@@ -273,7 +273,7 @@ export default function SubjectTable() {
               </CardHeader>
               <Separator />
               <CardContent>
-                <div className="flex flex-col md:flex-row gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4">
                   {/* department filter */}
                   <div className="flex flex-col flex-1">
                     <Label className="mb-1 text-sm sm:text-base">
@@ -304,7 +304,6 @@ export default function SubjectTable() {
                   <div className="flex flex-col flex-1">
                     <Label className="mb-1 text-sm sm:text-base">Course</Label>{" "}
                     <span className="text-xs sm:text-sm text-muted-foreground mb-2">
-                      {" "}
                       Select a course to filter year levels.
                     </span>
                     <Select
@@ -329,9 +328,8 @@ export default function SubjectTable() {
                   <div className="flex flex-col flex-1">
                     <Label className="mb-1 text-sm sm:text-base">
                       Year Level
-                    </Label>{" "}
+                    </Label>
                     <span className="text-xs sm:text-sm text-muted-foreground mb-2">
-                      {" "}
                       Select a year level to filter subjects.
                     </span>
                     <Select
@@ -391,9 +389,7 @@ export default function SubjectTable() {
               <Card className="py-12">
                 <CardContent className="flex flex-col items-center justify-center space-y-2">
                   <BookText className="h-12 w-12 text-muted-foreground" />
-                  <p className="text-lg font-medium">
-                    No department, course, and year level selected.
-                  </p>
+                  <p className="text-lg font-medium">No filters selected.</p>
                   <p className="text-center text-muted-foreground">
                     Please select a department, course, and year level to see
                     subjects.
@@ -409,8 +405,8 @@ export default function SubjectTable() {
             <AlertTriangle className="h-12 w-12 text-destructive" />
             <p className="text-lg font-medium">No Active Semester</p>
             <p className="text-center text-muted-foreground">
-              Please set an active semester in the Academic Year module to
-              manage subjects.
+              Please set an active semester in the School Year module to manage
+              subjects.
             </p>
           </CardContent>
         </Card>

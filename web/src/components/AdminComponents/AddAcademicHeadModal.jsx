@@ -501,7 +501,7 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
                   Adding User...
                 </>
               ) : (
-                "Add User"
+                "Add"
               )}
             </Button>
           </div>

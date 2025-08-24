@@ -288,7 +288,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
               )}
             </CardContent>
             {/* cancel and upload btn */}
-            <CardFooter className="flex justify-end">
+            <CardFooter className="flex justify-end gap-2">
               <DialogClose asChild>
                 <Button
                   variant="ghost"
@@ -313,9 +313,7 @@ export default function AddUserBulkUpload({ role = "student", onUserAdded }) {
                     Uploading...
                   </>
                 ) : (
-                  <>
-                    <Upload /> Upload
-                  </>
+                  <>Upload</>
                 )}
               </Button>
             </CardFooter>

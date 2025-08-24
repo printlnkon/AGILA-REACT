@@ -215,7 +215,7 @@ export default function AddSubjectModal({
               className="cursor-pointer"
               disabled={isDisabled}
             >
-              {isSubmitting ? "Adding..." : "Add Subject"}
+              {isSubmitting ? "Adding..." : "Add"}
             </Button>
           </DialogFooter>
         </form>

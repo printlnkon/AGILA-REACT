@@ -5,9 +5,9 @@ const ClassListContext = createContext(null);
 export function ClassListProvider({ children }) {
   const [selectedSection, setSelectedSection] = useState(null);
   const [filterState, setFilterState] = useState({
-    yearLevel: "all",
-    department: "all",
-    course: "all",
+    yearLevel: "",
+    department: "",
+    course: "",
     // can add any other filters
   });
 
