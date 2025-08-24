@@ -1,6 +1,6 @@
 // src/components/ThemeColorPicker.jsx
 
-import { Check, Palette, ChevronDown } from "lucide-react";
+import { Check, Palette } from "lucide-react";
 import { useTheme } from "@/context/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import {

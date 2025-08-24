@@ -1,5 +1,10 @@
+import React from "react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Card } from "@/components/ui/card";
+import { useLocation, Link } from "react-router-dom";
+import { ThemeToggle } from "@/utils/ThemeToggle";
+import { ThemeToggleDropdown } from "@/utils/ThemeToggleDropdown";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,13 +13,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useLocation, Link } from "react-router-dom";
-import React from "react";
-import { ThemeToggle } from "@/utils/ThemeToggle";
 
 export default function Header() {
   const location = useLocation();
-  const pathnames = location.pathname.split("/").filter((x) => x);
+  // filter out empty strings from the path, and also the base 'teacher' path
+  const pathnames = location.pathname
+    .split("/")
+    .filter((x) => x && x !== "teacher");
 
   const customBreadcrumbNames = {
     "attendance": "Attendance",
@@ -22,51 +27,105 @@ export default function Header() {
   };
 
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const showInitialSeparator = pathnames.length > 1;
+  // const showInitialSeparator = pathnames.length > 1;
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b">
-      <div className="flex items-center gap-2 px-3">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/teacher">Home</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            {showInitialSeparator && <BreadcrumbSeparator />}
-            {pathnames.map((value, index) => {
-              const isLast = index === pathnames.length - 1;
-              const to = `/${pathnames.slice(0, index + 1).join("/")}`;
-              const name = customBreadcrumbNames[value] || capitalize(value.replace(/-/g, " "));
+    <Card className="sticky top-2 p-0 z-10">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-3 sm:px-4">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-6 hidden sm:block" />
+          <Breadcrumb className="hidden md:flex">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/teacher">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {pathnames.length > 0 && <BreadcrumbSeparator />}
+              {pathnames.map((value, index) => {
+                const isLast = index === pathnames.length - 1;
+                // reconstruct the path up to the current item
+                const to = `/teacher/${pathnames
+                  .slice(0, index + 1)
+                  .join("/")}`;
 
-              if (value.toLowerCase() === "teacher" && index === 0) {
-                return null;
-              }
+                const name =
+                  customBreadcrumbNames[value] ||
+                  capitalize(value.replace(/-/g, " "));
 
-              return (
-                <React.Fragment key={to}>
-                  <BreadcrumbItem>
-                    {isLast ? (
-                      <BreadcrumbPage>{name}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link to={to}>{name}</Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                  {!isLast && <BreadcrumbSeparator />}
-                </React.Fragment>
-              );
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-      <div className="flex items-center gap-2 pr-3">
-        <ThemeToggle />
-      </div>
-    </header>
+                return (
+                  <React.Fragment key={to}>
+                    <BreadcrumbItem>
+                      {isLast ? (
+                        <BreadcrumbPage>{name}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link to={to}>{name}</Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                    {!isLast && <BreadcrumbSeparator />}
+                  </React.Fragment>
+                );
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          {/* mobile breadcrumbs (visible only on small screens) */}
+          <div className="flex items-center gap-1 md:hidden">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link to="/teacher">Home</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {pathnames.length > 1 && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>...</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+                {pathnames.length > 0 && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>
+                        {(() => {
+                          const lastValue = pathnames[pathnames.length - 1];
+                          const secondLastValue =
+                            pathnames[pathnames.length - 2];
+                          if (customBreadcrumbNames[secondLastValue]) {
+                            return customBreadcrumbNames[secondLastValue];
+                          }
+                          return (
+                            customBreadcrumbNames[lastValue] ||
+                            capitalize(lastValue.replace(/-/g, " "))
+                          );
+                        })()}
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* show different theme toggles based on screen size */}
+          <div className="hidden sm:flex items-center gap-2">
+            <ThemeToggleDropdown /> <ThemeToggle />
+          </div>
+          {/* show theme toggle only on small screens */}
+          <div className="flex sm:hidden items-center">
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+    </Card>
   );
 }

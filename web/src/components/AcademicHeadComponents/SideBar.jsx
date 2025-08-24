@@ -11,8 +11,7 @@ import {
   ChevronsUpDown,
   Bell,
   User2,
-  Building,
-  Calendar,
+  ClipboardList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -44,7 +43,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/context/AuthContext";
 
-// navigation items for the student
+// navigation items for the academic head
 const items = {
   navMain: [
     {
@@ -53,7 +52,7 @@ const items = {
       items: [
         {
           title: "Home",
-          url: "/student",
+          url: "/academic-head",
           icon: LayoutDashboard,
         },
       ],
@@ -64,19 +63,14 @@ const items = {
       items: [
         {
           title: "Attendance",
-          url: "/student/attendance",
+          url: "/academic-head/attendance",
           icon: User2,
         },
-        {
-          title: "Lorem Ipsum",
-          url: "#",
-          icon: Building,
-        },
-        {
-          title: "Class Schedule",
-          url: "#",
-          icon: Calendar,
-        },
+        // {
+        //   title: "Request",
+        //   url: "/academic-head/request",
+        //   icon: ClipboardList,
+        // },
       ],
     },
   ],
@@ -179,12 +173,12 @@ export default function SideBar() {
 
   // determine if the menu item is active
   const isActive = (url) => {
-    if (url === "/student") {
-      return location.pathname === "/student";
+    if (url === "/academic-head") {
+      return location.pathname === "/academic-head";
     }
     return (
       location.pathname === url ||
-      (location.pathname.startsWith(url + "/") && url !== "/student")
+      (location.pathname.startsWith(url + "/") && url !== "/academic-head")
     );
   };
 
@@ -196,7 +190,7 @@ export default function SideBar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link to="/student">
+                <Link to="/academic-head">
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <GalleryVerticalEnd className="size-4" />
                   </div>
