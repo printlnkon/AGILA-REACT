@@ -108,12 +108,15 @@ export default function AddDepartmentModal({ activeSession, disabled }) {
         <DialogHeader>
           <DialogTitle>Add Department</DialogTitle>
           <DialogDescription>
-            Enter a name for the new department. Click save when you're done.
+            Add a new department. All fields marked with{" "}
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="departmentName">Department Name</Label>
+            <Label htmlFor="departmentName">
+              Department <span className="text-destructive">*</span>{" "}
+            </Label>
             <Input
               id="departmentName"
               value={newDepartmentName}

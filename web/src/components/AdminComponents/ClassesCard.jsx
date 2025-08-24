@@ -30,22 +30,26 @@ export default function ClassesCard({ sections = [] }) {
         </TabsList>
         <TabsContent value="class">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-            {sections.sort((a, b) => {
-              // extract number from section names (e.g., "BT-101" => 101)
-              const getSectionNumber = (name) => {
-                const match = name.match(/\d+/);
-                return match ? parseInt(match[0], 10) : 0;
-              };
-              // sort section prefix (e.g, "BT")
-              const prefixA = a.sectionName.split("-")[0];
-              const prefixB = b.sectionName.split("-")[0];
-              if (prefixA !== prefixB) {
-                return prefixA.localeCompare(prefixB);
-              }
+            {sections
+              .sort((a, b) => {
+                // extract number from section names (e.g., "BT-101" => 101)
+                const getSectionNumber = (name) => {
+                  const match = name.match(/\d+/);
+                  return match ? parseInt(match[0], 10) : 0;
+                };
+                // sort section prefix (e.g, "BT")
+                const prefixA = a.sectionName.split("-")[0];
+                const prefixB = b.sectionName.split("-")[0];
+                if (prefixA !== prefixB) {
+                  return prefixA.localeCompare(prefixB);
+                }
 
-              // sort by section number
-              return getSectionNumber(a.sectionName) - getSectionNumber(b.sectionName)
-            })
+                // sort by section number
+                return (
+                  getSectionNumber(a.sectionName) -
+                  getSectionNumber(b.sectionName)
+                );
+              })
               .map((section) => (
                 <Card key={section.id} className="overflow-hidden h-auto">
                   <CardHeader>
@@ -82,8 +86,6 @@ export default function ClassesCard({ sections = [] }) {
                   </CardHeader>
                 </Card>
               ))}
-
-
           </div>
         </TabsContent>
       </Tabs>

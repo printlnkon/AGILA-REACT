@@ -949,7 +949,7 @@ export default function AddStudentModal({ onUserAdded }) {
                   Adding User...
                 </>
               ) : (
-                "Add User"
+                "Add"
               )}
             </Button>
           </div>

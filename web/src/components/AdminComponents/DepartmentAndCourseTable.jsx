@@ -169,8 +169,8 @@ export default function DepartmentAndCourseTable() {
                 </p>
               ) : (
                 <p className="text-sm text-destructive">
-                  Please go to the School Year module and set an active
-                  session to manage departments and courses.
+                  Please go to the School Year module and set an active session
+                  to manage departments and courses.
                 </p>
               )}
             </div>
@@ -181,7 +181,7 @@ export default function DepartmentAndCourseTable() {
       {/* only show the add department button and content if there's an active academic year and semester */}
       {!isNoActiveSession && !isNoActiveSemester ? (
         <>
-          <div className="flex items-center py-4 gap-2">
+          <div className="flex items-center gap-2">
             <AddDepartmentModal
               activeSession={activeSession}
               disabled={isNoActiveSession || isNoActiveSemester}
@@ -216,8 +216,8 @@ export default function DepartmentAndCourseTable() {
             <AlertTriangle className="h-12 w-12 text-destructive" />
             <p className="text-lg font-medium">No Active Semester</p>
             <p className="text-center text-muted-foreground">
-              Please set an active semester in the School Year module to
-              manage departments and courses.
+              Please set an active semester in the School Year module to manage
+              departments and courses.
             </p>
           </CardContent>
         </Card>

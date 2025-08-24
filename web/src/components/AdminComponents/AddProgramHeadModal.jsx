@@ -609,7 +609,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
                   Adding User...
                 </>
               ) : (
-                "Add User"
+                "Add"
               )}
             </Button>
           </div>

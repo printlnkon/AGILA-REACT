@@ -252,8 +252,8 @@ export default function ClassesTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Classes for Active Academic Year and Semester"
-                  : "No Active Academic Year"}
+                  ? "Classes for Active School Year and Semester"
+                  : "No Active School Year"}
               </p>
               {!isNoActiveSession ? (
                 <p className="text-sm font-bold text-primary">
@@ -288,7 +288,7 @@ export default function ClassesTable() {
               {/* department filter */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department" className="mb-1">Department</Label>
                   <span className="text-xs sm:text-sm text-muted-foreground mb-2">
                     Select a department to filter courses.
                   </span>
@@ -297,7 +297,7 @@ export default function ClassesTable() {
                     onValueChange={setSelectedDeptId}
                     disabled={departments.length === 0}
                   >
-                    <SelectTrigger id="department" className="w-full">
+                    <SelectTrigger id="department" className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
                       <SelectValue placeholder="Select Department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -311,7 +311,7 @@ export default function ClassesTable() {
                 </div>
                 {/* course filter */}
                 <div className="flex flex-col space-y-2">
-                  <Label htmlFor="course">Course</Label>
+                  <Label htmlFor="course" className="mb-1">Course</Label>
                   <span className="text-xs sm:text-sm text-muted-foreground mb-2">
                     Select a course to filter year levels.
                   </span>
@@ -320,7 +320,7 @@ export default function ClassesTable() {
                     onValueChange={setSelectedCourseId}
                     disabled={!selectedDeptId || courses.length === 0}
                   >
-                    <SelectTrigger id="course" className="w-full">
+                    <SelectTrigger id="course" className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
                       <SelectValue placeholder="Select Course" />
                     </SelectTrigger>
                     <SelectContent>
@@ -334,7 +334,7 @@ export default function ClassesTable() {
                 </div>
                 {/* year level filter */}
                 <div className="flex flex-col space-y-2">
-                  <Label htmlFor="year-level">Year Level</Label>
+                  <Label htmlFor="year-level" className="mb-1">Year Level</Label>
                   <span className="text-xs sm:text-sm text-muted-foreground mb-2">
                     Select a year level to filter classes.
                   </span>
@@ -343,7 +343,7 @@ export default function ClassesTable() {
                     onValueChange={setSelectedYearLevelId}
                     disabled={!selectedCourseId || yearLevels.length === 0}
                   >
-                    <SelectTrigger id="year-level" className="w-full">
+                    <SelectTrigger id="year-level" className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
                       <SelectValue placeholder="Select Year Level" />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,7 +386,7 @@ export default function ClassesTable() {
               <CardContent className="flex flex-col items-center justify-center space-y-2">
                 <BookText className="h-12 w-12 text-muted-foreground" />
                 <p className="text-lg font-medium">
-                  No department, course, and year level selected.
+                  No filters selected.
                 </p>
                 <p className="text-center text-muted-foreground">
                   Please select a department, course, and year level to see
@@ -402,7 +402,7 @@ export default function ClassesTable() {
             <AlertTriangle className="h-12 w-12 text-destructive" />
             <p className="text-lg font-medium">No Active Semester</p>
             <p className="text-center text-muted-foreground">
-              Please set an active semester in the Academic Year module to
+              Please set an active semester in the School Year module to
               manage classes.
             </p>
           </CardContent>
