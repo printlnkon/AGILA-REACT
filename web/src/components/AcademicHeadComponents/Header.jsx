@@ -16,10 +16,10 @@ import {
 
 export default function Header() {
   const location = useLocation();
-  // filter out empty strings from the path, and also the base 'student' path
+  // filter out empty strings from the path, and also the base 'academic-head' path
   const pathnames = location.pathname
     .split("/")
-    .filter((x) => x && x !== "student");
+    .filter((x) => x && x !== "academic-head");
 
   const customBreadcrumbNames = {
     "attendance": "Attendance",
@@ -31,31 +31,27 @@ export default function Header() {
   return (
     <Card className="sticky top-2 p-0 z-10">
       <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-3 sm:px-4">
-        <div className="flex items-center gap-2 px-3">
+        <div className="flex items-center gap-2 overflow-hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6 hidden sm:block" />
           <Breadcrumb className="hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/student">Home</Link>
+                  <Link to="/academic-head">Home</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {pathnames.length > 0 && <BreadcrumbSeparator />}
               {pathnames.map((value, index) => {
                 const isLast = index === pathnames.length - 1;
                 // reconstruct the path up to the current item
-                const to = `/student/${pathnames
+                const to = `/academic-head/${pathnames
                   .slice(0, index + 1)
                   .join("/")}`;
 
                 const name =
                   customBreadcrumbNames[value] ||
                   capitalize(value.replace(/-/g, " "));
-
-                if (value.toLowerCase() === "student" && index === 0) {
-                  return null;
-                }
 
                 return (
                   <React.Fragment key={to}>
@@ -81,7 +77,7 @@ export default function Header() {
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/student">Home</Link>
+                    <Link to="/academic-head">Home</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {pathnames.length > 1 && (

@@ -18,12 +18,14 @@ import Teacher from "@/pages/Teacher/Teacher";
 import ProgramHead from "@/pages/ProgramHead/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
-import Attendance from "@/components/StudentComponents/Attendance";
+import StudentAttendance from "@/components/StudentComponents/Attendance";
 import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
-import TeacherAttendance from "@/components/TeacherComponents/Attendance"; 
+import TeacherAttendance from "@/components/TeacherComponents/Attendance";
 import TeacherRequest from "@/components/TeacherComponents/Request";
+import AcademicHeadDashboard from "@/components/AcademicHeadComponents/AcademicHeadDashboard";
+import AcademicHeadAttendance from "@/components/AcademicHeadComponents/Attendance";
 import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
-import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance"; 
+import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance";
 import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
@@ -51,14 +53,16 @@ import { StudentProfileProvider } from "@/context/StudentProfileContext";
 import { TeacherProfileProvider } from "@/context/TeacherProfileContext";
 
 const routeTitles = {
-  "/login": "AGILA | Login",
+  // public title route
   "/": "AGILA | Welcome",
+  "/login": "AGILA | Login",
+  // admin title route
   "/admin": "AGILA | Admin - Dashboard",
   "/admin/classes": "AGILA | Admin - Classes",
   "/admin/classes/view": "AGILA | Admin - View Class List",
-  "/admin/academicYearAndSemester": "AGILA | Admin - School Year and Semester",
-  "/admin/departmentAndCourse": "AGILA | Admin - Department and Course",
-  "/admin/yearLevelAndSection": "AGILA | Admin - Year Level and Section",
+  "/admin/academic-year-semester": "AGILA | Admin - School Year & Semester",
+  "/admin/department-course": "AGILA | Admin - Department & Course",
+  "/admin/year-level-section": "AGILA | Admin - Year Level & Section",
   "/admin/subject": "AGILA | Admin - Subjects",
   "/admin/schedule": "AGILA | Admin - Schedule",
   "/admin/accounts": "AGILA | Admin - Accounts",
@@ -70,6 +74,20 @@ const routeTitles = {
   "/admin/teachers/profile": "AGILA | Admin - Teacher Profile",
   "/admin/students/profile": "AGILA | Admin - Student Profile",
   "/admin/archives": "AGILA | Admin - Archives",
+  // academic head title route
+  "/academic-head": "AGILA | Academic Head - Dashboard",
+  "/academic-head/attendance": "AGILA | Academic Head - Attendance",
+  // program head title route
+  "/program-head": "AGILA | Program Head - Dashboard",
+  "/program-head/attendance": "AGILA | Program Head - Attendance",
+  "/program-head/request": "AGILA | Program Head - Request",
+  // teacher title route
+  "/teacher": "AGILA | Teacher - Dashboard",
+  "/teacher/attendance": "AGILA | Teacher - Attendance",
+  "/teacher/request": "AGILA | Teacher - Request",
+  // student title route
+  "/student": "AGILA | Student - Dashboard",
+  "/student/attendance": "AGILA | Student - Attendance",
 };
 
 function AppContent() {
@@ -77,33 +95,25 @@ function AppContent() {
 
   useEffect(() => {
     const path = location.pathname;
-    const title = routeTitles[path] || "AGILA"; // default title
+    const title = routeTitles[path] || "AGILA";
     document.title = title || "AGILA"; // default title
   }, [location]);
 
   return (
     <Routes>
+      {/* public routes */}
       <Route path="/" element={<HomePage />} />
-      <Route path="/homepage" element={<HomePage />} />
+      <Route path="*" element={<PageNotFound />} />
       <Route path="/login" element={<LoginPage />} />
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute roles={["admin"]}>
-            <Admin />
-          </ProtectedRoute>
-        }
-      >
+      {/* admin routes */}
+      <Route path="/admin" element={<ProtectedRoute roles={["admin"]}><Admin /></ProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
         <Route path="classes" element={<Classes />}></Route>
         <Route path="classes/view" element={<ViewClassList />} />
-        <Route
-          path="academicYearAndSemester"
-          element={<AcademicYearAndSemester />}
-        />
-        <Route path="departmentAndCourse" element={<DepartmentAndCourse />} />
-        <Route path="yearLevelAndSection" element={<YearLevelAndSection />} />
+        <Route path="academic-year-semester" element={<AcademicYearAndSemester />} />
+        <Route path="department-course" element={<DepartmentAndCourse />} />
+        <Route path="year-level-section" element={<YearLevelAndSection />} />
         <Route path="subject" element={<Subject />} />
         <Route path="schedule" element={<Schedule />} />
         <Route path="accounts" element={<Accounts />} />
@@ -111,67 +121,38 @@ function AppContent() {
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
         <Route path="students" element={<Students />} />
-        <Route
-          path="academic-heads/profile"
-          element={<AcademicHeadViewProfile />}
-        />
-        <Route
-          path="program-heads/profile"
-          element={<ProgramHeadViewProfile />}
-        />
+        <Route path="academic-heads/profile" element={<AcademicHeadViewProfile />} />
+        <Route path="program-heads/profile" element={<ProgramHeadViewProfile />} />
         <Route path="teachers/profile" element={<TeacherViewProfile />} />
         <Route path="students/profile" element={<StudentViewProfile />} />
         <Route path="archives" element={<Archives />} />
       </Route>
 
-      <Route
-        path="/student"
-        element={
-          <ProtectedRoute roles={["student"]}>
-            <Student />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<StudentDashboard />} />
-        <Route path="attendance" element={<Attendance />} />
+      {/* academic head routes */}
+      <Route path="/academic-head" element={<ProtectedRoute roles={["academic_head"]}><AcademicHead /></ProtectedRoute>}>
+        <Route index element={<AcademicHeadDashboard />} />
+        <Route path="attendance" element={<AcademicHeadAttendance />} />
       </Route>
 
-      <Route
-        path="/teacher"
-        element={
-          <ProtectedRoute roles={["teacher"]}>
-            <Teacher />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<TeacherDashboard />} />
-        <Route path="attendance" element={<TeacherAttendance />} />
-        <Route path="request" element={<TeacherRequest />} />
-      </Route>
-
-      <Route
-        path="/program_head"
-        element={
-          <ProtectedRoute roles={["program_head"]}>
-            <ProgramHead />
-          </ProtectedRoute>
-        }
-      >
+      {/* program head routes */}
+      <Route path="/program-head" element={<ProtectedRoute roles={["program_head"]}><ProgramHead /></ProtectedRoute>}>
         <Route index element={<ProgramHeadDashboard />} />
         <Route path="attendance" element={<ProgramHeadAttendance />} />
         <Route path="request" element={<ProgramHeadRequest />} />
       </Route>
 
-      <Route
-        path="/academic_head"
-        element={
-          <ProtectedRoute roles={["academic_head"]}>
-            <AcademicHead />
-          </ProtectedRoute>
-        }
-      ></Route>
+      {/* teacher routes */}
+      <Route path="/teacher" element={<ProtectedRoute roles={["teacher"]}><Teacher /></ProtectedRoute>}>
+        <Route index element={<TeacherDashboard />} />
+        <Route path="attendance" element={<TeacherAttendance />} />
+        <Route path="request" element={<TeacherRequest />} />
+      </Route>
 
-      <Route path="*" element={<PageNotFound />} />
+      {/* student routes */}
+      <Route path="/student" element={<ProtectedRoute roles={["student"]}><Student /></ProtectedRoute>}>
+        <Route index element={<StudentDashboard />} />
+        <Route path="attendance" element={<StudentAttendance />} />
+      </Route>
     </Routes>
   );
 }
