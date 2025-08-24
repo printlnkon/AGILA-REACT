@@ -14,11 +14,17 @@ import HomePage from "@/pages/Homepage/HomePage";
 import LoginPage from "@/pages/Login/LoginPage";
 import Admin from "@/pages/Admin/Admin";
 import Student from "@/pages/Student/Student";
-import Teacher from "@/pages/Teacher";
-import ProgramHead from "@/pages/ProgramHead";
+import Teacher from "@/pages/Teacher/Teacher";
+import ProgramHead from "@/pages/ProgramHead/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import Attendance from "@/components/StudentComponents/Attendance";
+import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
+import TeacherAttendance from "@/components/TeacherComponents/Attendance"; 
+import TeacherRequest from "@/components/TeacherComponents/Request";
+import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
+import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance"; 
+import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
@@ -137,7 +143,11 @@ function AppContent() {
             <Teacher />
           </ProtectedRoute>
         }
-      ></Route>
+      >
+        <Route index element={<TeacherDashboard />} />
+        <Route path="attendance" element={<TeacherAttendance />} />
+        <Route path="request" element={<TeacherRequest />} />
+      </Route>
 
       <Route
         path="/program_head"
@@ -146,7 +156,11 @@ function AppContent() {
             <ProgramHead />
           </ProtectedRoute>
         }
-      ></Route>
+      >
+        <Route index element={<ProgramHeadDashboard />} />
+        <Route path="attendance" element={<ProgramHeadAttendance />} />
+        <Route path="request" element={<ProgramHeadRequest />} />
+      </Route>
 
       <Route
         path="/academic_head"
