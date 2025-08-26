@@ -96,9 +96,6 @@ export default function AddAcademicYearModal({
     setLoading(false);
 
     if (success) {
-      toast.success(
-        `Academic year ${nextAcademicYear} has been added successfully.`
-      );
       onOpenChange(false);
     }
   };
