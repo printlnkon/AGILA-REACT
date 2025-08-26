@@ -21,6 +21,7 @@ import {
   CircleAlert,
   CalendarIcon,
   LoaderCircle,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -37,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -49,6 +51,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
 import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
@@ -78,7 +81,7 @@ const MAX_AGE = 70;
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="flex items-center text-red-500 text-sm mt-1">
+    <div className="flex items-center text-destructive text-sm mt-1">
       <CircleAlert className="h-3 w-3 mr-1" />
       {message}
     </div>
@@ -110,12 +113,11 @@ const validateDateOfBirth = (date) => {
 
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
-  const monthDiff = today.getMonth() - date.getMonth();
 
+  const monthDiff = today.getMonth() - date.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
     age--;
   }
-
   if (age < MIN_AGE) return `User must be at least ${MIN_AGE} years old`;
   if (age > MAX_AGE) return `Please enter a valid date of birth`;
 
@@ -143,7 +145,6 @@ const validateForm = (formData, date) => {
   const dateError = validateDateOfBirth(date);
   if (dateError) errors.dateOfBirth = dateError;
   if (!formData.gender) errors.gender = "Gender is required";
-  if (!formData.role) errors.role = "Role is required";
   if (!formData.department) errors.department = "Department is required";
   if (!formData.course) errors.course = "Course is required";
   if (!formData.yearLevel) errors.yearLevel = "Year level is required";
@@ -173,7 +174,7 @@ export default function AddStudentModal({ onUserAdded }) {
   // Fetch departments when dialog opens and activeSession is available
   useEffect(() => {
     if (!dialogOpen || !activeSession) {
-      return () => { };
+      return () => {};
     }
 
     setIsLoading(true);
@@ -207,7 +208,7 @@ export default function AddStudentModal({ onUserAdded }) {
   useEffect(() => {
     if (!formData.department || !activeSession) {
       setCourses([]);
-      return () => { };
+      return () => {};
     }
 
     setIsLoading(true);
@@ -238,7 +239,7 @@ export default function AddStudentModal({ onUserAdded }) {
   useEffect(() => {
     if (!formData.department || !formData.course || !activeSession) {
       setYearLevels([]);
-      return () => { };
+      return () => {};
     }
 
     setIsLoading(true);
@@ -274,7 +275,7 @@ export default function AddStudentModal({ onUserAdded }) {
       !activeSession
     ) {
       setSections([]);
-      return () => { };
+      return () => {};
     }
 
     setIsLoading(true);
@@ -410,7 +411,7 @@ export default function AddStudentModal({ onUserAdded }) {
     if (!activeSession) {
       toast.error("Active academic session not found. Cannot add student.", {
         description:
-          "Please ensure an active academic year and semester are set.",
+          "Please ensure an active school year and semester are set.",
         duration: 5000,
       });
       setIsSubmitting(false);
@@ -425,10 +426,11 @@ export default function AddStudentModal({ onUserAdded }) {
       const password = `@${formData.lastName
         .charAt(0)
         .toUpperCase()}${formData.lastName.slice(1)}.${format(
-          date,
-          "yyyyddMM"
-        )}`;
+        date,
+        "yyyyddMM"
+      )}`;
 
+      // upload photo in firebase storage
       let photoURL = "";
       if (photo) {
         const photoRef = ref(
@@ -466,20 +468,20 @@ export default function AddStudentModal({ onUserAdded }) {
         section: formData.section,
         sectionName: formData.sectionName,
         status: "active",
-        role: formData.role,
+        role: ROLES.STUDENT,
         academicYearId: activeSession.id,
         semesterId: activeSession.semesterId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const rolePath = formData.role.toLowerCase().replace(" ", "_");
+      const rolePath = ROLES.STUDENT.toLowerCase().replace(" ", "_");
       await setDoc(doc(db, `users/${rolePath}/accounts`, userId), userData);
 
       toast.success(
-        `User ${formData.firstName} ${formData.lastName} created successfully!`,
+        `Student ${formData.firstName} ${formData.lastName} created successfully!`,
         {
-          description: `Added as ${formData.role} in the ${formData.departmentName}.`,
+          description: `Added to the ${formData.courseName} ${formData.yearLevelName} ${formData.sectionName}.`,
           duration: 5000,
         }
       );
@@ -488,7 +490,7 @@ export default function AddStudentModal({ onUserAdded }) {
       handleDialogChange(false);
     } catch (error) {
       console.error("Error creating user:", error);
-      let errorMessage = "Failed to create user.";
+      let errorMessage = "Failed to create student.";
       let errorDescription = error.message;
 
       if (error.code === "auth/email-already-in-use") {
@@ -524,27 +526,32 @@ export default function AddStudentModal({ onUserAdded }) {
       </DialogTrigger>
       <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="text-xl">Add User</DialogTitle>
+          <DialogTitle className="text-xl">Add Student</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. All fields marked with{" "}
-            <span className="text-red-500">*</span> are required.
+            Add a new student to the system. All fields marked with{" "}
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
 
         {!activeSession && !sessionLoading && (
-          <div className="bg-amber-50 border border-amber-200 rounded p-3 text-amber-800">
-            <p className="font-medium">No active academic session found</p>
-            <p className="text-sm mt-1">
-              Please set an academic year and semester as active in the Academic
-              Year &amp; Semester section.
-            </p>
-          </div>
+          <Card>
+            <CardContent className="flex items-start gap-3">
+              <AlertTriangle className="h-8 w-8 mt-2 flex-shrink-0 text-destructive" />
+              <div>
+                <p className="font-medium">No Active School Year</p>
+                <p className="text-sm text-destructive">
+                  Please set a school year and semester as active in the School
+                  Year &amp; Semester module to add Student account.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {sessionLoading && (
           <div className="text-center py-3">
             <LoaderCircle className="animate-spin inline mr-2" />
-            Loading academic session...
+            Loading school year...
           </div>
         )}
 
@@ -568,7 +575,7 @@ export default function AddStudentModal({ onUserAdded }) {
               {/* first name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="firstName">
-                  First Name <span className="text-red-500">*</span>
+                  First Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="firstName"
@@ -593,7 +600,7 @@ export default function AddStudentModal({ onUserAdded }) {
               {/* last name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="lastName">
-                  Last Name <span className="text-red-500">*</span>
+                  Last Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="lastName"
@@ -632,7 +639,7 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* gender */}
             <div className="space-y-1">
               <Label htmlFor="gender">
-                Gender <span className="text-red-500">*</span>
+                Gender <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -652,15 +659,16 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* date of birth */}
             <div className="space-y-1">
               <Label htmlFor="date">
-                Date of Birth <span className="text-red-500">*</span>
+                Date of Birth <span className="text-destructive">*</span>
               </Label>
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     id="date"
-                    className={`w-full justify-between ${!date ? "text-muted-foreground" : ""
-                      }`}
+                    className={`w-full justify-between ${
+                      !date ? "text-muted-foreground" : ""
+                    }`}
                   >
                     {date ? format(date, "PPP") : "Select a date"}
                     <CalendarIcon className="h-4 w-4" />
@@ -701,7 +709,7 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* department */}
             <div className="space-y-1">
               <Label htmlFor="department">
-                Assign to Department <span className="text-red-500">*</span>
+                Assign to Department <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -722,10 +730,10 @@ export default function AddStudentModal({ onUserAdded }) {
                       !activeSession
                         ? "No active session"
                         : isLoading
-                          ? "Loading departments..."
-                          : departments.length === 0
-                            ? "No departments available"
-                            : "Select Department"
+                        ? "Loading departments..."
+                        : departments.length === 0
+                        ? "No departments available"
+                        : "Select Department"
                     }
                   />
                 </SelectTrigger>
@@ -742,7 +750,7 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* course */}
             <div className="space-y-1">
               <Label htmlFor="course">
-                Assign to Course <span className="text-red-500">*</span>
+                Assign to Course <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -759,10 +767,10 @@ export default function AddStudentModal({ onUserAdded }) {
                       !formData.department
                         ? "Select department first"
                         : isLoading
-                          ? "Loading courses..."
-                          : courses.length === 0
-                            ? "No courses available"
-                            : "Select Course"
+                        ? "Loading courses..."
+                        : courses.length === 0
+                        ? "No courses available"
+                        : "Select Course"
                     }
                   />
                 </SelectTrigger>
@@ -783,7 +791,7 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* year level */}
             <div className="space-y-1">
               <Label htmlFor="yearLevel">
-                Assign to Year Level <span className="text-red-500">*</span>
+                Assign to Year Level <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -804,10 +812,10 @@ export default function AddStudentModal({ onUserAdded }) {
                       !formData.course
                         ? "Select course first"
                         : isLoading
-                          ? "Loading year levels..."
-                          : yearLevels.length === 0
-                            ? "No year levels available"
-                            : "Select Year Level"
+                        ? "Loading year levels..."
+                        : yearLevels.length === 0
+                        ? "No year levels available"
+                        : "Select Year Level"
                     }
                   />
                 </SelectTrigger>
@@ -835,7 +843,7 @@ export default function AddStudentModal({ onUserAdded }) {
             {/* section */}
             <div className="space-y-1">
               <Label htmlFor="section">
-                Assign to Section <span className="text-red-500">*</span>
+                Assign to Section <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -856,30 +864,34 @@ export default function AddStudentModal({ onUserAdded }) {
                       !formData.yearLevel
                         ? "Select year level first"
                         : isLoading
-                          ? "Loading sections..."
-                          : sections.length === 0
-                            ? "No sections available"
-                            : "Select Section"
+                        ? "Loading sections..."
+                        : sections.length === 0
+                        ? "No sections available"
+                        : "Select Section"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {sections.sort((a, b) => {
-                    // extract number from section names (e.g., "BT-101" => 101)
-                    const getSectionNumber = (name) => {
-                      const match = name.match(/\d+/);
-                      return match ? parseInt(match[0], 10) : 0;
-                    };
-                    // sort section prefix (e.g, "BT")
-                    const prefixA = a.sectionName.split("-")[0];
-                    const prefixB = b.sectionName.split("-")[0];
-                    if (prefixA !== prefixB) {
-                      return prefixA.localeCompare(prefixB);
-                    }
+                  {sections
+                    .sort((a, b) => {
+                      // extract number from section names (e.g., "BT-101" => 101)
+                      const getSectionNumber = (name) => {
+                        const match = name.match(/\d+/);
+                        return match ? parseInt(match[0], 10) : 0;
+                      };
+                      // sort section prefix (e.g, "BT")
+                      const prefixA = a.sectionName.split("-")[0];
+                      const prefixB = b.sectionName.split("-")[0];
+                      if (prefixA !== prefixB) {
+                        return prefixA.localeCompare(prefixB);
+                      }
 
-                    // sort by section number
-                    return getSectionNumber(a.sectionName) - getSectionNumber(b.sectionName)
-                  })
+                      // sort by section number
+                      return (
+                        getSectionNumber(a.sectionName) -
+                        getSectionNumber(b.sectionName)
+                      );
+                    })
                     .map((section) => (
                       <SelectItem key={section.id} value={section.id}>
                         {section.sectionName}
@@ -891,68 +903,35 @@ export default function AddStudentModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* system access */}
-          <div className="flex items-center mb-2">
-            <h3 className="font-medium">System Access</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Choose access to the system.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="role">
-                Role <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                required
-                value={formData.role}
-                onValueChange={(value) => handleSelectChange("role", value)}
-              >
-                <SelectTrigger id="role" className="w-full">
-                  <SelectValue placeholder="Select Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ROLES.STUDENT}>Student</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormError message={formErrors.role} />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <DialogClose asChild>
+          <DialogFooter>
+            <div className="flex justify-end gap-3">
+              <DialogClose asChild>
+                <Button
+                  variant="ghost"
+                  className="cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
               <Button
-                variant="ghost"
+                type="submit"
                 className="cursor-pointer"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !activeSession || isLoading}
               >
-                Cancel
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin">
+                      <LoaderCircle />
+                    </span>
+                    Adding Student...
+                  </>
+                ) : (
+                  "Add"
+                )}
               </Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={isSubmitting || !activeSession || isLoading}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="animate-spin">
-                    <LoaderCircle />
-                  </span>
-                  Adding User...
-                </>
-              ) : (
-                "Add"
-              )}
-            </Button>
-          </div>
+            </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

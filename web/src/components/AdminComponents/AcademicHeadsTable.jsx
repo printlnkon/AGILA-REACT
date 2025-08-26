@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,8 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import {
   Dialog,
@@ -39,7 +41,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Pencil,
   Columns2,
   Eye,
   Copy,
@@ -90,8 +91,6 @@ import {
 } from "@/components/ui/tooltip";
 import AddAcademicHeadModal from "@/components/AdminComponents/AddAcademicHeadModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
-
-// Reuse StudentTable logic, replacing student with academic_head role
 
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) return toast.error("Employee No. not found");
@@ -373,6 +372,7 @@ export default function AcademicHeadsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
 
   // navigate to student profile
   const navigate = useNavigate();
@@ -387,6 +387,86 @@ export default function AcademicHeadsTable() {
     setSelectedAcademicHead(user);
     navigate(`/admin/academic-heads/profile`);
   };
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      // Find the active academic year first
+      const academicYearsRef = collection(db, "academic_years");
+      const qAcademicYear = query(
+        academicYearsRef,
+        where("status", "==", "Active")
+      );
+
+      const yearSnapshot = await getDocs(qAcademicYear);
+
+      if (yearSnapshot.empty) {
+        setActiveSession({ id: null, name: "No Active Session" });
+        setDepartments([]);
+        return false;
+      }
+
+      const academicYearDoc = yearSnapshot.docs[0];
+      const academicYearData = {
+        id: academicYearDoc.id,
+        ...academicYearDoc.data(),
+      };
+
+      // Find the active semester within that academic year's sub-collection
+      const semestersRef = collection(
+        db,
+        "academic_years",
+        academicYearData.id,
+        "semesters"
+      );
+      const qSemester = query(semestersRef, where("status", "==", "Active"));
+
+      const semesterSnapshot = await getDocs(qSemester);
+
+      if (semesterSnapshot.empty) {
+        setActiveSession({
+          ...academicYearData,
+          semesterName: "No Active Semester",
+        });
+        return false;
+      }
+
+      const semesterDoc = semesterSnapshot.docs[0];
+      const semesterData = semesterDoc.data();
+      const semesterId = semesterDoc.id;
+
+      // Combine data from both documents into the activeSession state
+      const sessionInfo = {
+        id: academicYearData.id,
+        acadYear: academicYearData.acadYear,
+        semesterName: semesterData.semesterName,
+        semesterId: semesterId,
+      };
+
+      setActiveSession(sessionInfo);
+      return true;
+    } catch (error) {
+      console.error("Error fetching active session:", error);
+      toast.error("No Active School Year", {
+        description:
+          "Please set a school year and semester as active in the School Year & Semester module.",
+      });
+      return false;
+    }
+  }, []);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const hasActiveSession = await fetchActiveSession();
+
+      if (!hasActiveSession) {
+        // Still proceed with fetching users regardless of active session status
+        // await fetchUsers();
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchActiveSession]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -648,7 +728,10 @@ export default function AcademicHeadsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddAcademicHeadModal onUserAdded={fetchUsers} />
+        <AddAcademicHeadModal
+          onUserAdded={fetchUsers}
+          activeSession={activeSession}
+        />
         {/* bulk upload button */}
         <AddUserBulkUpload role="academic_head" onUserAdded={fetchUsers} />
 

@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTeacherProfile } from "@/context/TeacherProfileContext";
 import { db } from "@/api/firebase";
@@ -10,6 +10,8 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -39,7 +41,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Pencil,
   Columns2,
   Eye,
   Copy,
@@ -372,10 +373,11 @@ export default function TeachersTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
 
   // navigate to teacher profile
   const navigate = useNavigate();
-  // contet to set selected teacher
+  // context to set selected teacher
   const { setSelectedTeacher } = useTeacherProfile();
   // handle viewing teacher profile
   const handleViewTeacherProfile = (user) => {
@@ -386,6 +388,86 @@ export default function TeachersTable() {
     setSelectedTeacher(user);
     navigate(`/admin/teachers/profile`);
   };
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      // Find the active academic year first
+      const academicYearsRef = collection(db, "academic_years");
+      const qAcademicYear = query(
+        academicYearsRef,
+        where("status", "==", "Active")
+      );
+
+      const yearSnapshot = await getDocs(qAcademicYear);
+
+      if (yearSnapshot.empty) {
+        setActiveSession({ id: null, name: "No Active Session" });
+        setDepartments([]);
+        return false;
+      }
+
+      const academicYearDoc = yearSnapshot.docs[0];
+      const academicYearData = {
+        id: academicYearDoc.id,
+        ...academicYearDoc.data(),
+      };
+
+      // Find the active semester within that academic year's sub-collection
+      const semestersRef = collection(
+        db,
+        "academic_years",
+        academicYearData.id,
+        "semesters"
+      );
+      const qSemester = query(semestersRef, where("status", "==", "Active"));
+
+      const semesterSnapshot = await getDocs(qSemester);
+
+      if (semesterSnapshot.empty) {
+        setActiveSession({
+          ...academicYearData,
+          semesterName: "No Active Semester",
+        });
+        return false;
+      }
+
+      const semesterDoc = semesterSnapshot.docs[0];
+      const semesterData = semesterDoc.data();
+      const semesterId = semesterDoc.id;
+
+      // Combine data from both documents into the activeSession state
+      const sessionInfo = {
+        id: academicYearData.id,
+        acadYear: academicYearData.acadYear,
+        semesterName: semesterData.semesterName,
+        semesterId: semesterId,
+      };
+
+      setActiveSession(sessionInfo);
+      return true;
+    } catch (error) {
+      console.error("Error fetching active session:", error);
+      toast.error("No Active School Year", {
+        description:
+          "Please set a school year and semester as active in the School Year & Semester module.",
+      });
+      return false;
+    }
+  }, []);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const hasActiveSession = await fetchActiveSession();
+
+      if (!hasActiveSession) {
+        // Still proceed with fetching users regardless of active session status
+        // await fetchUsers();
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchActiveSession]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -398,9 +480,11 @@ export default function TeachersTable() {
         ...doc.data(),
       }));
       setUsers(data);
-    } catch (e) {
-      toast.error("Failed to load teacher");
-      setError(e);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      setError(
+        "Failed to load teachers. Please check your connection and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -648,7 +732,10 @@ export default function TeachersTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddTeacherModal onUserAdded={fetchUsers} />
+        <AddTeacherModal
+          onUserAdded={fetchUsers}
+          activeSession={activeSession}
+        />
         <AddUserBulkUpload role="teacher" onUserAdded={fetchUsers} />
 
         {/* archive selected button */}

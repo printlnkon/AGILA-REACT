@@ -430,9 +430,6 @@ export default function StudentsTable() {
       const yearSnapshot = await getDocs(qAcademicYear);
 
       if (yearSnapshot.empty) {
-        toast.error(
-          "No active academic year found. Please set one to manage departments."
-        );
         setActiveSession({ id: null, name: "No Active Session" });
         setDepartments([]);
         return false;
@@ -479,7 +476,9 @@ export default function StudentsTable() {
       return true;
     } catch (error) {
       console.error("Error fetching active session:", error);
-      toast.error("Failed to determine the active session.");
+      toast.error("No Active School Year", {
+        description: "Please set a school year and semester as active in the School Year & Semester module."
+      });
       return false;
     }
   }, []);

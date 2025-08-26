@@ -2,7 +2,7 @@ import { db, auth, storage } from "@/api/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
   CircleAlert,
   CalendarIcon,
   LoaderCircle,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -31,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -43,6 +45,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
   ACADEMIC_HEAD: "Academic Head",
@@ -54,7 +58,7 @@ const INITIAL_FORM_DATA = {
   lastName: "",
   suffix: "",
   gender: "",
-  role: ROLES.ACADEMIC_HEAD,
+  role: ROLES.ACADEMIC_HEAD, // Set default role to ACADEMIC HEAD
 };
 
 const MIN_AGE = 25;
@@ -63,11 +67,15 @@ const MAX_AGE = 70;
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="flex items-center text-red-500 text-sm mt-1">
+    <div className="flex items-center text-destructive text-sm mt-1">
       <CircleAlert className="h-3 w-3 mr-1" />
       {message}
     </div>
   );
+};
+
+const generateEmployeeNumber = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 const validateName = (name, fieldName) => {
@@ -83,16 +91,14 @@ const validateDateOfBirth = (date) => {
   if (!date) return "Date of birth is required";
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
+
   const monthDiff = today.getMonth() - date.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate()))
     age--;
   if (age < MIN_AGE) return `User must be at least ${MIN_AGE} years old`;
   if (age > MAX_AGE) return `Please enter a valid date of birth`;
-  return null;
-};
 
-const generateEmployeeNumber = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return null;
 };
 
 const validateForm = (formData, date) => {
@@ -111,7 +117,6 @@ const validateForm = (formData, date) => {
   const dateError = validateDateOfBirth(date);
   if (dateError) errors.dateOfBirth = dateError;
   if (!formData.gender) errors.gender = "Gender is required";
-  if (!formData.role) errors.role = "Role is required";
   return errors;
 };
 
@@ -124,6 +129,8 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [photo, setPhoto] = useState(null);
+
+  const { activeSession, loading: sessionLoading } = useActiveSession();
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -188,7 +195,17 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!activeSession) {
+      toast.error("No Active School Year", {
+        description:
+          "Please set a school year and semester as active in the School Year & Semester module.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
+
     const errors = validateForm(formData, date);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -244,20 +261,16 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
         email,
         password,
         status: "active",
-        role: formData.role,
+        role: ROLES.ACADEMIC_HEAD,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const rolePath = formData.role.toLowerCase().replace(" ", "_");
+      const rolePath = ROLES.ACADEMIC_HEAD.toLowerCase().replace(" ", "_");
       await setDoc(doc(db, `users/${rolePath}/accounts`, userId), userData);
 
       toast.success(
-        `User ${formData.firstName} ${formData.lastName} created successfully!`,
-        {
-          description: `Added as ${formData.role} in the ${formData.department} department.`,
-          duration: 5000,
-        }
+        `Academic Head ${formData.firstName} ${formData.lastName} created successfully!`
       );
 
       if (onUserAdded) onUserAdded();
@@ -290,222 +303,210 @@ export default function AddAcademicHeadModal({ onUserAdded }) {
   return (
     <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
+        <Button
+          className="cursor-pointer"
+          disabled={!activeSession && !sessionLoading}
+          onClick={(e) => {
+            if (!activeSession) {
+              e.preventDefault();
+              toast.error("No Active School Year", {
+                description:
+                  "Please set a school year and semester as active in the School Year & Semester module.",
+              });
+            }
+          }}
+        >
           <UserRoundPlus />
           Add Academic Head
         </Button>
       </DialogTrigger>
       <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="text-xl">Add User</DialogTitle>
+          <DialogTitle className="text-xl">Add Academic Head</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. All fields marked with{" "}
-            <span className="text-red-500">*</span> are required.
+            Add a new academic head to the system. All fields marked with{" "}
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <div className="flex items-center mb-2">
-              <h3 className="font-medium">Academic Head Information</h3>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Enter the academic head's personal details.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            {/* academic head information */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* first name */}
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="firstName">
-                  First Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="firstName"
-                  placeholder="First Name"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-                <FormError message={formErrors.firstName} />
+        {!activeSession ? (
+          <Card>
+            <CardContent className="flex flex-col items-center text-center space-y-2">
+              <AlertTriangle className="h-8 w-8 mt-2 flex-shrink-0 text-destructive" />
+              <h3 className="font-semibold text-lg">No Active School Year</h3>
+              <p className="text-destructive">
+                Please set a school year and semester as active in the School
+                Year & Semester module to add Academic Head account.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <div className="flex items-center mb-2">
+                <h3 className="font-medium">Academic Head Information</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Enter the academic head's personal details.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              {/* middle name */}
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="middleName">Middle Name</Label>
-                <Input
-                  id="middleName"
-                  placeholder="Middle Name"
-                  value={formData.middleName}
-                  onChange={handleChange}
-                />
-                <FormError message={formErrors.middleName} />
-              </div>
-              {/* last name */}
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="lastName">
-                  Last Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="lastName"
-                  placeholder="Last Name"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-                <FormError message={formErrors.lastName} />
-              </div>
-              {/* suffix */}
-              <div className="space-y-1 md:col-span-1">
-                <Label htmlFor="suffix">Suffix</Label>
-                <Input
-                  id="suffix"
-                  placeholder="e.g., Jr., Sr., III"
-                  value={formData.suffix}
-                  onChange={handleChange}
-                />
-                <FormError message={formErrors.suffix} />
-              </div>
-              {/* photo upload */}
-              <div className="space-y-1 md:col-span-2">
-                <Label htmlFor="photo">Photo</Label>
-                <Input
-                  id="photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                />
-                <FormError message={formErrors.photo} />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* gender */}
-            <div className="space-y-1">
-              <Label htmlFor="gender">
-                Gender <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                required
-                onValueChange={(value) => handleSelectChange("gender", value)}
-              >
-                <SelectTrigger id="gender" className="w-full">
-                  <SelectValue placeholder="Select Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormError message={formErrors.gender} />
-            </div>
-            {/* date of birth */}
-            <div className="space-y-1">
-              <Label htmlFor="date">
-                Date of Birth <span className="text-red-500">*</span>
-              </Label>
-              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    id="date"
-                    className={`w-full justify-between ${
-                      !date ? "text-muted-foreground" : ""
-                    }`}
-                  >
-                    {date ? format(date, "PPP") : "Select a date"}
-                    <CalendarIcon className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDateSelect}
-                    captionLayout="dropdown"
-                    className="text-primary"
-                    fromYear={1950}
-                    toYear={today.getFullYear()}
+              {/* academic head information */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* first name */}
+                <div className="space-y-1 md:col-span-1">
+                  <Label htmlFor="firstName">
+                    First Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="firstName"
+                    placeholder="First Name"
+                    required
+                    value={formData.firstName}
+                    onChange={handleChange}
                   />
-                </PopoverContent>
-              </Popover>
-              <FormError message={formErrors.dateOfBirth} />
+                  <FormError message={formErrors.firstName} />
+                </div>
+                {/* middle name */}
+                <div className="space-y-1 md:col-span-1">
+                  <Label htmlFor="middleName">Middle Name</Label>
+                  <Input
+                    id="middleName"
+                    placeholder="Middle Name"
+                    value={formData.middleName}
+                    onChange={handleChange}
+                  />
+                  <FormError message={formErrors.middleName} />
+                </div>
+                {/* last name */}
+                <div className="space-y-1 md:col-span-1">
+                  <Label htmlFor="lastName">
+                    Last Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Last Name"
+                    required
+                    value={formData.lastName}
+                    onChange={handleChange}
+                  />
+                  <FormError message={formErrors.lastName} />
+                </div>
+                {/* suffix */}
+                <div className="space-y-1 md:col-span-1">
+                  <Label htmlFor="suffix">Suffix</Label>
+                  <Input
+                    id="suffix"
+                    placeholder="e.g., Jr., Sr., III"
+                    value={formData.suffix}
+                    onChange={handleChange}
+                  />
+                  <FormError message={formErrors.suffix} />
+                </div>
+                {/* photo upload */}
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="photo">Photo</Label>
+                  <Input
+                    id="photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                  />
+                  <FormError message={formErrors.photo} />
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <div className="flex items-center mb-2">
-              <h3 className="font-medium">System Access</h3>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Choose access to the system.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* system access */}
+              {/* gender */}
               <div className="space-y-1">
-                <Label htmlFor="role">
-                  Role <span className="text-red-500">*</span>
+                <Label htmlFor="gender">
+                  Gender <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   required
-                  value={formData.role}
-                  onValueChange={(value) => handleSelectChange("role", value)}
+                  onValueChange={(value) => handleSelectChange("gender", value)}
                 >
-                  <SelectTrigger id="role" className="w-full">
-                    <SelectValue placeholder="Select Role" />
+                  <SelectTrigger id="gender" className="w-full">
+                    <SelectValue placeholder="Select Gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ROLES.ACADEMIC_HEAD}>
-                      Academic Head
-                    </SelectItem>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormError message={formErrors.role} />
+                <FormError message={formErrors.gender} />
+              </div>
+              {/* date of birth */}
+              <div className="space-y-1">
+                <Label htmlFor="date">
+                  Date of Birth <span className="text-destructive">*</span>
+                </Label>
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      id="date"
+                      className={`w-full justify-between ${
+                        !date ? "text-muted-foreground" : ""
+                      }`}
+                    >
+                      {date ? format(date, "PPP") : "Select a date"}
+                      <CalendarIcon className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={handleDateSelect}
+                      captionLayout="dropdown"
+                      className="text-primary"
+                      fromYear={1950}
+                      toYear={today.getFullYear()}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormError message={formErrors.dateOfBirth} />
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                className="cursor-pointer"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="animate-spin">
-                    <LoaderCircle />
-                  </span>
-                  Adding User...
-                </>
-              ) : (
-                "Add"
-              )}
-            </Button>
-          </div>
-        </form>
+            <DialogFooter>
+              <div className="flex justify-end gap-3">
+                <DialogClose asChild>
+                  <Button
+                    variant="ghost"
+                    className="cursor-pointer"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  type="submit"
+                  className="cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="animate-spin">
+                        <LoaderCircle />
+                      </span>
+                      Adding Academic Head...
+                    </>
+                  ) : (
+                    "Add"
+                  )}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
