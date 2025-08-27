@@ -214,21 +214,25 @@ export default function TeacherViewProfile() {
           {/* display profile picture */}
           <Card className="w-full max-w-sm mx-auto lg:mx-0">
             <CardContent className="p-4 md:p-1 flex flex-col items-center">
-              <img
-                src={
-                  selectedTeacher.photoURL ||
-                  (selectedTeacher.gender === "Female"
-                    ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-                    : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede")
-                }
-                alt="Avatar"
-                className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src =
-                    "https://placehold.co/128x128/b6e3f4/4a4a4a?text=Teacher";
-                }}
-              />
+              {selectedTeacher.photoURL ? (
+                <img
+                  src={selectedTeacher.photoURL}
+                  alt="Avatar"
+                  className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/128x128/b6e3f4/4a4a4a?text=Student";
+                  }}
+                />
+              ) : (
+                <div
+                  className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold select-none"
+                  aria-label="Avatar"
+                >
+                  {`${(selectedTeacher.firstName?.charAt(0) || "")}${(selectedTeacher.lastName?.charAt(0) || "")}`}
+                </div>
+              )}
+
               <div className="flex flex-col items-center text-center w-full">
                 <div className="text-lg sm:text-xl font-semibold">
                   {selectedTeacher.firstName}{" "}
@@ -372,6 +376,6 @@ export default function TeacherViewProfile() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
