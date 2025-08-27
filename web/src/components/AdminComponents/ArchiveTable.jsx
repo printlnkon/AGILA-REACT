@@ -65,15 +65,12 @@ import {
   ChevronDown,
   MoreHorizontal,
   Columns2,
-  Eye,
   Trash2,
-  Copy,
   Search,
   X,
   RotateCcw,
   FolderArchive,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   flexRender,
   getCoreRowModel,
@@ -82,6 +79,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ArchiveTable() {
   const [archivedUsers, setArchivedUsers] = useState([]);
@@ -89,10 +87,30 @@ export default function ArchiveTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchRestoreDialog, setShowBatchRestoreDialog] = useState(false);
   const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
+
+  // table global filter for search
+  const searchGlobalFilter = (row, columnId, filterValue) => {
+    const studentNumber = row.original.studentNumber?.toLowerCase() || "";
+    const employeeNo = row.original.employeeNo?.toLowerCase() || "";
+    const email = row.original.email?.toLowerCase() || "";
+    const firstName = row.original.firstName?.toLowerCase() || "";
+    const lastName = row.original.lastName?.toLowerCase() || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const search = filterValue.toLowerCase();
+
+    return (
+      studentNumber.includes(search) ||
+      employeeNo.includes(search) ||
+      email.includes(search) ||
+      fullName.includes(search)
+    );
+  };
 
   // Action handlers
   const handleRestoreUser = async (user) => {
@@ -612,6 +630,7 @@ export default function ArchiveTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: searchGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -619,6 +638,7 @@ export default function ArchiveTable() {
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
   });
 
@@ -794,23 +814,22 @@ export default function ArchiveTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search archived users by email..."
-            value={table.getColumn("email")?.getFilterValue() ?? ""}
+            placeholder="Search archived users..."
+            value={globalFilter ?? ""}
             onChange={(event) => {
               const value = event.target.value;
-              table.getColumn("email")?.setFilterValue(value);
+              setGlobalFilter(value);
             }}
             className="pl-10 max-w-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {/* clear button */}
-            {table.getColumn("email")?.getFilterValue() && (
+            {globalFilter && (
               <button
-                onClick={() => table.getColumn("email")?.setFilterValue("")}
+                onClick={() => setGlobalFilter("")}
                 className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                aria-label="Clear search"
               >
-                <X className="h-4 w-4 text-primary" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -892,9 +911,9 @@ export default function ArchiveTable() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -1053,10 +1072,10 @@ export default function ArchiveTable() {
                     {/* show ellipsis if currentPage < lastPage - 2 */}
                     {table.getState().pagination.pageIndex <
                       table.getPageCount() - 3 && (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    )}
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
 
                     {/* last page */}
                     {table.getPageCount() > 1 && (

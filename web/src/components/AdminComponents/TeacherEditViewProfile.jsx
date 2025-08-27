@@ -142,10 +142,7 @@ export default function TeacherEditViewProfile({
 
   const currentPhotoURL = selectedImage
     ? URL.createObjectURL(selectedImage)
-    : formData.photoURL ||
-      (formData.gender === "Female"
-        ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-        : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede");
+    : formData.photoURL;
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -171,16 +168,22 @@ export default function TeacherEditViewProfile({
           {/* edit profile picture */}
           <CardContent className="p-4 sm:p-6 flex flex-col items-center">
             <div className="relative w-36 h-36 mb-4 rounded-full group">
-              <img
-                src={currentPhotoURL}
-                alt="Avatar"
-                className="w-full h-full rounded-full border-4 border-white shadow-md object-cover transition-opacity duration-300"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src =
-                    "https://placehold.co/144x144/b6e3f4/4a4a4a?text=Student";
-                }}
-              />
+              {selectedImage || formData.photoURL ? (
+                <img
+                  src={currentPhotoURL}
+                  alt="Avatar"
+                  className="w-full h-full rounded-full border-4 border-white shadow-md object-cover transition-opacity duration-300"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src =
+                      "https://placehold.co/144x144/b6e3f4/4a4a4a?text=Student";
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full rounded-full border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold select-none">
+                  {`${(formData.firstName?.charAt(0) || "")}${(formData.lastName?.charAt(0) || "")}`}
+                </div>
+              )}
               <div
                 className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
                 onClick={() => fileInputRef.current.click()}
@@ -305,9 +308,8 @@ export default function TeacherEditViewProfile({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={`w-full text-left font-normal justify-between ${
-                          !formData.dateOfBirth && "text-muted-foreground"
-                        }`}
+                        className={`w-full text-left font-normal justify-between ${!formData.dateOfBirth && "text-muted-foreground"
+                          }`}
                       >
                         {formData.dateOfBirth ? (
                           format(new Date(formData.dateOfBirth), "PPP")
