@@ -10,7 +10,7 @@ import AuthProvider from "@/context/AuthContext";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import ErrorMessage from "@/utils/ErrorMessage";
 import PageNotFound from "@/utils/PageNotFound";
-import HomePage from "@/pages/Homepage/HomePage";
+import HomePage from "@/pages/Homepage/Homepage";
 import LoginPage from "@/pages/Login/LoginPage";
 import Admin from "@/pages/Admin/Admin";
 import Student from "@/pages/Student/Student";
