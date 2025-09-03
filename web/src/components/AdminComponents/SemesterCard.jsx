@@ -194,10 +194,10 @@ export default function SemesterCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setDeleteOpen(true)}
-                  className="text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-700"
+                  className="text-destructive cursor-pointer focus:bg-red-50 focus:text-red-700"
                   disabled={semester.status === "Active"}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -330,14 +330,17 @@ const createColumns = (handleArchiveUser, handleViewProgramHeadProfile) => [
               <DialogHeader>
                 <DialogTitle>Confirm Archive</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user "{user.firstName}{" "}
-                  {user.lastName}"? This will set their account status to
-                  inactive.
+                  Are you sure you want to archive the user{" "}
+                  <strong>
+                    "{user.firstName} {user.lastName}"
+                  </strong>
+                  ? This will set their account status to{" "}
+                  <strong>inactive</strong>.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowArchiveDialog(false)}
                   className="cursor-pointer"
                 >
@@ -1069,7 +1072,7 @@ export default function ProgramHeadsTable() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
                   className="cursor-pointer"
                 >

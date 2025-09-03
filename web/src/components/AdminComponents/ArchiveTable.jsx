@@ -79,6 +79,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ArchiveTable() {
@@ -514,35 +520,41 @@ export default function ArchiveTable() {
 
         return (
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-10 w-10 p-0 cursor-pointer"
-                >
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setShowRestoreDialog(true)}
-                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
-                  Restore
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                  Delete Permanently
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
+            <TooltipProvider>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-10 w-10 p-0 cursor-pointer"
+                      >
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">View More Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setShowRestoreDialog(true)}
+                    className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
+                    Restore
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    Delete Permanently
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TooltipProvider>
             {/* delete confirmation dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <DialogContent>
@@ -911,9 +923,9 @@ export default function ArchiveTable() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -1072,10 +1084,10 @@ export default function ArchiveTable() {
                     {/* show ellipsis if currentPage < lastPage - 2 */}
                     {table.getState().pagination.pageIndex <
                       table.getPageCount() - 3 && (
-                        <PaginationItem>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      )}
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
 
                     {/* last page */}
                     {table.getPageCount() > 1 && (
@@ -1142,8 +1154,11 @@ export default function ArchiveTable() {
                 <DialogTitle>Confirm Batch Restore</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to restore{" "}
-                  {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? They will be moved back to active accounts.
+                  <strong>
+                    {table.getFilteredSelectedRowModel().rows.length} selected
+                    users?
+                  </strong>{" "}
+                  They will be moved back to active accounts.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -1177,8 +1192,11 @@ export default function ArchiveTable() {
                 <DialogTitle>Confirm Batch Delete</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to permanently delete{" "}
-                  {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? This action cannot be undone.
+                  <strong>
+                    {table.getFilteredSelectedRowModel().rows.length} selected
+                    users?
+                  </strong>{" "}
+                  This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>

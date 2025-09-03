@@ -1,21 +1,15 @@
 import { useState, useEffect } from "react";
-import { db } from "@/api/firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  deleteDoc,
-  getDoc,
-  setDoc,
-} from "firebase/firestore";
-import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pencil,
+  UsersRound,
+  Building,
+  Trash2,
+  AlertCircle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,34 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  flexRender,
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-} from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  MoreHorizontal,
-  Columns2,
-  Copy,
-  Search,
-  X,
-  Archive,
-  UsersRound,
-  UserRoundSearch,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Table,
   TableBody,
   TableCell,
@@ -61,12 +27,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  flexRender,
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+} from "@tanstack/react-table";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -79,259 +61,170 @@ import {
   PaginationLast,
 } from "@/components/ui/pagination";
 import {
+  ArrowUpDown,
+  ChevronDown,
+  MoreHorizontal,
+  Columns2,
+  Search,
+  X,
+  Loader2,
+} from "lucide-react";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { toast } from "sonner";
+import AddRoomModal from "@/components/AdminComponents/AddRoomModal";
+import { db } from "@/api/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  deleteDoc,
+  onSnapshot,
+} from "firebase/firestore";
 
-// Action handlers
-const handleCopyStudentNumber = (studentNumber) => {
-  if (!studentNumber) {
-    toast.error("Student Number not found");
-    return;
-  }
-  navigator.clipboard
-    .writeText(studentNumber)
-    .then(() => {
-      toast.success("Student Number copied to clipboard");
-    })
-    .catch(() => {
-      toast.error("Failed to copy Student Number");
-    });
-};
-
-// table global filter for search
-const searchGlobalFilter = (row, columnId, filterValue) => {
-  const studentNumber = row.original.studentNumber?.toLowerCase() || "";
-  const email = row.original.email?.toLowerCase() || "";
-  const firstName = row.original.firstName?.toLowerCase() || "";
-  const lastName = row.original.lastName?.toLowerCase() || "";
-  const fullName = `${firstName} ${lastName}`.trim();
-
-  const search = filterValue.toLowerCase();
-
-  return (
-    studentNumber.includes(search) ||
-    email.includes(search) ||
-    fullName.includes(search)
-  );
-};
-
-const createColumns = (handleArchiveUser) => [
+const createColumns = (handleEditRoom, handleDeleteRoom) => [
+  // floor
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="ml-4"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="ml-4"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  // Combined column for mobile view
-  {
-    id: "details",
+    accessorKey: "floor",
     header: ({ column }) => {
-      return <div className="mr-2 md:hidden">Details</div>;
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Floor
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
     },
     cell: ({ row }) => {
-      const studentNumber =
-        row.original.studentNumber || row.original.employeeNumber || "N/A";
-      const email = row.original.email || "N/A";
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-
+      const floor = row.getValue("floor");
       return (
-        <div className="flex flex-col md:hidden">
-          <span className="font-bold capitalize">{fullName}</span>
-          <span className="text-xs text-muted-foreground">{studentNumber}</span>
-          <span className="text-xs text-muted-foreground">{email}</span>
+        <div className="capitalize ml-3">
+          {floor}
+          {floor === "1"
+            ? "st"
+            : floor === "2"
+            ? "nd"
+            : floor === "3"
+            ? "rd"
+            : "th"}{" "}
+          Floor
         </div>
       );
     },
-    // Only show this column on screens smaller than md
-    className: "block md:hidden",
-    enableHiding: true,
   },
-  // photo column
+  // room no.
   {
-    id: "Photo",
-    accessorKey: "photoURL",
-    header: "Photo",
-    cell: ({ row }) => {
-      const photoURL = row.original.photoURL;
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-      return (
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={photoURL || initials} alt="Student Photo" />
-          <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
-        </Avatar>
-      );
-    },
-  },
-  // student no. column
-  {
-    id: "studentNumber",
-    accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
-  },
-  // employee id
-  {
-    id: "employeeNumber",
-    accessorKey: "employeeNumber",
-    header: "Employee I.D",
-    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
-  },
-  // name column
-  {
-    id: "name",
-    accessorKey: "name",
-    accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="mr-12"
-        >
-          Name
-          <ArrowUpDown />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
-    },
-  },
-  // email column
-  {
-    accessorKey: "email",
+    accessorKey: "roomNo",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
-          <ArrowUpDown />
+          Room No.
+          <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
-    cell: ({ row }) => (
-      <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
-    ),
-    className: "hidden md:table-cell",
+    cell: ({ row }) => <div className="ml-3">{row.getValue("roomNo")}</div>,
   },
-  // role column
+  // type
   {
-    accessorKey: "role",
-    header: "Role",
+    accessorKey: "type",
+    header: <div className="ml-3">Room Type</div>,
     cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
-    },
-  },
-  // date created
-  {
-    id: "Date Created",
-    accessorKey: "createdAt",
-    header: "Date Created",
-    cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return <div>-</div>;
-      try {
-        // convert timestamp to date, handles both Firestore Timestamps and date strings
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        // check if the created date is valid before formatting
-        if (isNaN(date.getTime())) {
-          return <div>Invalid Date</div>;
-        }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
-      } catch (error) {
-        return <div>Invalid Date</div>;
+      const roomType = row.getValue("type");
+
+      if (!roomType) {
+        return (
+          <div className="flex items-center ml-3">
+            <Badge className="bg-slate-100 text-slate-700">Unassigned</Badge>
+          </div>
+        );
       }
+
+      // display different badges based on room type
+      const badgeColor = roomType.toLowerCase().includes("lecture")
+        ? "bg-blue-100 text-blue-700 border-blue-200"
+        : roomType.toLowerCase().includes("laboratory")
+        ? "bg-purple-100 text-purple-700 border-purple-200"
+        : "bg-green-100 text-green-700 border-green-200";
+
+      const displayText = roomType.toLowerCase().includes("lecture")
+        ? "Lecture"
+        : roomType.toLowerCase().includes("laboratory")
+        ? "Laboratory"
+        : roomType;
+
+      return (
+        <div className="flex items-center ml-3">
+          <Badge className={badgeColor}>{displayText}</Badge>
+        </div>
+      );
     },
   },
-  // last updated
-  {
-    id: "Last Updated",
-    accessorKey: "updatedAt",
-    header: "Last Updated",
-    cell: ({ row }) => {
-      const timestamp = row.original.updatedAt;
-      if (!timestamp) return <div>-</div>;
-      try {
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        // Check if the created date is valid before formatting
-        if (isNaN(date.getTime())) {
-          return <div>Invalid Date</div>;
-        }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
-      } catch (error) {
-        return <div>Invalid Date</div>;
-      }
-    },
-  },
-  // status column
+  // status
   {
     accessorKey: "status",
-    header: "Status",
+    header: <div className="ml-3">Status</div>,
     cell: ({ row }) => {
-      const status = row.getValue("status") || "active";
-      const isActive = status === "active";
+      const status = row.getValue("status");
+      // Define status display and styling
+      let displayStatus = status;
+      let statusColor = "";
+
+      switch (status) {
+      case "available":
+        displayStatus = "Available";
+        statusColor = "bg-green-600 text-white";
+        break;
+      case "scheduled":
+        displayStatus = "Scheduled";
+        statusColor = "bg-blue-600 text-white";
+        break;
+      case "unavailable":
+        displayStatus = "Unavailable";
+        statusColor = "bg-red-600 text-white";
+        break;
+      default:
+        displayStatus = status || "Unknown";
+        statusColor = "bg-amber-600 text-white";
+    }
       return (
         <Badge
-          variant={isActive ? "default" : "destructive"}
-          className={
-            isActive ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }
+          className={`capitalize ml-3 ${
+            status === "available"
+              ? "bg-green-600 text-white"
+              : "bg-amber-600 text-white"
+          }`}
         >
-          {isActive ? "Active" : "Inactive"}
+          {status}
         </Badge>
       );
     },
   },
-  // actions column
+  // actions
   {
     id: "actions",
     header: "Actions",
-    enableHiding: false,
     cell: ({ row }) => {
-      const user = row.original;
-      const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+      const roomData = row.original;
+      const [showEditDialog, setShowEditDialog] = useState(false);
+      const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
       return (
         <>
@@ -345,7 +238,7 @@ const createColumns = (handleArchiveUser) => [
                       className="h-10 w-10 p-0 cursor-pointer"
                     >
                       <span className="sr-only">Open menu</span>
-                      <MoreHorizontal />
+                      <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -353,55 +246,52 @@ const createColumns = (handleArchiveUser) => [
               </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => handleCopyStudentNumber(user.studentNumber)}
+                  onClick={() => handleEditRoom(row.original)}
                   className="cursor-pointer"
                 >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy ID
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => setShowArchiveDialog(true)}
-                  className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="cursor-pointer text-destructive"
                 >
-                  <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                  Archive
+                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </TooltipProvider>
 
-          {/* Archive Confirmation Dialog */}
-          <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+          {/* delete confirmation dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirm Archive</DialogTitle>
+                <DialogTitle>Confirm Deletion</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user{" "}
-                  <strong>
-                    "{user.firstName} {user.lastName}"
-                  </strong>
-                  ? This will set their account status to{" "}
-                  <strong>inactive</strong>.
+                  Are you sure you want to permanently delete the room
+                  <strong>"{roomData.roomNo}"</strong>
+                  {""}? This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
                   variant="ghost"
-                  onClick={() => setShowArchiveDialog(false)}
+                  onClick={() => setShowDeleteDialog(false)}
                   className="cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
-                  variant="warning"
+                  variant="destructive"
                   onClick={() => {
-                    handleArchiveUser(user);
-                    setShowArchiveDialog(false);
+                    handleDeleteRoom(roomData.id);
+                    setShowDeleteDialog(false);
                   }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+                  className="cursor-pointer"
                 >
-                  Archive
+                  Delete Permanently
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -412,187 +302,82 @@ const createColumns = (handleArchiveUser) => [
   },
 ];
 
-export const pagination = {};
-
-export default function AccountsTable() {
-  const [users, setUsers] = useState([]);
-  const [sorting, setSorting] = useState([]);
-  const [rowSelection, setRowSelection] = useState({});
-  const [columnFilters, setColumnFilters] = useState([]);
-  const [columnVisibility, setColumnVisibility] = useState({
-    studentNumber: false,
-    employeeNumber: false,
-  });
-  const [globalFilter, setGlobalFilter] = useState("");
+export default function RoomTable() {
+  const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [sorting, setSorting] = useState([]);
+  const [columnFilters, setColumnFilters] = useState([]);
+  const [columnVisibility, setColumnVisibility] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
+  // Extract unique floors for filtering
+  const availableFloors = Array.from(
+    new Set(rooms.map((room) => room.floor))
+  ).sort();
+
+  // Extract unique room types for filtering
+  const availableRoomTypes = Array.from(
+    new Set(rooms.map((room) => room.type).filter(Boolean))
+  ).sort();
+
+  // Function to handle editing room
+  const handleEditRoom = (room) => {
+    // Implement room editing functionality
+    console.log("Edit room:", room);
+    // You can open an edit modal here
+  };
+
+  // Function to handle deleting room
+  const handleDeleteRoom = async (roomId) => {
     try {
-      const allUsers = [];
-      const roles = ["student", "teacher", "program_head", "academic_head"];
-
-      for (const role of roles) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, `users/${role}/accounts`)
-          );
-
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            // Validate required fields
-            if (!userData.email) {
-              console.warn(
-                `User ${doc.id} in ${role} collection missing email`
-              );
-            }
-
-            allUsers.push({
-              id: doc.id,
-              role: userData.role || "unknown",
-              status: userData.status || "active",
-              email: userData.email || "",
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              ...userData,
-            });
-          });
-        } catch (roleError) {
-          console.error(`Error fetching ${role} users:`, roleError);
-        }
-      }
-
-      if (allUsers.length === 0) {
-        setError("No users found in any collection.");
-      } else {
-        setUsers(allUsers);
-      }
+      await deleteDoc(doc(db, "rooms", roomId));
+      toast.success("Room deleted successfully");
     } catch (error) {
-      console.error("Error fetching users:", error);
-      setError(
-        "Failed to load users. Please check your connection and try again."
-      );
-    } finally {
-      setLoading(false);
+      console.error("Error deleting room:", error);
+      toast.error("Failed to delete room");
     }
   };
 
+  // Function to handle room added
+  const handleRoomAdded = (newRoom) => {
+    // New room will be added through the Firestore listener
+    toast.success(`Room ${newRoom.roomNo} added successfully`);
+  };
+
+  // Fetch rooms data from Firestore
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    setLoading(true);
 
-  const handleArchiveUser = async (user) => {
-    if (!user || !user.id || !user.role) {
-      toast.error("Invalid user data");
-      console.error("Missing required user data:", user);
-      return false;
-    }
-
-    try {
-      // matches the collection path in firestore
-      const rolePath = user.role.toLowerCase().replace(" ", "_");
-      // reference to the user document
-      const userPath = `users/${rolePath}/accounts`;
-
-      const userDocRef = doc(db, userPath, user.id);
-      const userSnap = await getDoc(userDocRef);
-      if (!userSnap.exists()) {
-        console.error("User document not found at:", userPath, user.id);
-        toast.error("User data not found.");
-        return false;
+    // Set up a real-time listener to Firestore
+    const unsubscribe = onSnapshot(
+      collection(db, "rooms"),
+      (snapshot) => {
+        const roomsData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            type: data.roomType ? data.roomType.toLowerCase() : "",
+          };
+        });
+        setRooms(roomsData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching rooms:", error);
+        toast.error("Failed to load rooms");
+        setLoading(false);
       }
-
-      const userData = userSnap.data();
-
-      // create archive document
-      const archiveRef = doc(db, "archive", user.id);
-      await setDoc(archiveRef, {
-        ...userData,
-        role: user.role,
-        id: user.id,
-        status: "inactive",
-        email: userData.email || "",
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        archivedAt: new Date(),
-      });
-
-      // delete from original collection
-      await deleteDoc(userDocRef);
-
-      toast.success(
-        `User ${user.firstName} ${user.lastName} archived successfully`
-      );
-
-      setUsers((currentUsers) => currentUsers.filter((u) => u.id !== user.id));
-
-      // refresh the users list
-      await fetchUsers();
-      return true;
-    } catch (error) {
-      console.error("Error archiving user:", error);
-      toast.error(`Archive failed: ${error.message}`);
-      return false;
-    }
-  };
-
-  const handleBatchArchive = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-
-    if (selectedRows.length === 0) {
-      toast.error("No users selected");
-      return;
-    }
-
-    let successCount = 0;
-    let failCount = 0;
-
-    // Show a loading toast
-    const loadingToast = toast.loading(
-      `Archiving ${selectedRows.length} users...`
     );
 
-    // Process each selected user
-    for (const row of selectedRows) {
-      const user = row.original;
-      const success = await handleArchiveUser(user);
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
+  }, []);
 
-      if (success) {
-        successCount++;
-      } else {
-        failCount++;
-      }
-    }
+  const columns = createColumns(handleEditRoom, handleDeleteRoom);
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
-
-    // Show results
-    if (successCount > 0) {
-      toast.success(`Successfully archived ${successCount} users`);
-    }
-    if (failCount > 0) {
-      toast.error(`Failed to archive ${failCount} users`);
-    }
-
-    // Clear selection
-    table.resetRowSelection();
-
-    // force re-fetch users to update the table
-    if (successCount > 0) {
-      const remainingUsers = users.filter(
-        (user) => !selectedRows.some((row) => row.original.id === user.id)
-      );
-      setUsers(remainingUsers);
-    }
-  };
-
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
-    data: users,
+    data: rooms,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -600,21 +385,17 @@ export default function AccountsTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: searchGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
       globalFilter,
     },
     initialState: {
-      columnVisibility: {
-        studentNumber: false,
-        employeeNumber: false,
+      pagination: {
+        pageSize: 10,
       },
     },
   });
@@ -745,45 +526,20 @@ export default function AccountsTable() {
     );
   }
 
-  // main content
   return (
     <div className="w-full p-4 space-y-4">
-      {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-2xl font-bold">Manage Accounts</h1>
+          <h1 className="text-2xl sm:text-2xl font-bold">Manage Rooms</h1>
           <p className="text-sm text-muted-foreground">
-            Add, edit, or archive accounts available in the system.
+            Add, edit, and manage rooms available in the system.
           </p>
         </div>
       </div>
-      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
-        {/* archive selected button */}
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => table.resetRowSelection()}
-              className="w-full sm:w-auto text-amber-600 hover:text-amber-800 cursor-pointer"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Clear selection
-            </Button>
-            <Button
-              variant="warning"
-              size="sm"
-              onClick={() => setShowBatchArchiveDialog(true)}
-              className="w-full sm:w-auto bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-            >
-              <Archive className="w-4 h-4 mr-2" />
-              Batch Archive
-            </Button>
-          </div>
-        )}
 
-        {/* export format */}
-        <ExportExcelFormat />
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
+        {/* add room button */}
+        <AddRoomModal onRoomAdded={handleRoomAdded} />
 
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
           {/* search */}
@@ -791,7 +547,7 @@ export default function AccountsTable() {
             {/* search icon */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
             <Input
-              placeholder="Search users..."
+              placeholder="Search rooms..."
               value={globalFilter ?? ""}
               onChange={(event) => setGlobalFilter(event.target.value)}
               className="pl-10 w-full"
@@ -809,65 +565,159 @@ export default function AccountsTable() {
             </div>
           </div>
 
-          {/* filter by role */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                checked={
-                  table.getColumn("role")?.getFilterValue() === undefined
-                }
-                onCheckedChange={() => {
-                  table.getColumn("role")?.setFilterValue(undefined);
-                }}
-              >
-                All Roles
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              {["academic head", "program head", "teacher", "student"].map(
-                (role) => (
+          {/* filter by floor */}
+          {availableFloors.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Building className="mr-2 h-4 w-4" /> Filter By Floor
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuCheckboxItem
+                  checked={
+                    table.getColumn("floor")?.getFilterValue() === undefined
+                  }
+                  onCheckedChange={() => {
+                    table.getColumn("floor")?.setFilterValue(undefined);
+                  }}
+                >
+                  All Floors
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                {availableFloors.map((floor) => (
                   <DropdownMenuCheckboxItem
-                    key={role}
-                    checked={table.getColumn("role")?.getFilterValue() === role}
+                    key={floor}
+                    checked={
+                      table.getColumn("floor")?.getFilterValue() === floor
+                    }
                     onCheckedChange={(checked) => {
                       table
-                        .getColumn("role")
-                        ?.setFilterValue(checked ? role : undefined);
+                        .getColumn("floor")
+                        ?.setFilterValue(checked ? floor : undefined);
                     }}
                     className="capitalize"
                   >
-                    {role.replace("_", " ")}
+                    {floor}
+                    {floor === "1"
+                      ? "st"
+                      : floor === "2"
+                      ? "nd"
+                      : floor === "3"
+                      ? "rd"
+                      : "th"}{" "}
+                    Floor
                   </DropdownMenuCheckboxItem>
-                )
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-          {/* filter columns */}
+          {/* filter by type */}
+          {availableRoomTypes.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <UsersRound className="mr-2 h-4 w-4" /> Filter By Type
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuCheckboxItem
+                  checked={
+                    table.getColumn("type")?.getFilterValue() === undefined
+                  }
+                  onCheckedChange={() => {
+                    table.getColumn("type")?.setFilterValue(undefined);
+                  }}
+                >
+                  All Types
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={table.getColumn("type")?.getFilterValue() === ""}
+                  onCheckedChange={() => {
+                    table.getColumn("type")?.setFilterValue("");
+                  }}
+                >
+                  Unassigned Rooms
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={table
+                    .getColumn("type")
+                    ?.getFilterValue()
+                    ?.includes("lecture")}
+                  onCheckedChange={(checked) => {
+                    table
+                      .getColumn("type")
+                      ?.setFilterValue(checked ? "lecture" : undefined);
+                  }}
+                >
+                  Lecture Rooms
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={table
+                    .getColumn("type")
+                    ?.getFilterValue()
+                    ?.includes("laboratory")}
+                  onCheckedChange={(checked) => {
+                    table
+                      .getColumn("type")
+                      ?.setFilterValue(checked ? "laboratory" : undefined);
+                  }}
+                >
+                  Laboratory Rooms
+                </DropdownMenuCheckboxItem>
+                {availableRoomTypes.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {availableRoomTypes
+                      .filter(
+                        (type) =>
+                          !["lecture", "laboratory", ""].includes(
+                            type.toLowerCase()
+                          )
+                      )
+                      .map((type) => (
+                        <DropdownMenuCheckboxItem
+                          key={type}
+                          checked={
+                            table.getColumn("type")?.getFilterValue() === type
+                          }
+                          onCheckedChange={(checked) => {
+                            table
+                              .getColumn("type")
+                              ?.setFilterValue(checked ? type : undefined);
+                          }}
+                          className="capitalize"
+                        >
+                          {type}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* column visibility */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full sm:w-auto">
-                <Columns2 className="mr-2 h-4 w-4" /> Filter Columns{" "}
+                <Columns2 className="mr-2 h-4 w-4" /> Columns
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
-                .filter(
-                  (column) => column.getCanHide() && column.id !== "details"
-                )
+                .filter((column) => column.getCanHide())
                 .map((column) => {
-                  const label =
-                    typeof column.columnDef.header === "string"
-                      ? column.columnDef.header
-                      : column.id;
+                  let displayName = column.id;
 
+                  if (column.id === "roomNo") displayName = "Room No.";
+                  if (column.id === "type") displayName = "Room Type";
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
@@ -877,7 +727,7 @@ export default function AccountsTable() {
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {label}
+                      {displayName}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
@@ -886,34 +736,29 @@ export default function AccountsTable() {
         </div>
       </div>
 
-      {/* data table */}
+      {/* table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -931,13 +776,13 @@ export default function AccountsTable() {
                   className="h-48 text-center"
                 >
                   <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full ">
-                      <UsersRound className="h-12 w-12 " />
+                    <div className="rounded-full">
+                      <Search className="h-12 w-12" />
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-medium">No accounts found.</p>
+                      <p className="text-lg font-medium">No results found</p>
                       <p className="text-muted-foreground text-sm mt-2">
-                        Try adjusting your search or filters to find accounts.
+                        Try adjusting your search or filters.
                       </p>
                     </div>
                   </div>
@@ -954,7 +799,6 @@ export default function AccountsTable() {
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-
         {/* rows per page */}
         <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4 w-full sm:w-auto">
           <div className="flex items-center gap-2">
@@ -1130,52 +974,36 @@ export default function AccountsTable() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-          
-          {/* Batch Archive Dialog */}
-          <Dialog
-            open={showBatchArchiveDialog}
-            onOpenChange={setShowBatchArchiveDialog}
-          >
-            <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md">
-              {" "}
-              {/* Adjusted max-width for responsiveness */}
-              <DialogHeader>
-                <DialogTitle>Confirm Batch Archive</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to archive{" "}
-                  <strong>
-                    {table.getFilteredSelectedRowModel().rows.length} selected
-                    users?
-                  </strong>{" "}
-                  This will set their account status to{" "}
-                  <strong>inactive</strong>.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                {" "}
-                {/* Responsive button layout */}
-                <Button
-                  variant="outline"
-                  onClick={() => setShowBatchArchiveDialog(false)}
-                  className="w-full sm:w-auto cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="warning"
-                  onClick={() => {
-                    handleBatchArchive();
-                    setShowBatchArchiveDialog(false);
-                  }}
-                  className="w-full sm:w-auto bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
-                >
-                  <Archive /> Archive Users
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     </div>
+  );
+}
+
+// Empty state card component
+function EmptyRoomsCard() {
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-amber-500" />
+          No Rooms Found
+        </CardTitle>
+        <CardDescription>
+          There are currently no rooms in the system.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center p-6 text-center">
+          <Building className="h-16 w-16 text-muted-foreground mb-4" />
+          <p className="text-lg font-medium mb-2">Add your first room</p>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            Use the "Add Room" button to create a new room. Rooms can be
+            assigned to schedules after they are created.
+          </p>
+          <AddRoomModal />
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -29,6 +29,7 @@ export default function Header() {
     "year-level-section": "Year Level & Section",
     "subject": "Subjects",
     "schedule": "Schedule",
+    "Room": "Room",
     "accounts": "Accounts",
     "academic-heads": "Academic Heads",
     "program-heads": "Program Heads",

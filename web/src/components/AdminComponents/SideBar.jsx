@@ -166,7 +166,7 @@ const items = {
           items: [
             {
               title: "Rooms",
-              url: "#",
+              url: "/admin/room",
               // icon: UsersRound,
             },
           ],
