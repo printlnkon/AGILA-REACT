@@ -137,7 +137,7 @@ export default function AddSectionModal({ course, yearLevel, session }) {
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Adding...
+                Adding section..
               </>
             ) : (
               <>Add</>
