@@ -122,7 +122,7 @@ export default function AcademicYearCard({
         </div>
         <CardDescription className="flex justify-between items-center">
           <span>
-            Created:{" "}
+            Date Created:{" "}
             {acadYear.createdAt
               ? format(toDate(acadYear.createdAt), "MMMM d, yyyy")
               : "N/A"}
