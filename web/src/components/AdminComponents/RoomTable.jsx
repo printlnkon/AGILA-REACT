@@ -780,9 +780,9 @@ export default function RoomTable() {
                       <Search className="h-12 w-12" />
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-medium">No results found</p>
+                      <p className="text-lg font-medium">No rooms found.</p>
                       <p className="text-muted-foreground text-sm mt-2">
-                        Try adjusting your search or filters.
+                        Click "Add Room" to get started.
                       </p>
                     </div>
                   </div>

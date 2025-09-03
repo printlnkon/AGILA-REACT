@@ -145,7 +145,7 @@ export default function AddYearLevelModal({ course, session, disabled }) {
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Adding...
+                Adding year level...
               </>
             ) : (
               <>Add</>
