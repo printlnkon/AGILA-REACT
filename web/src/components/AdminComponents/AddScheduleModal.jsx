@@ -12,14 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import {
-  LoaderCircle,
-  Plus,
-  AlertTriangle,
-  Calendar as CalendarIcon,
-} from "lucide-react";
+import { LoaderCircle, Plus, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -37,11 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 const COLOR_OPTIONS = [
   { value: "blue", label: "Blue", bg: "bg-blue-500", text: "text-white" },
@@ -74,7 +62,7 @@ const DAY_LABELS = {
 
 // initial state for form reducer
 const initialFormState = {
-  roomType: "",
+  roomType: "lecture",
   subject: "",
   room: "",
   instructor: "",
@@ -85,8 +73,6 @@ const initialFormState = {
   endHour: "",
   endMinute: "",
   endPeriod: "AM",
-  startDate: null,
-  endDate: null,
   days: {
     monday: false,
     tuesday: false,
@@ -96,6 +82,25 @@ const initialFormState = {
     saturday: false,
     sunday: false,
   },
+  // New fields for laboratory
+  hasLaboratory: false,
+  labStartHour: "",
+  labStartMinute: "",
+  labStartPeriod: "AM",
+  labEndHour: "",
+  labEndMinute: "",
+  labEndPeriod: "AM",
+  labDays: {
+    monday: false,
+    tuesday: false,
+    wednesday: false,
+    thursday: false,
+    friday: false,
+    saturday: false,
+    sunday: false,
+  },
+  labRoom: "",
+  labInstructor: "",
 };
 
 // reducer for form state
@@ -108,6 +113,13 @@ function formReducer(state, action) {
         ...state,
         days: { ...state.days, [action.day]: !state.days[action.day] },
       };
+    case "SET_LAB_DAY":
+      return {
+        ...state,
+        labDays: { ...state.labDays, [action.day]: !state.labDays[action.day] },
+      };
+    case "TOGGLE_LAB":
+      return { ...state, hasLaboratory: !state.hasLaboratory };
     case "RESET":
       return initialFormState;
     case "SET_TIME":
@@ -125,8 +137,6 @@ const initialErrorsState = {
   instructor: "",
   startTime: "",
   endTime: "",
-  startDate: "",
-  endDate: "",
   days: "",
   timeRange: "",
   dateRange: "",
@@ -142,13 +152,10 @@ export default function AddScheduleModal({
   activeSession,
   canAddSchedule,
   existingSchedules = [],
-  activeDay,
 }) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("class_schedule");
   const [loading, setLoading] = useState(false);
-  const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
-  const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
   // Data state
   const [subjects, setSubjects] = useState([]);
@@ -199,36 +206,6 @@ export default function AddScheduleModal({
     return true;
   };
 
-  // set current date when modal opens
-  useEffect(() => {
-    if (open) {
-      const now = new Date();
-
-      // Set default start date to today
-      const today = now;
-
-      // Set default end date to end of current semester
-      const endOfSemester = new Date(now);
-      endOfSemester.setMonth(now.getMonth());
-
-      dispatch({
-        type: "SET_TIME",
-        payload: {
-          startDate: today,
-          endDate: endOfSemester,
-        },
-      });
-
-      // Set current day if activeDay is provided
-      if (activeDay && formState.days.hasOwnProperty(activeDay)) {
-        dispatch({
-          type: "SET_DAY",
-          day: activeDay,
-        });
-      }
-    }
-  }, [open, activeDay]);
-
   // set current time when modal opens
   useEffect(() => {
     if (open) {
@@ -266,6 +243,12 @@ export default function AddScheduleModal({
           endHour: endHour12.toString(),
           endMinute: roundedMinute,
           endPeriod: endPeriod,
+          labStartHour: hour12.toString(),
+          labStartMinute: roundedMinute,
+          labStartPeriod: period,
+          labEndHour: endHour12.toString(),
+          labEndMinute: roundedMinute,
+          labEndPeriod: endPeriod,
         },
       });
     }
@@ -291,29 +274,6 @@ export default function AddScheduleModal({
     formState.color,
   ]);
 
-  // clear date errors when values change
-  useEffect(() => {
-    const { startDate, endDate } = formState;
-    const newErrors = { ...errors };
-
-    if (startDate) newErrors.startDate = "";
-    if (endDate) newErrors.endDate = "";
-
-    // Validate date range
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      if (start > end) {
-        newErrors.dateRange = "End date cannot be before start date";
-      } else {
-        newErrors.dateRange = "";
-      }
-    }
-
-    setErrors(newErrors);
-  }, [formState.startDate, formState.endDate]);
-
   // clear time errors when time values change
   useEffect(() => {
     const newErrors = { ...errors };
@@ -325,7 +285,7 @@ export default function AddScheduleModal({
       newErrors.endTime = "";
     }
 
-    // Validate time range
+    // validate time range
     if (
       formState.startHour &&
       formState.startMinute &&
@@ -351,6 +311,50 @@ export default function AddScheduleModal({
       }
     }
 
+    // lab time validation
+    if (formState.hasLaboratory) {
+      if (
+        formState.labStartHour &&
+        formState.labStartMinute &&
+        formState.labStartPeriod
+      ) {
+        newErrors.labStartTime = "";
+      }
+      if (
+        formState.labEndHour &&
+        formState.labEndMinute &&
+        formState.labEndPeriod
+      ) {
+        newErrors.labEndTime = "";
+      }
+
+      // Validate lab time range
+      if (
+        formState.labStartHour &&
+        formState.labStartMinute &&
+        formState.labStartPeriod &&
+        formState.labEndHour &&
+        formState.labEndMinute &&
+        formState.labEndPeriod
+      ) {
+        const labStartTime = parseTime(
+          `${formState.labStartHour}:${formState.labStartMinute} ${formState.labStartPeriod}`
+        );
+        const labEndTime = parseTime(
+          `${formState.labEndHour}:${formState.labEndMinute} ${formState.labEndPeriod}`
+        );
+
+        const labStartMinutes = labStartTime.hours * 60 + labStartTime.minutes;
+        const labEndMinutes = labEndTime.hours * 60 + labEndTime.minutes;
+
+        if (labEndMinutes < labStartMinutes) {
+          newErrors.labTimeRange = "Lab end time must be after lab start time";
+        } else {
+          newErrors.labTimeRange = "";
+        }
+      }
+    }
+
     setErrors(newErrors);
   }, [
     formState.startHour,
@@ -359,6 +363,13 @@ export default function AddScheduleModal({
     formState.endHour,
     formState.endMinute,
     formState.endPeriod,
+    formState.labStartHour,
+    formState.labStartMinute,
+    formState.labStartPeriod,
+    formState.labEndHour,
+    formState.labEndMinute,
+    formState.labEndPeriod,
+    formState.hasLaboratory,
   ]);
 
   // Validate days selection
@@ -607,6 +618,7 @@ export default function AddScheduleModal({
     setConflicts(newConflicts);
   };
 
+  // fetch subjects
   const fetchSubjects = async () => {
     try {
       setLoading(true);
@@ -646,6 +658,7 @@ export default function AddScheduleModal({
     }
   };
 
+  // fetch teachers/instructors
   const fetchInstructors = async () => {
     try {
       setLoading(true);
@@ -692,6 +705,7 @@ export default function AddScheduleModal({
     }
   };
 
+  // fetch rooms
   const fetchRooms = async () => {
     try {
       setLoading(true);
@@ -744,26 +758,23 @@ export default function AddScheduleModal({
       endHour,
       endMinute,
       endPeriod,
-      startDate,
-      endDate,
       days,
+      hasLaboratory,
+      labStartHour,
+      labStartMinute,
+      labEndHour,
+      labEndMinute,
+      labDays,
+      labRoom,
+      labInstructor,
     } = formState;
+
     const newErrors = {};
     let isValid = true;
 
-    // Required field validations
+    // Existing validations
     if (!roomType) {
       newErrors.roomType = "Schedule type is required";
-      isValid = false;
-    }
-
-    if (!startDate) {
-      newErrors.startDate = "Start date is required";
-      isValid = false;
-    }
-
-    if (!endDate) {
-      newErrors.endDate = "End date is required";
       isValid = false;
     }
 
@@ -802,27 +813,50 @@ export default function AddScheduleModal({
       isValid = false;
     }
 
-    // date range validation
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      if (start > end) {
-        newErrors.dateRange = "End date cannot be before start date";
+    // Laboratory validations when the checkbox is checked
+    if (hasLaboratory) {
+      if (!labStartHour || !labStartMinute) {
+        newErrors.labStartTime = "Laboratory start time is required";
         isValid = false;
       }
 
-      // Don't allow past dates
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (start < today) {
-        newErrors.startDate = "Start date cannot be in the past";
+      if (!labEndHour || !labEndMinute) {
+        newErrors.labEndTime = "Laboratory end time is required";
         isValid = false;
+      }
+
+      if (!Object.values(labDays).some((day) => day)) {
+        newErrors.labDays = "Select at least one laboratory day";
+        isValid = false;
+      }
+
+      if (!labRoom) {
+        newErrors.labRoom = "Laboratory room is required";
+        isValid = false;
+      }
+
+      if (!labInstructor) {
+        newErrors.labInstructor = "Laboratory instructor is required";
+        isValid = false;
+      }
+
+      // Time range validation for lab
+      if (labStartHour && labStartMinute && labEndHour && labEndMinute) {
+        const start = parseTime(
+          `${labStartHour}:${labStartMinute} ${formState.labStartPeriod}`
+        );
+        const end = parseTime(
+          `${labEndHour}:${labEndMinute} ${formState.labEndPeriod}`
+        );
+
+        if (start.totalMinutes >= end.totalMinutes) {
+          newErrors.labTimeRange = "Lab end time must be after lab start time";
+          isValid = false;
+        }
       }
     }
 
-    // Time range validation
+    // Time range validation for lecture
     if (startHour && startMinute && endHour && endMinute) {
       const start = parseTime(
         `${startHour}:${startMinute} ${formState.startPeriod}`
@@ -871,19 +905,45 @@ export default function AddScheduleModal({
         errors.roomType ||
         errors.room ||
         errors.instructor ||
-        errors.color
+        errors.color ||
+        errors.labStartTime ||
+        errors.labEndTime ||
+        errors.labDays ||
+        errors.labRoom ||
+        errors.labInstructor
       ) {
         setActiveTab("class_schedule");
       }
       return;
     }
 
-    // Validate end time limit
-    const { endHour, endMinute, endPeriod } = formState;
+    // Validate end time limits
+    const {
+      endHour,
+      endMinute,
+      endPeriod,
+      labEndHour,
+      labEndMinute,
+      labEndPeriod,
+      hasLaboratory,
+    } = formState;
+
     if (!validateEndTime(endHour, endMinute, endPeriod)) {
       setErrors((prev) => ({
         ...prev,
         endTime: "End time cannot exceed 8:30 PM",
+      }));
+      setActiveTab("class_schedule");
+      return;
+    }
+
+    if (
+      hasLaboratory &&
+      !validateEndTime(labEndHour, labEndMinute, labEndPeriod)
+    ) {
+      setErrors((prev) => ({
+        ...prev,
+        labEndTime: "Laboratory end time cannot exceed 8:30 PM",
       }));
       setActiveTab("class_schedule");
       return;
@@ -904,12 +964,20 @@ export default function AddScheduleModal({
         endHour,
         endMinute,
         endPeriod,
-        startDate,
-        endDate,
         days,
+        hasLaboratory,
+        labStartHour,
+        labStartMinute,
+        labStartPeriod,
+        labEndHour,
+        labEndMinute,
+        labEndPeriod,
+        labDays,
+        labRoom,
+        labInstructor,
       } = formState;
 
-      // Get selected days
+      // Get selected days for lecture
       const selectedDays = Object.entries(days)
         .filter(([_, isSelected]) => isSelected)
         .map(([day]) => day);
@@ -926,17 +994,18 @@ export default function AddScheduleModal({
         }
       }
 
-      // update room type based on creation of schedule
-      const roomRef = doc(db, "rooms", formState.room);
+      // Update room type for lecture room
+      const roomRef = doc(db, "rooms", room);
       await updateDoc(roomRef, {
         roomType: roomType,
         status: "scheduled",
         updatedAt: new Date(),
       });
 
-      // schedule object
+      // Lecture schedule object
       const scheduleData = {
         subjectId: subject,
+        subjectCode: subjects.find((s) => s.id === subject)?.code,
         subjectName: subjects.find((s) => s.id === subject)?.name,
         roomId: room,
         roomName: rooms.find((r) => r.id === room)?.name,
@@ -944,28 +1013,82 @@ export default function AddScheduleModal({
         instructorName: instructors.find((i) => i.id === instructor)?.name,
         startTime: `${startHour}:${startMinute} ${startPeriod}`,
         endTime: `${endHour}:${endMinute} ${endPeriod}`,
-        startDate: format(startDate, "yyyy-MM-dd"),
-        endDate: format(endDate, "yyyy-MM-dd"),
         days: selectedDays,
-        roomType: roomType.toUpperCase(),
+        roomType: "LECTURE",
         color: color,
         createdAt: new Date(),
+        hasLaboratory: hasLaboratory,
       };
 
-      // path to save schedules
+      // Path to save schedules
       const schedulesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/sections/${sectionId}/schedules`;
-      // add document to firestore
-      const docRef = await addDoc(collection(db, schedulesPath), scheduleData);
+
+      // Add lecture schedule document to firestore
+      const lectureDocRef = await addDoc(
+        collection(db, schedulesPath),
+        scheduleData
+      );
 
       // Add the ID to the schedule data for the local state update
       const newSchedule = {
-        id: docRef.id,
+        id: lectureDocRef.id,
         ...scheduleData,
       };
 
-      await onScheduleAdded(newSchedule);
+      // If laboratory component is enabled, create lab schedule
+      if (hasLaboratory) {
+        // Get selected days for laboratory
+        const selectedLabDays = Object.entries(labDays)
+          .filter(([_, isSelected]) => isSelected)
+          .map(([day]) => day);
 
-      toast.success("Schedule has been successfully added");
+        // Update room type for laboratory room
+        const labRoomRef = doc(db, "rooms", labRoom);
+        await updateDoc(labRoomRef, {
+          roomType: "laboratory",
+          status: "scheduled",
+          updatedAt: new Date(),
+        });
+
+        // Laboratory schedule object
+        const labScheduleData = {
+          subjectId: subject,
+          subjectCode: subjects.find((s) => s.id === subject)?.code,
+          subjectName: subjects.find((s) => s.id === subject)?.name,
+          roomId: labRoom,
+          roomName: rooms.find((r) => r.id === labRoom)?.name,
+          instructorId: labInstructor,
+          instructorName: instructors.find((i) => i.id === labInstructor)?.name,
+          startTime: `${labStartHour}:${labStartMinute} ${labStartPeriod}`,
+          endTime: `${labEndHour}:${labEndMinute} ${labEndPeriod}`,
+          days: selectedLabDays,
+          roomType: "LABORATORY",
+          color: color,
+          createdAt: new Date(),
+          lectureScheduleId: lectureDocRef.id,
+          isLabComponent: true,
+        };
+
+        // Add laboratory schedule document to firestore
+        const labDocRef = await addDoc(
+          collection(db, schedulesPath),
+          labScheduleData
+        );
+
+        // Add the lab schedule to the local state update
+        const newLabSchedule = {
+          id: labDocRef.id,
+          ...labScheduleData,
+        };
+
+        // Update both schedules
+        await onScheduleAdded([newSchedule, newLabSchedule]);
+      } else {
+        // Only update lecture schedule
+        await onScheduleAdded(newSchedule);
+      }
+
+      toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
       resetForm();
       setOpen(false);
     } catch (err) {
@@ -1039,7 +1162,6 @@ export default function AddScheduleModal({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="lecture">Lecture</SelectItem>
-                    <SelectItem value="laboratory">Laboratory</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.roomType && (
@@ -1052,117 +1174,6 @@ export default function AddScheduleModal({
               {/* Time Selection */}
               {formState.roomType && (
                 <>
-                  {/* Date Selection */}
-                  <div className="space-y-2 mb-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Start Date */}
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate" className="text-sm">
-                          Start Date <span className="text-destructive">*</span>
-                        </Label>
-                        <Popover
-                          open={isStartDatePickerOpen}
-                          onOpenChange={setIsStartDatePickerOpen}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={`w-full font-normal justify-between ${
-                                !formState.startDate && "text-muted-foreground"
-                              }`}
-                            >
-                              {formState.startDate ? (
-                                format(formState.startDate, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={formState.startDate}
-                              onSelect={(date) => {
-                                dispatch({
-                                  type: "SET_FIELD",
-                                  field: "startDate",
-                                  value: date,
-                                });
-                                setIsStartDatePickerOpen(false);
-                              }}
-                              captionLayout="dropdown"
-                              className="text-primary"
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        {errors.startDate && (
-                          <p className="text-xs sm:text-sm text-destructive mt-1">
-                            {errors.startDate}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* End Date */}
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate" className="text-sm">
-                          End Date <span className="text-destructive">*</span>
-                        </Label>
-                        <Popover
-                          open={isEndDatePickerOpen}
-                          onOpenChange={setIsEndDatePickerOpen}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={`w-full font-normal justify-between ${
-                                !formState.endDate && "text-muted-foreground"
-                              }`}
-                            >
-                              {formState.endDate ? (
-                                format(formState.endDate, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={formState.endDate}
-                              onSelect={(date) => {
-                                dispatch({
-                                  type: "SET_FIELD",
-                                  field: "endDate",
-                                  value: date,
-                                });
-                                setIsEndDatePickerOpen(false);
-                              }}
-                              captionLayout="dropdown"
-                              className="text-primary"
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        {errors.endDate && (
-                          <p className="text-xs sm:text-sm text-destructive mt-1">
-                            {errors.endDate}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {errors.dateRange && (
-                      <p className="text-xs sm:text-sm text-destructive mt-1">
-                        {errors.dateRange}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Schedule will be active from start date to end date
-                    </p>
-                  </div>
-
                   {/* Time selection */}
                   <div className="space-y-2 mb-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1479,7 +1490,7 @@ export default function AddScheduleModal({
                   {/* Days Selection */}
                   <div className="space-y-2">
                     <Label className="text-sm">
-                      Days <span className="text-destructive">*</span>
+                      Day <span className="text-destructive">*</span>
                     </Label>
                     <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3 mt-2">
                       {Object.entries(DAY_LABELS).map(([key, label]) => (
@@ -1506,6 +1517,498 @@ export default function AddScheduleModal({
                       </p>
                     )}
                   </div>
+
+                  {/* Laboratory Checkbox */}
+                  {formState.roomType === "lecture" && (
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Checkbox
+                        id="hasLaboratory"
+                        checked={formState.hasLaboratory}
+                        onCheckedChange={() => dispatch({ type: "TOGGLE_LAB" })}
+                      />
+                      <Label
+                        htmlFor="hasLaboratory"
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        w/ Laboratory
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* Laboratory Time and Day Selection */}
+                  {formState.hasLaboratory && (
+                    <div className="mt-4 border-t pt-4 space-y-4">
+                      <h3 className="font-bold text-lg">Laboratory Schedule</h3>
+
+                      {/* Laboratory Time Selection */}
+                      <div className="space-y-2 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Lab Start Time */}
+                          <div className="space-y-2">
+                            <Label htmlFor="labStartTime" className="text-sm">
+                              Lab Start Time{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <span className="text-xs text-muted-foreground block">
+                              Current Time:{" "}
+                              {new Date().toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Select
+                                value={formState.labStartHour}
+                                onValueChange={(value) => {
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "labStartHour",
+                                    value,
+                                  });
+                                  // Restrict minutes if 8 PM is selected
+                                  if (
+                                    value === "8" &&
+                                    formState.labStartPeriod === "PM" &&
+                                    formState.labStartMinute > "30"
+                                  ) {
+                                    dispatch({
+                                      type: "SET_FIELD",
+                                      field: "labStartMinute",
+                                      value: "30",
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Hr" />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="max-h-[200px]"
+                                  position="popper"
+                                >
+                                  {START_HOUR_OPTIONS.map((hour) => (
+                                    <SelectItem
+                                      key={`lab-start-hr-${hour}`}
+                                      value={hour.toString()}
+                                      disabled={
+                                        formState.labStartPeriod === "PM" &&
+                                        hour > 8
+                                      }
+                                    >
+                                      {hour}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span>:</span>
+                              <Select
+                                value={formState.labStartMinute}
+                                onValueChange={(value) => {
+                                  if (
+                                    !(
+                                      formState.labStartPeriod === "PM" &&
+                                      formState.labStartHour === "8" &&
+                                      value > "30"
+                                    )
+                                  ) {
+                                    dispatch({
+                                      type: "SET_FIELD",
+                                      field: "labStartMinute",
+                                      value,
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Min" />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="max-h-[200px]"
+                                  position="popper"
+                                >
+                                  {MINUTE_OPTIONS.map((minute) => (
+                                    <SelectItem
+                                      key={`lab-start-min-${minute}`}
+                                      value={minute}
+                                      disabled={
+                                        formState.labStartPeriod === "PM" &&
+                                        formState.labStartHour === "8" &&
+                                        minute > "30"
+                                      }
+                                    >
+                                      {minute}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Select
+                                value={formState.labStartPeriod}
+                                onValueChange={(value) => {
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "labStartPeriod",
+                                    value,
+                                  });
+                                  // Adjust hour and minute when switching to PM
+                                  if (value === "PM") {
+                                    const hourNum = parseInt(
+                                      formState.labStartHour
+                                    );
+                                    if (hourNum > 8) {
+                                      dispatch({
+                                        type: "SET_FIELD",
+                                        field: "labStartHour",
+                                        value: "8",
+                                      });
+                                      if (formState.labStartMinute > "30") {
+                                        dispatch({
+                                          type: "SET_FIELD",
+                                          field: "labStartMinute",
+                                          value: "30",
+                                        });
+                                      }
+                                    } else if (
+                                      hourNum === 8 &&
+                                      formState.labStartMinute > "30"
+                                    ) {
+                                      dispatch({
+                                        type: "SET_FIELD",
+                                        field: "labStartMinute",
+                                        value: "30",
+                                      });
+                                    }
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent position="popper">
+                                  <SelectItem value="AM">AM</SelectItem>
+                                  <SelectItem value="PM">PM</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {errors.labStartTime && (
+                              <p className="text-xs sm:text-sm text-destructive mt-1">
+                                {errors.labStartTime}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Lab End Time */}
+                          <div className="space-y-2">
+                            <Label htmlFor="labEndTime" className="text-sm">
+                              Lab End Time{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <span className="text-xs text-muted-foreground block">
+                              Current Time:{" "}
+                              {new Date().toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                              })}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Select
+                                value={formState.labEndHour}
+                                onValueChange={(value) => {
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "labEndHour",
+                                    value,
+                                  });
+                                  // Restrict minutes if 8 PM is selected
+                                  if (
+                                    value === "8" &&
+                                    formState.labEndPeriod === "PM" &&
+                                    formState.labEndMinute > "30"
+                                  ) {
+                                    dispatch({
+                                      type: "SET_FIELD",
+                                      field: "labEndMinute",
+                                      value: "30",
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Hr" />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="max-h-[200px]"
+                                  position="popper"
+                                >
+                                  {END_HOUR_OPTIONS.map((hour) => (
+                                    <SelectItem
+                                      key={`lab-end-hr-${hour}`}
+                                      value={hour.toString()}
+                                      disabled={
+                                        formState.labEndPeriod === "PM" &&
+                                        hour > 8
+                                      }
+                                    >
+                                      {hour}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span>:</span>
+                              <Select
+                                value={formState.labEndMinute}
+                                onValueChange={(value) => {
+                                  if (
+                                    !(
+                                      formState.labEndPeriod === "PM" &&
+                                      formState.labEndHour === "8" &&
+                                      value > "30"
+                                    )
+                                  ) {
+                                    dispatch({
+                                      type: "SET_FIELD",
+                                      field: "labEndMinute",
+                                      value,
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Min" />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="max-h-[200px]"
+                                  position="popper"
+                                >
+                                  {MINUTE_OPTIONS.map((minute) => (
+                                    <SelectItem
+                                      key={`lab-end-min-${minute}`}
+                                      value={minute}
+                                      disabled={
+                                        formState.labEndPeriod === "PM" &&
+                                        formState.labEndHour === "8" &&
+                                        minute > "30"
+                                      }
+                                    >
+                                      {minute}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Select
+                                value={formState.labEndPeriod}
+                                onValueChange={(value) => {
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "labEndPeriod",
+                                    value,
+                                  });
+                                  // Adjust hour and minute when switching to PM
+                                  if (value === "PM") {
+                                    const hourNum = parseInt(formState.labEndHour);
+                                    if (hourNum > 8) {
+                                      dispatch({
+                                        type: "SET_FIELD",
+                                        field: "labEndHour",
+                                        value: "8",
+                                      });
+                                      if (formState.labEndMinute > "30") {
+                                        dispatch({
+                                          type: "SET_FIELD",
+                                          field: "labEndMinute",
+                                          value: "30",
+                                        });
+                                      }
+                                    } else if (
+                                      hourNum === 8 &&
+                                      formState.labEndMinute > "30"
+                                    ) {
+                                      dispatch({
+                                        type: "SET_FIELD",
+                                        field: "labEndMinute",
+                                        value: "30",
+                                      });
+                                    }
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent position="popper">
+                                  <SelectItem value="AM">AM</SelectItem>
+                                  <SelectItem value="PM">PM</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {errors.labEndTime && (
+                              <p className="text-xs sm:text-sm text-destructive mt-1">
+                                {errors.labEndTime}
+                              </p>
+                            )}
+                          </div>
+                          {errors.timeRange && (
+                            <p className="text-xs sm:text-sm text-destructive mt-1">
+                              {errors.timeRange}
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Note: End time cannot be later than 8:30 PM
+                        </p>
+                      </div>
+
+                      {/* Laboratory Days Selection */}
+                      <div className="space-y-2">
+                        <Label className="text-sm">
+                          Laboratory Days{" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3 mt-2">
+                          {Object.entries(DAY_LABELS).map(([key, label]) => (
+                            <div
+                              key={`lab-${key}`}
+                              className="flex items-center space-x-2"
+                            >
+                              <Checkbox
+                                id={`lab-day-${key}`}
+                                checked={formState.labDays[key]}
+                                onCheckedChange={() =>
+                                  dispatch({
+                                    type: "SET_LAB_DAY",
+                                    day: key,
+                                  })
+                                }
+                              />
+                              <label
+                                htmlFor={`lab-day-${key}`}
+                                className="text-xs sm:text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                {label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Laboratory Room Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="labRoom" className="text-sm">
+                          Laboratory Room{" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={formState.labRoom}
+                          onValueChange={(value) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "labRoom",
+                              value,
+                            })
+                          }
+                        >
+                          <SelectTrigger id="labRoom" className="w-full">
+                            <SelectValue
+                              placeholder={
+                                availableRooms.length
+                                  ? "Select Laboratory Room"
+                                  : "No available laboratory rooms"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent
+                            position="popper"
+                            className="max-h-[200px] overflow-y-auto"
+                          >
+                            {availableRooms.length > 0 ? (
+                              // Group rooms by floor
+                              Object.entries(
+                                availableRooms.reduce((acc, room) => {
+                                  const floor = room.floor || "Other";
+                                  if (!acc[floor]) acc[floor] = [];
+                                  acc[floor].push(room);
+                                  return acc;
+                                }, {})
+                              )
+                                .sort(([floorA], [floorB]) => {
+                                  // Sort floors numerically
+                                  const numA = parseInt(floorA);
+                                  const numB = parseInt(floorB);
+                                  if (isNaN(numA)) return 1;
+                                  if (isNaN(numB)) return -1;
+                                  return numA - numB;
+                                })
+                                .map(([floor, rooms]) => (
+                                  <div key={floor}>
+                                    <div className="text-xs font-bold text-muted-foreground">
+                                      {floor === "Other"
+                                        ? "Other Rooms"
+                                        : `Floor ${floor}`}
+                                    </div>
+                                    {rooms
+                                      .sort((a, b) => {
+                                        // Sort rooms within each floor numerically
+                                        const roomNumA = parseInt(
+                                          a.roomNo.replace(/\D/g, "")
+                                        );
+                                        const roomNumB = parseInt(
+                                          b.roomNo.replace(/\D/g, "")
+                                        );
+                                        return roomNumA - roomNumB;
+                                      })
+                                      .map((room) => (
+                                        <SelectItem
+                                          key={room.id}
+                                          value={room.id}
+                                        >
+                                          {room.name}
+                                        </SelectItem>
+                                      ))}
+                                  </div>
+                                ))
+                            ) : (
+                              <SelectItem value="no-rooms" disabled>
+                                No available rooms
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Laboratory Instructor Selection (can be optional) */}
+                      <div className="space-y-2">
+                        <Label htmlFor="labInstructor" className="text-sm">
+                          Laboratory Instructor{" "}
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={formState.labInstructor}
+                          onValueChange={(value) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "labInstructor",
+                              value,
+                            })
+                          }
+                        >
+                          <SelectTrigger id="labInstructor" className="w-full">
+                            <SelectValue placeholder="Select Laboratory Instructor" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            {instructors.map((instructor) => (
+                              <SelectItem
+                                key={`lab-instructor-${instructor.id}`}
+                                value={instructor.id}
+                              >
+                                {instructor.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Subject Selection */}
                   <div className="space-y-2">
@@ -1561,8 +2064,8 @@ export default function AddScheduleModal({
                         <SelectValue
                           placeholder={
                             availableRooms.length
-                              ? "Select Room"
-                              : "No available rooms for this time"
+                              ? "Select Lecture Room"
+                              : "No available lecture rooms"
                           }
                         />
                       </SelectTrigger>
@@ -1615,7 +2118,7 @@ export default function AddScheduleModal({
                             ))
                         ) : (
                           <SelectItem value="no-rooms" disabled>
-                            No available rooms for this time
+                            No available rooms
                           </SelectItem>
                         )}
                       </SelectContent>
@@ -1630,8 +2133,8 @@ export default function AddScheduleModal({
                       formState.subject &&
                       Object.values(formState.days).some((day) => day) && (
                         <p className="text-xs sm:text-sm text-amber-600 mt-1">
-                          No rooms available for selected time and days. Try
-                          selecting different time or days, or add a new room.
+                          No rooms available for selected time and day. Try
+                          selecting different time or day, or add a new room.
                         </p>
                       )}
                   </div>
@@ -1654,7 +2157,7 @@ export default function AddScheduleModal({
                     }
                   >
                     <SelectTrigger id="instructor" className="w-full">
-                      <SelectValue placeholder="Select Instructor" />
+                      <SelectValue placeholder="Select Lecture Instructor" />
                     </SelectTrigger>
                     <SelectContent position="popper">
                       {instructors.map((instructor) => (
@@ -1727,6 +2230,7 @@ export default function AddScheduleModal({
                 )}
               </div>
 
+              {/* Cancel & Next btn */}
               <div className="flex justify-end pt-2">
                 <div className="flex gap-2">
                   <Button
@@ -1760,9 +2264,16 @@ export default function AddScheduleModal({
                   Schedule Summary
                 </h3>
                 <div className="bg-muted p-3 sm:p-4 rounded-md">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-xs sm:text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-md sm:text-md">
+                    <div className="col-span-1 sm:col-span-2">
+                      <p className="font-semibold">Subject:</p>
+                      <p className="break-words">
+                        {subjects.find((s) => s.id === formState.subject)
+                          ?.name || "Not set"}
+                      </p>
+                    </div>
                     <div>
-                      <p className="font-semibold">Type:</p>
+                      <p className="font-semibold">Room Type:</p>
                       <p>
                         {formState.roomType
                           ? formState.roomType.charAt(0).toUpperCase() +
@@ -1771,28 +2282,21 @@ export default function AddScheduleModal({
                       </p>
                     </div>
                     <div>
-                      <p className="font-semibold">Subject:</p>
-                      <p className="break-words">
-                        {subjects.find((s) => s.id === formState.subject)
-                          ?.name || "Not set"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Room:</p>
+                      <p className="font-semibold">Lecture Room No.:</p>
                       <p>
                         {rooms.find((r) => r.id === formState.room)?.name ||
                           "Not set"}
                       </p>
                     </div>
                     <div>
-                      <p className="font-semibold">Instructor:</p>
+                      <p className="font-semibold">Lecture Instructor:</p>
                       <p className="break-words">
                         {instructors.find((i) => i.id === formState.instructor)
                           ?.name || "Not set"}
                       </p>
                     </div>
                     <div>
-                      <p className="font-semibold">Time:</p>
+                      <p className="font-semibold">Lecture Time:</p>
                       <p>
                         {formState.startHour &&
                         formState.startMinute &&
@@ -1803,18 +2307,7 @@ export default function AddScheduleModal({
                       </p>
                     </div>
                     <div>
-                      <p className="font-semibold">Date:</p>
-                      <p className="break-words">
-                        {formState.startDate && formState.endDate
-                          ? `${format(formState.startDate, "PPP")} - ${format(
-                              formState.endDate,
-                              "PPP"
-                            )}`
-                          : "Not set"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="font-semibold">Days:</p>
+                      <p className="font-semibold">Lecture Day:</p>
                       <p>
                         {Object.entries(formState.days)
                           .filter(([_, isSelected]) => isSelected)
@@ -1825,6 +2318,54 @@ export default function AddScheduleModal({
                           .join(", ") || "Not set"}
                       </p>
                     </div>
+                    {/* Laboratory info in summary */}
+                    {formState.hasLaboratory && (
+                      <div className="col-span-1 sm:col-span-2">
+                        <h4 className="font-bold mb-2">Laboratory Schedule</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-md sm:text-md">
+                          <div>
+                            <p className="font-semibold">Lab Room No.:</p>
+                            <p>
+                              {rooms.find((r) => r.id === formState.labRoom)
+                                ?.name || "Not set"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-semibold">Lab Instructor:</p>
+                            <p className="break-words">
+                              {instructors.find(
+                                (i) => i.id === formState.labInstructor
+                              )?.name || "Not set"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-semibold">Lab Time:</p>
+                            <p>
+                              {formState.labStartHour &&
+                              formState.labStartMinute &&
+                              formState.labEndHour &&
+                              formState.labEndMinute
+                                ? `${formState.labStartHour}:${formState.labStartMinute} ${formState.labStartPeriod} - ${formState.labEndHour}:${formState.labEndMinute} ${formState.labEndPeriod}`
+                                : "Not set"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-semibold">Lab Day:</p>
+                            <p>
+                              {Object.entries(formState.labDays)
+                                .filter(([_, isSelected]) => isSelected)
+                                .map(
+                                  ([day]) =>
+                                    day.charAt(0).toUpperCase() +
+                                    day.slice(1, 3)
+                                )
+                                .join(", ") || "Not set"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Display selected color */}
                     <div className="col-span-1 sm:col-span-2">
                       <p className="font-semibold">Color:</p>
@@ -1879,6 +2420,7 @@ export default function AddScheduleModal({
                 </Alert>
               )}
 
+              {/* Cancel & Back btn */}
               <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
                 <Button
                   type="button"
