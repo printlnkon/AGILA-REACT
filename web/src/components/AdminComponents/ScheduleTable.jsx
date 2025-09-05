@@ -253,6 +253,7 @@ export default function ScheduleTable() {
             const data = doc.data();
             return {
               id: doc.id,
+              subjectCode: data.subjectCode || "Unknown Subject Code",
               subjectName: data.subjectName || "Unknown Subject",
               roomName: data.roomName || "No Room Assigned",
               instructorName: data.instructorName || "No Instructor Assigned",
@@ -260,6 +261,8 @@ export default function ScheduleTable() {
               endTime: data.endTime || "9:00 AM",
               days: data.days || [],
               scheduleType: data.scheduleType || "LECTURE",
+              isLabComponent: data.isLabComponent || false,
+              roomType: data.roomType || "",
               color: data.color || "blue",
             };
           });
@@ -275,7 +278,13 @@ export default function ScheduleTable() {
   };
 
   const handleAddSchedule = (newSchedule) => {
-    setScheduleData((prev) => [...prev, newSchedule]);
+    if (Array.isArray(newSchedule)) {
+      // If we received an array of schedules (lecture + lab)
+      setScheduleData((prev) => [...prev, ...newSchedule]);
+    } else {
+      // If we received a single schedule
+      setScheduleData((prev) => [...prev, newSchedule]);
+    }
   };
 
   // function to check if a room is used in other schedules
@@ -334,6 +343,7 @@ export default function ScheduleTable() {
 
       // Prepare the data to update in Firestore
       const scheduleData = {
+        subjectCode: updatedSchedule.subjectCode,
         subjectName: updatedSchedule.subjectName,
         roomName: updatedSchedule.roomName,
         roomId: updatedSchedule.roomId,
@@ -345,16 +355,7 @@ export default function ScheduleTable() {
         color: updatedSchedule.color || "blue",
         scheduleType: updatedSchedule.scheduleType || "lecture",
       };
-
-      // Add date fields if they exist in the updated schedule
-      if (updatedSchedule.startDate) {
-        scheduleData.startDate = updatedSchedule.startDate;
-      }
-
-      if (updatedSchedule.endDate) {
-        scheduleData.endDate = updatedSchedule.endDate;
-      }
-
+      
       // Update the document in Firestore
       await updateDoc(doc(db, schedulePath), scheduleData);
 

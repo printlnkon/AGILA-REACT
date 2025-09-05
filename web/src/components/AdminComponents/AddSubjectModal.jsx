@@ -20,13 +20,13 @@ const INITIAL_SUBJECT_DATA = {
   subjectCode: "",
   subjectName: "",
   description: "",
-  units: 0,
+  units: "",
 };
 
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="text-sm text-red-500 mt-1 flex items-center gap-1">
+    <div className="text-sm text-destructive mt-1 flex items-center gap-1">
       <X className="w-4 h-4" />
       {message}
     </div>
@@ -42,9 +42,6 @@ export default function AddSubjectModal({
   const [subjectFormData, setSubjectFormData] = useState(INITIAL_SUBJECT_DATA);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // The modal will be opened based on the `session` prop,
-  // so no need to fetch anything inside the modal itself.
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -134,7 +131,7 @@ export default function AddSubjectModal({
           <DialogTitle className="text-xl">Add Subject</DialogTitle>
           <DialogDescription>
             Add a new subject. All fields marked with{" "}
-            <span className="text-red-500">*</span> are required.
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
 
@@ -143,7 +140,7 @@ export default function AddSubjectModal({
             {/* subject code */}
             <div className="space-y-1">
               <Label htmlFor="subjectCode">
-                Subject Code <span className="text-red-500">*</span>
+                Subject Code <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="subjectCode"
@@ -158,7 +155,7 @@ export default function AddSubjectModal({
             {/* subject name */}
             <div className="space-y-1">
               <Label htmlFor="subjectName">
-                Subject Name <span className="text-red-500">*</span>
+                Subject Name <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="subjectName"
@@ -175,7 +172,7 @@ export default function AddSubjectModal({
             {/* units */}
             <div className="space-y-1">
               <Label htmlFor="units">
-                Units <span className="text-red-500">*</span>
+                Units <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="units"

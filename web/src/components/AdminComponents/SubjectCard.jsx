@@ -95,7 +95,7 @@ export default function SubjectCard({
     }
   };
 
-  // Handle edit subject form submission
+  // handle edit subject form submission
   const handleEditSubject = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -112,7 +112,6 @@ export default function SubjectCard({
     }
 
     try {
-      // Create a clean update object by removing undefined values and metadata fields
       const {
         // Remove metadata fields that shouldn't be updated
         id,
@@ -123,9 +122,9 @@ export default function SubjectCard({
         yearLevelId,
         departmentName,
         courseName,
-        yearLevelName, // Remove reference names
+        yearLevelName, 
         createdAt,
-        updatedAt, // Remove timestamps if they exist
+        updatedAt, 
         ...updateData
       } = subjectFormData;
 

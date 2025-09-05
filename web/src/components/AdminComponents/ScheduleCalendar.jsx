@@ -179,12 +179,6 @@ const scheduleFormSchema = z.object({
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
   days: z.array(z.string()).min(1, "At least one day must be selected"),
-  startDate: z.date({
-    required_error: "Start date is required",
-  }),
-  endDate: z.date({
-    required_error: "End date is required",
-  }),
 });
 
 const COLOR_OPTIONS = [
@@ -326,6 +320,17 @@ export default function ScheduleCalendar({
       : yearLevels.find((y) => y.toString() === selectedYearLevel)?.toString();
   const sectionName = sections.find((s) => s.id === selectedSection)?.name;
 
+  // schedule type name
+  const getScheduleTypeName = (schedule) => {
+    if (schedule.isLabComponent === true || 
+        schedule.scheduleType === "LABORATORY" || 
+        schedule.scheduleType?.toLowerCase() === "laboratory" || 
+        schedule.roomType === "laboratory") {
+      return "Laboratory";
+    }
+    return "Lecture";
+  };
+
   // initialize form for editing schedules
   const form = useForm({
     resolver: zodResolver(scheduleFormSchema),
@@ -443,35 +448,24 @@ export default function ScheduleCalendar({
         const startTime = `${data.startHour}:${data.startMinute} ${data.startPeriod}`;
         const endTime = `${data.endHour}:${data.endMinute} ${data.endPeriod}`;
 
-        // Format dates as ISO strings if they exist
-        let formattedStartDate = null;
-        let formattedEndDate = null;
-
-        if (data.startDate) {
-          formattedStartDate = format(data.startDate, "yyyy-MM-dd");
-        }
-
-        if (data.endDate) {
-          formattedEndDate = format(data.endDate, "yyyy-MM-dd");
-        }
-
         // Create updated schedule with original id and form data
         const updatedSchedule = {
           ...selectedSchedule,
           subjectName: data.subjectName,
           roomName: data.roomName,
           roomId:
-          rooms.find((room) => room.name === data.roomName)?.id ||
-          selectedSchedule.roomId,
-          instructorId: instructors.find(instructor => instructor.name === data.instructorName)?.id || selectedSchedule.instructorId,
+            rooms.find((room) => room.name === data.roomName)?.id ||
+            selectedSchedule.roomId,
+          instructorId:
+            instructors.find(
+              (instructor) => instructor.name === data.instructorName
+            )?.id || selectedSchedule.instructorId,
           instructorName: data.instructorName,
           startTime,
           endTime,
           days: data.days,
           color: data.color || "blue",
           scheduleType: data.scheduleType || "lecture",
-          startDate: formattedStartDate,
-          endDate: formattedEndDate,
         };
 
         // validate time range
@@ -700,14 +694,14 @@ export default function ScheduleCalendar({
           zIndex: isCurrentSchedule ? 5 : 1,
         }}
       >
-        {/* section name at the top */}
+        {/* section name with schedule type */}
         <div className="text-[12px] font-medium opacity-80 mb-0.5 truncate">
-          {sectionName || "Section"}
+          {sectionName || "Section"} • {getScheduleTypeName(schedule)}
         </div>
 
-        {/* subject name with larger font */}
+        {/* subject code with subject name */}
         <div className="font-semibold text-sm leading-tight truncate">
-          {schedule.subjectCode} {schedule.subjectName}
+          {schedule.subjectCode && `${schedule.subjectCode} - `}{schedule.subjectName}
         </div>
 
         {/* room information */}
@@ -796,7 +790,7 @@ export default function ScheduleCalendar({
         scheduleStart.setHours(0, 0, 0, 0);
         scheduleEnd.setHours(23, 59, 59, 999); // include the entire end date
         calendarDate.setHours(12, 0, 0, 0); // set to noon to avoid timezone issues
-        
+
         return calendarDate >= scheduleStart && calendarDate <= scheduleEnd;
       }
 
@@ -952,14 +946,14 @@ export default function ScheduleCalendar({
                     zIndex: isCurrentSchedule ? 5 : 1,
                   }}
                 >
-                  {/* section name at the top */}
+                  {/* section name with schedule type */}
                   <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
-                    {sectionName || "Section"}
+                    {sectionName || "Section"} • {getScheduleTypeName(schedule)}
                   </div>
 
-                  {/* subject name with larger font */}
+                  {/* subject code with subject name*/}
                   <div className="font-semibold text-sm sm:text-base leading-tight truncate">
-                    {schedule.subjectName}
+                    {schedule.subjectCode && `${schedule.subjectCode} - `}{schedule.subjectName}
                   </div>
 
                   {/* room information */}
@@ -1356,8 +1350,9 @@ export default function ScheduleCalendar({
                             className={`text-[11px] truncate rounded px-1.5 py-1 
       ${isPastDay ? "bg-muted/50 text-muted-foreground" : `${bg} ${text}`}`}
                           >
+                            {/* subject code with subject name */}
                             <div className="font-medium truncate">
-                              {schedule.subjectName}
+                              {schedule.subjectCode ? `${schedule.subjectCode} - ${schedule.subjectName}` : schedule.subjectName}
                             </div>
                             <div className="text-[10px] opacity-80 truncate">
                               {formatScheduleTime(schedule)}
@@ -1547,7 +1542,7 @@ export default function ScheduleCalendar({
 
       {/* detail view side sheet */}
       <Sheet open={showDetails} onOpenChange={setShowDetails}>
-        <SheetContent className="w-full sm:max-w-lg flex flex-col">
+        <SheetContent className="w-full sm:max-w-lg flex flex-col max-w-[250]">
           <SheetHeader>
             <SheetTitle className="text-xl font-semibold">
               Schedule Details
@@ -1557,24 +1552,44 @@ export default function ScheduleCalendar({
 
           {/* schedule details */}
           {selectedSchedule && (
-            <div className="space-y-6 p-4">
+            <div className="space-y-6 py-6 p-4">
               <div className="border-b pb-4">
-                <h3 className="font-semibold text-2xl mb-1">
-                  {selectedSchedule.subjectName}
-                </h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>{formatScheduleTime(selectedSchedule)}</span>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <Badge variant="secondary" className="mb-2">
+                      {getScheduleTypeName(selectedSchedule)}
+                    </Badge>
+                    <h3 className="font-semibold text-2xl mb-1">
+                      {selectedSchedule.subjectCode} | {selectedSchedule.subjectName}
+                    </h3>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full ${
+                      getScheduleColorClasses(selectedSchedule).bg
+                    }`}
+                  ></div>
+                </div>
+                <div className="flex items-center gap-2 text-sm mt-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {formatScheduleTime(selectedSchedule)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    ({calculateTotalHours(selectedSchedule)} total)
+                  </span>
                 </div>
               </div>
-              <div className="space-y-4">
+
+              <div className="space-y-4 p-4">
                 <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />{" "}
-                  <div>
+                  <Building2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-muted-foreground">
                       Room
                     </p>
-                    <p>{selectedSchedule.roomName}</p>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium">{selectedSchedule.roomName}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1584,7 +1599,9 @@ export default function ScheduleCalendar({
                     <p className="text-sm font-medium text-muted-foreground">
                       Instructor
                     </p>
-                    <p>{selectedSchedule.instructorName}</p>
+                    <p className="font-medium">
+                      {selectedSchedule.instructorName}
+                    </p>
                   </div>
                 </div>
 
@@ -1592,53 +1609,54 @@ export default function ScheduleCalendar({
                   <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Schedule Days
+                      Day
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {selectedSchedule.days &&
                         selectedSchedule.days.map((day) => (
-                          <Badge key={day} className="capitalize">
-                            {days[day]}
+                          <Badge
+                            key={day}
+                            variant="secondary"
+                            className="capitalize"
+                          >
+                            {day}
                           </Badge>
                         ))}
                     </div>
                   </div>
                 </div>
               </div>
+
               <Separator />
-              <div className="space-y-4">
+
+              <div className="space-y-4 p-4">
                 {/* grouped academic details */}
                 <div className="flex items-start gap-3">
                   <BookOpen className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Academic Information
-                    </p>
-                    <div className="space-y-1 mt-2">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                          Department:
-                        </h2>
-                        <Badge variant="outline">{departmentName}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                          Course:
-                        </h2>
-                        <Badge variant="outline">{courseName}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                          Year Level:
-                        </h2>
-                        <Badge variant="outline">{yearLevelValue}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                          Section:
-                        </h2>
-                        <Badge variant="outline">{sectionName}</Badge>
-                      </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-3 w-full">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Department
+                      </p>
+                      <p className="font-medium truncate">{departmentName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Course
+                      </p>
+                      <p className="font-medium truncate">{courseName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Year Level
+                      </p>
+                      <p className="font-medium">{yearLevelValue}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Section
+                      </p>
+                      <p className="font-medium">{sectionName}</p>
                     </div>
                   </div>
                 </div>
@@ -1646,8 +1664,12 @@ export default function ScheduleCalendar({
             </div>
           )}
 
-          <SheetFooter>
-            <Button className="cursor-pointer" onClick={handleEditClick}>
+          <SheetFooter className="pt-2 flex-shrink-0">
+            <Button
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={handleEditClick}
+            >
               <Pencil className="h-4 w-4" />
               Edit
             </Button>
@@ -1657,7 +1679,7 @@ export default function ScheduleCalendar({
               onClick={handleDeleteClick}
             >
               <Trash2 className="h-4 w-4" />
-              Delete Schedule
+              Delete
             </Button>
             <Button
               variant="ghost"
@@ -1670,7 +1692,7 @@ export default function ScheduleCalendar({
         </SheetContent>
       </Sheet>
 
-      {/* day detail modal for month view */}
+      {/* modal for month view */}
       <Dialog open={showDayDetail} onOpenChange={setShowDayDetail}>
         <DialogContent className="sm:max-w-[550px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -1700,7 +1722,12 @@ export default function ScheduleCalendar({
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium">{schedule.subjectName}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {getScheduleTypeName(schedule)}
+                        </Badge>
+                        <h4 className="font-medium">
+                          {schedule.subjectCode ? `${schedule.subjectCode} - ${schedule.subjectName}` : schedule.subjectName}
+                        </h4>
                         <p className="text-sm text-muted-foreground">
                           {formatScheduleTime(schedule)}
                         </p>
@@ -1749,7 +1776,7 @@ export default function ScheduleCalendar({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">
-                  Type of Schedule <span className="text-destructive">*</span>
+                 Room Type <span className="text-destructive">*</span>
                 </label>
                 {form.formState.errors.scheduleType && (
                   <p className="text-xs text-destructive">
@@ -1761,7 +1788,13 @@ export default function ScheduleCalendar({
                 control={form.control}
                 name="scheduleType"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select 
+                      value={field.value || 
+                        (selectedSchedule?.isLabComponent === true || 
+                        selectedSchedule?.scheduleType === "LABORATORY" || 
+                        selectedSchedule?.roomType === "laboratory") ? "laboratory" : "lecture"}
+                      onValueChange={field.onChange}
+                    >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Schedule Type" />
                     </SelectTrigger>
@@ -1772,121 +1805,6 @@ export default function ScheduleCalendar({
                   </Select>
                 )}
               />
-            </div>
-
-            {/* Date Selection */}
-            <div className="space-y-2 mb-6">
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-                {/* Start Date */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">
-                      Start Date <span className="text-destructive">*</span>
-                    </label>
-                    {form.formState.errors.startDate && (
-                      <p className="text-xs text-destructive">
-                        {form.formState.errors.startDate.message}
-                      </p>
-                    )}
-                  </div>
-                  <Controller
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <Popover
-                        open={isStartDatePickerOpen}
-                        onOpenChange={setIsStartDatePickerOpen}
-                      >
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full font-normal justify-between ${
-                              !field.value && "text-muted-foreground"
-                            }`}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <CalendarPicker
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setIsStartDatePickerOpen(false);
-                            }}
-                            captionLayout="dropdown"
-                            className="text-primary"
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  />
-                </div>
-
-                {/* End Date */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">
-                      End Date <span className="text-destructive">*</span>
-                    </label>
-                    {form.formState.errors.endDate && (
-                      <p className="text-xs text-destructive">
-                        {form.formState.errors.endDate.message}
-                      </p>
-                    )}
-                  </div>
-                  <Controller
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <Popover
-                        open={isEndDatePickerOpen}
-                        onOpenChange={setIsEndDatePickerOpen}
-                      >
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full font-normal justify-between ${
-                              !field.value && "text-muted-foreground"
-                            }`}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <CalendarPicker
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setIsEndDatePickerOpen(false);
-                            }}
-                            captionLayout="dropdown"
-                            className="text-primary"
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Note: Start date and end date can be the same if the schedule
-                occurs on a single day
-              </p>
             </div>
 
             {/* Time Selection */}
