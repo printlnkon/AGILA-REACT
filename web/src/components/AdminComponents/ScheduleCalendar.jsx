@@ -1,8 +1,8 @@
 import * as z from "zod";
-import { toast } from "sonner";
-import { format } from "date-fns";
 import { db } from "@/api/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import React, { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
+import { collection, getDocs, updateDoc } from "firebase/firestore";
 import { useForm, Controller } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar,
@@ -54,14 +53,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import AddScheduleModal from "@/components/AdminComponents/AddScheduleModal";
 // import ScheduleList from "@/components/AdminComponents/ScheduleList";
+
+const generateCourseAbbreviation = (courseName) => {
+  // Early return if no course name
+  if (!courseName) return "";
+
+  // Check if it's a bachelor's degree program
+  if (courseName.toLowerCase().includes("bachelor")) {
+    // Split the name into words
+    const words = courseName.split(" ");
+    let abbreviation = "";
+
+    // For words like "of", "in", "and", etc. we don't include them in the abbreviation
+    const excludedWords = ["of", "in", "and", "the", "on", "with", "for"];
+
+    // Extract first letters of important words
+    for (const word of words) {
+      // Skip short connecting words
+      if (excludedWords.includes(word.toLowerCase())) continue;
+
+      // Add first letter if it's capitalized or part of specific patterns
+      if (
+        word.length > 0 &&
+        (word[0] === word[0].toUpperCase() ||
+          word.toLowerCase() === "science" ||
+          word.toLowerCase() === "bachelor")
+      ) {
+        abbreviation += word[0].toUpperCase();
+      }
+    }
+
+    return `${abbreviation}`;
+  }
+
+  return ""; // Return empty if not a bachelor's degree program
+};
 
 const days = {
   monday: "Mon",
@@ -176,8 +204,12 @@ const scheduleFormSchema = z.object({
   subjectName: z.string().min(1, "Subject name is required"),
   instructorName: z.string().min(1, "Instructor name is required"),
   roomName: z.string().min(1, "Room name is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
+  startHour: z.string().min(1, "Start hour is required"),
+  startMinute: z.string().min(1, "Start minute is required"),
+  startPeriod: z.string().min(1, "Start period is required"),
+  endHour: z.string().min(1, "End hour is required"),
+  endMinute: z.string().min(1, "End minute is required"),
+  endPeriod: z.string().min(1, "End period is required"),
   days: z.array(z.string()).min(1, "At least one day must be selected"),
 });
 
@@ -232,10 +264,8 @@ export default function ScheduleCalendar({
   const [instructors, setInstructors] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
-  const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
-  const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
 
-  // Add this useEffect to fetch data when edit modal opens
+  // fetch data when edit modal opens
   useEffect(() => {
     if (showEditModal) {
       fetchSubjects();
@@ -248,26 +278,33 @@ export default function ScheduleCalendar({
   const fetchSubjects = async () => {
     setLoadingOptions(true);
     try {
-      const subjectsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/subjects`;
+      const subjectsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/year_levels/${selectedYearLevel}/subjects`;
 
-      // Get subjects collection
       const subjectsSnapshot = await getDocs(collection(db, subjectsPath));
 
-      // Map the snapshot to the format needed
-      const subjectsData = subjectsSnapshot.empty
-        ? []
-        : subjectsSnapshot.docs
-            .map((doc) => ({
-              id: doc.id,
-              name: doc.data().subjectName || doc.data().name,
-              code: doc.data().subjectCode || doc.data().code || "",
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+      if (subjectsSnapshot.empty) {
+        setSubjects([]);
+        toast.warning("No subjects found for this course.");
+        return;
+      }
 
-      setSubjects(subjectsData);
+      const subjectsList = subjectsSnapshot.docs.map((doc) => {
+        const subjectData = doc.data();
+        return {
+          id: doc.id,
+          subjectCode: subjectData.subjectCode || "",
+          subjectName: subjectData.subjectName || "",
+          code: subjectData.subjectCode || "",
+          name: subjectData.subjectName || "",
+          units: subjectData.units || 0,
+          description: subjectData.description || "",
+          ...subjectData,
+        };
+      });
+      setSubjects(subjectsList);
     } catch (error) {
       console.error("Error fetching subjects:", error);
-      toast.error("Failed to fetch subjects");
+      toast.error("Failed to load subjects");
       setSubjects([]);
     } finally {
       setLoadingOptions(false);
@@ -278,16 +315,46 @@ export default function ScheduleCalendar({
   const fetchInstructors = async () => {
     setLoadingOptions(true);
     try {
-      // Fetch instructors, possibly filtered by department
-      const response = await fetch(
-        `/api/instructors?departmentId=${selectedDepartment}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setInstructors(data);
+      const teachersRef = collection(db, `users/teacher/accounts`);
+      const teachersSnapshot = await getDocs(teachersRef);
+
+      if (teachersSnapshot.empty) {
+        setInstructors([]);
+        toast.warning("No instructors found in the system.");
+        return;
+      }
+
+      // Process all teachers and filter based on department
+      const instructorsData = teachersSnapshot.docs
+        .map((doc) => {
+          const teacherData = doc.data();
+          return {
+            id: doc.id,
+            name: teacherData.firstName + " " + teacherData.lastName,
+            department: teacherData.department || "",
+            departmentName: teacherData.departmentName || "",
+            course: teacherData.course || "",
+            courseName: teacherData.courseName || "",
+            yearLevel: teacherData.yearLevel || "",
+            yearLevelName: teacherData.yearLevelName || "",
+            section: teacherData.section || "",
+            sectionName: teacherData.sectionName || "",
+            email: teacherData.email || "",
+          };
+        })
+        // Filter teachers to only include those from the current department
+        .filter((teacher) => teacher.department === selectedDepartment)
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setInstructors(instructorsData);
+
+      if (instructorsData.length === 0) {
+        toast.warning("No instructors found for this department.");
       }
     } catch (error) {
-      console.error("Error fetching instructors:", error);
+      console.error("Error fetching instructors from Firestore:", error);
+      toast.error("Failed to fetch instructors");
+      setInstructors([]);
     } finally {
       setLoadingOptions(false);
     }
@@ -297,14 +364,32 @@ export default function ScheduleCalendar({
   const fetchRooms = async () => {
     setLoadingOptions(true);
     try {
-      // Fetch available rooms
-      const response = await fetch("/api/rooms");
-      if (response.ok) {
-        const data = await response.json();
-        setRooms(data);
+      const roomsRef = collection(db, "rooms");
+      const roomsSnapshot = await getDocs(roomsRef);
+
+      if (roomsSnapshot.empty) {
+        setRooms([]);
+        toast.warning("No rooms found.");
+        return;
       }
+
+      const roomsList = roomsSnapshot.docs.map((doc) => {
+        const roomData = doc.data();
+        return {
+          id: doc.id,
+          name: roomData.roomNo || roomData.name,
+          roomNo: roomData.roomNo || roomData.name,
+          floor: roomData.floor,
+          status: roomData.status || "available",
+          roomType: roomData.roomType || "lecture",
+        };
+      });
+
+      setRooms(roomsList);
     } catch (error) {
       console.error("Error fetching rooms:", error);
+      toast.error("Failed to load rooms");
+      setRooms([]);
     } finally {
       setLoadingOptions(false);
     }
@@ -322,10 +407,12 @@ export default function ScheduleCalendar({
 
   // schedule type name
   const getScheduleTypeName = (schedule) => {
-    if (schedule.isLabComponent === true || 
-        schedule.scheduleType === "LABORATORY" || 
-        schedule.scheduleType?.toLowerCase() === "laboratory" || 
-        schedule.roomType === "laboratory") {
+    if (
+      schedule.isLabComponent === true ||
+      schedule.scheduleType === "LABORATORY" ||
+      schedule.scheduleType?.toLowerCase() === "laboratory" ||
+      schedule.roomType === "laboratory"
+    ) {
       return "Laboratory";
     }
     return "Lecture";
@@ -388,41 +475,80 @@ export default function ScheduleCalendar({
       const endTimeParts = selectedSchedule.endTime.split(" ");
       const [endHour, endMinute] = endTimeParts[0].split(":");
       const endPeriod = endTimeParts[1];
-
-      // Parse dates if they exist
-      let startDate = undefined;
-      let endDate = undefined;
-
-      if (selectedSchedule.startDate) {
-        startDate = new Date(selectedSchedule.startDate);
-      }
-
-      if (selectedSchedule.endDate) {
-        endDate = new Date(selectedSchedule.endDate);
-      }
-
-      // Populate the form with selected schedule data
-      setTimeout(() => {
-        form.reset({
-          subjectName: selectedSchedule.subjectName,
-          instructorName: selectedSchedule.instructorName,
-          roomName: selectedSchedule.roomName,
-          startTime: selectedSchedule.startTime,
-          endTime: selectedSchedule.endTime,
-          days: selectedSchedule.days || [],
-          startHour: startHour,
-          startMinute: startMinute,
-          startPeriod: startPeriod,
-          endHour: endHour,
-          endMinute: endMinute,
-          endPeriod: endPeriod,
-          color: selectedSchedule.color || "blue",
-          startDate: startDate,
-          endDate: endDate,
-        });
-      }, 100);
     }
   };
+
+  // useEffect to set form values after data is loaded
+  useEffect(() => {
+    if (
+      showEditModal &&
+      selectedSchedule &&
+      subjects.length > 0 &&
+      rooms.length > 0 &&
+      instructors.length > 0
+    ) {
+      // Find the subject, room and instructor objects that match the selected schedule
+      const selectedSubject = subjects.find(
+        (subject) =>
+          subject.id === selectedSchedule.subjectId ||
+          subject.name === selectedSchedule.subjectName
+      );
+
+      const selectedRoom = rooms.find(
+        (room) =>
+          room.id === selectedSchedule.roomId ||
+          room.name === selectedSchedule.roomName
+      );
+
+      const selectedInstructor = instructors.find(
+        (instructor) =>
+          instructor.id === selectedSchedule.instructorId ||
+          instructor.name === selectedSchedule.instructorName
+      );
+
+      // Parse start time
+      const startTimeParts = selectedSchedule.startTime.split(" ");
+      const [startHour, startMinute] = startTimeParts[0].split(":");
+      const startPeriod = startTimeParts[1];
+
+      // Parse end time
+      const endTimeParts = selectedSchedule.endTime.split(" ");
+      const [endHour, endMinute] = endTimeParts[0].split(":");
+      const endPeriod = endTimeParts[1];
+
+      // Now reset the form with all the data available
+       form.reset({
+        subjectId: selectedSubject?.id || selectedSchedule.subjectId,
+        subjectName: selectedSubject
+          ? selectedSubject.name
+          : selectedSchedule.subjectName,
+        instructorId: selectedInstructor?.id || selectedSchedule.instructorId,
+        instructorName: selectedInstructor
+          ? selectedInstructor.name
+          : selectedSchedule.instructorName,
+        roomId: selectedRoom?.id || selectedSchedule.roomId,
+        roomName: selectedRoom ? selectedRoom.name : selectedSchedule.roomName,
+        // Don't set these full time strings as they're not used in the form inputs
+        // startTime: selectedSchedule.startTime,
+        // endTime: selectedSchedule.endTime,
+        days: selectedSchedule.days || [],
+        // Set the individual time components
+        startHour: startHour,
+        startMinute: startMinute,
+        startPeriod: startPeriod,
+        endHour: endHour,
+        endMinute: endMinute,
+        endPeriod: endPeriod,
+        color: selectedSchedule.color || "blue",
+        scheduleType:
+          selectedSchedule.isLabComponent === true ||
+          selectedSchedule.scheduleType === "LABORATORY" ||
+          selectedSchedule.roomType === "laboratory"
+            ? "laboratory"
+            : "lecture",
+      });
+    }
+  }, [showEditModal, selectedSchedule, subjects, rooms, instructors]);
 
   // handle delete button click
   const handleDeleteClick = () => {
@@ -448,25 +574,39 @@ export default function ScheduleCalendar({
         const startTime = `${data.startHour}:${data.startMinute} ${data.startPeriod}`;
         const endTime = `${data.endHour}:${data.endMinute} ${data.endPeriod}`;
 
+        form.setValue("startTime", startTime);
+        form.setValue("endTime", endTime);
+        
+        // Find the selected subject to get its ID
+        const selectedSubject = subjects.find(
+          (subject) => subject.name === data.subjectName
+        );
+
+        // Find the selected room to get its ID
+        const selectedRoom = rooms.find((room) => room.name === data.roomName);
+
+        // Find the selected instructor to get its ID
+        const selectedInstructor = instructors.find(
+          (instructor) => instructor.name === data.instructorName
+        );
+
         // Create updated schedule with original id and form data
         const updatedSchedule = {
-          ...selectedSchedule,
-          subjectName: data.subjectName,
-          roomName: data.roomName,
-          roomId:
-            rooms.find((room) => room.name === data.roomName)?.id ||
-            selectedSchedule.roomId,
-          instructorId:
-            instructors.find(
-              (instructor) => instructor.name === data.instructorName
-            )?.id || selectedSchedule.instructorId,
-          instructorName: data.instructorName,
-          startTime,
-          endTime,
-          days: data.days,
-          color: data.color || "blue",
-          scheduleType: data.scheduleType || "lecture",
-        };
+        ...selectedSchedule,
+        subjectName: data.subjectName,
+        subjectId: selectedSubject?.id || selectedSchedule.subjectId, 
+        subjectCode: selectedSubject?.code || selectedSubject?.subjectCode || selectedSchedule.subjectCode,
+        roomName: data.roomName,
+        roomId: selectedRoom?.id || selectedSchedule.roomId,
+        instructorId: selectedInstructor?.id || selectedSchedule.instructorId,
+        instructorName: data.instructorName,
+        startTime,
+        endTime,
+        days: data.days,
+        color: data.color || "blue",
+        scheduleType: data.scheduleType || "lecture",
+        isLabComponent: data.scheduleType === "laboratory" ? true : false
+      };
 
         // validate time range
         const timeError = validateTimeRange(
@@ -701,7 +841,8 @@ export default function ScheduleCalendar({
 
         {/* subject code with subject name */}
         <div className="font-semibold text-sm leading-tight truncate">
-          {schedule.subjectCode && `${schedule.subjectCode} - `}{schedule.subjectName}
+          {schedule.subjectCode && `${schedule.subjectCode} - `}
+          {schedule.subjectName}
         </div>
 
         {/* room information */}
@@ -953,7 +1094,8 @@ export default function ScheduleCalendar({
 
                   {/* subject code with subject name*/}
                   <div className="font-semibold text-sm sm:text-base leading-tight truncate">
-                    {schedule.subjectCode && `${schedule.subjectCode} - `}{schedule.subjectName}
+                    {schedule.subjectCode && `${schedule.subjectCode} - `}
+                    {schedule.subjectName}
                   </div>
 
                   {/* room information */}
@@ -1352,7 +1494,9 @@ export default function ScheduleCalendar({
                           >
                             {/* subject code with subject name */}
                             <div className="font-medium truncate">
-                              {schedule.subjectCode ? `${schedule.subjectCode} - ${schedule.subjectName}` : schedule.subjectName}
+                              {schedule.subjectCode
+                                ? `${schedule.subjectCode} - ${schedule.subjectName}`
+                                : schedule.subjectName}
                             </div>
                             <div className="text-[10px] opacity-80 truncate">
                               {formatScheduleTime(schedule)}
@@ -1560,7 +1704,8 @@ export default function ScheduleCalendar({
                       {getScheduleTypeName(selectedSchedule)}
                     </Badge>
                     <h3 className="font-semibold text-2xl mb-1">
-                      {selectedSchedule.subjectCode} | {selectedSchedule.subjectName}
+                      {selectedSchedule.subjectCode} |{" "}
+                      {selectedSchedule.subjectName}
                     </h3>
                   </div>
                   <div
@@ -1644,7 +1789,9 @@ export default function ScheduleCalendar({
                       <p className="text-sm font-medium text-muted-foreground">
                         Course
                       </p>
-                      <p className="font-medium truncate">{courseName}</p>
+                      <p className="font-medium truncate">
+                        {generateCourseAbbreviation(courseName)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">
@@ -1726,7 +1873,9 @@ export default function ScheduleCalendar({
                           {getScheduleTypeName(schedule)}
                         </Badge>
                         <h4 className="font-medium">
-                          {schedule.subjectCode ? `${schedule.subjectCode} - ${schedule.subjectName}` : schedule.subjectName}
+                          {schedule.subjectCode
+                            ? `${schedule.subjectCode} - ${schedule.subjectName}`
+                            : schedule.subjectName}
                         </h4>
                         <p className="text-sm text-muted-foreground">
                           {formatScheduleTime(schedule)}
@@ -1776,7 +1925,7 @@ export default function ScheduleCalendar({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">
-                 Room Type <span className="text-destructive">*</span>
+                  Room Type <span className="text-destructive">*</span>
                 </label>
                 {form.formState.errors.scheduleType && (
                   <p className="text-xs text-destructive">
@@ -1788,13 +1937,16 @@ export default function ScheduleCalendar({
                 control={form.control}
                 name="scheduleType"
                 render={({ field }) => (
-                  <Select 
-                      value={field.value || 
-                        (selectedSchedule?.isLabComponent === true || 
-                        selectedSchedule?.scheduleType === "LABORATORY" || 
-                        selectedSchedule?.roomType === "laboratory") ? "laboratory" : "lecture"}
-                      onValueChange={field.onChange}
-                    >
+                  <Select
+                    value={field.value || (
+                      selectedSchedule?.isLabComponent === true ||
+                      selectedSchedule?.scheduleType === "LABORATORY" ||
+                      selectedSchedule?.roomType === "laboratory"
+                        ? "laboratory"
+                        : "lecture"
+                    )}
+                    onValueChange={field.onChange}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select Schedule Type" />
                     </SelectTrigger>
@@ -2142,21 +2294,36 @@ export default function ScheduleCalendar({
                   control={form.control}
                   name="subjectName"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={loadingOptions}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem
-                            key={`subject-${subject.id}`}
-                            value={subject.name}
-                          >
-                            {subject.code
-                              ? `${subject.code} - ${subject.name}`
-                              : subject.name}
-                          </SelectItem>
-                        ))}
+                        {subjects.length > 0 ? (
+                          subjects.map((subject) => (
+                            <SelectItem
+                              key={`subject-${subject.id || "unknown"}`}
+                              value={
+                                subject.name ||
+                                `Subject ${subject.id || "unknown"}`
+                              }
+                            >
+                              {subject.code
+                                ? `${subject.code} - ${
+                                    subject.name || "Unknown Subject"
+                                  }`
+                                : subject.name || "Unknown Subject"}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-center text-muted-foreground">
+                            No subjects available
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -2179,16 +2346,31 @@ export default function ScheduleCalendar({
                   control={form.control}
                   name="roomName"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={loadingOptions}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select room" />
                       </SelectTrigger>
                       <SelectContent>
-                        {rooms.map((room) => (
-                          <SelectItem key={`room-${room.id}`} value={room.name}>
-                            {room.name}
-                          </SelectItem>
-                        ))}
+                        {rooms.length > 0 ? (
+                          rooms.map((room) => (
+                            <SelectItem
+                              key={`room-${room.id || "unknown"}`}
+                              value={
+                                room.name || `Room ${room.id || "unknown"}`
+                              }
+                            >
+                              {room.name || "Unknown Room"}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-center text-muted-foreground">
+                            No rooms available
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -2212,19 +2394,32 @@ export default function ScheduleCalendar({
                 control={form.control}
                 name="instructorName"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={loadingOptions}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select instructor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {instructors.map((instructor) => (
-                        <SelectItem
-                          key={`instructor-${instructor.id}`}
-                          value={instructor.name}
-                        >
-                          {instructor.name}
-                        </SelectItem>
-                      ))}
+                      {instructors.length > 0 ? (
+                        instructors.map((instructor) => (
+                          <SelectItem
+                            key={`instructor-${instructor.id || "unknown"}`}
+                            value={
+                              instructor.name ||
+                              `Instructor ${instructor.id || "unknown"}`
+                            }
+                          >
+                            {instructor.name || "Unknown Instructor"}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-center text-muted-foreground">
+                          No instructors available
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 )}

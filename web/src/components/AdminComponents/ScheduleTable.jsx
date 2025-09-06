@@ -58,6 +58,7 @@ export default function ScheduleTable() {
 
   const [scheduleData, setScheduleData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
 
   const isNoActiveSession = !activeSession || !activeSession.id;
   const isNoActiveSemester = activeSession && !activeSession.semesterId;
@@ -72,11 +73,11 @@ export default function ScheduleTable() {
   useEffect(() => {
     if (sessionLoading || !activeSession?.semesterId) {
       setDepartments([]);
-      setLoading(false);
+      setFilterLoading(false);
       return () => {};
     }
 
-    setLoading(true);
+    setFilterLoading(true);
     const deptPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`;
     const unsubscribe = onSnapshot(
       collection(db, deptPath),
@@ -89,13 +90,13 @@ export default function ScheduleTable() {
           .sort((a, b) => a.name.localeCompare(b.name));
 
         setDepartments(depts);
-        setLoading(false);
+        setFilterLoading(false);
       },
       (error) => {
         console.error("Error fetching departments:", error);
         toast.error("Failed to fetch departments.");
         setDepartments([]);
-        setLoading(false);
+        setFilterLoading(false);
       }
     );
 
@@ -109,7 +110,7 @@ export default function ScheduleTable() {
       return () => {};
     }
 
-    setLoading(true);
+    setFilterLoading(true);
     const coursePath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses`;
 
     const unsubscribe = onSnapshot(
@@ -123,13 +124,13 @@ export default function ScheduleTable() {
           .sort((a, b) => a.name.localeCompare(b.name));
 
         setCourses(coursesData);
-        setLoading(false);
+        setFilterLoading(false);
       },
       (error) => {
         console.error("Error fetching courses:", error);
         toast.error("Failed to fetch courses.");
         setCourses([]);
-        setLoading(false);
+        setFilterLoading(false);
       }
     );
 
@@ -143,7 +144,7 @@ export default function ScheduleTable() {
       return () => {};
     }
 
-    setLoading(true);
+    setFilterLoading(true);
     const yearLevelPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/year_levels`;
 
     const unsubscribe = onSnapshot(
@@ -168,13 +169,13 @@ export default function ScheduleTable() {
           );
 
         setYearLevels(levels);
-        setLoading(false);
+        setFilterLoading(false);
       },
       (error) => {
         console.error("Error fetching year levels:", error);
         toast.error("Failed to fetch year levels.");
         setYearLevels([]); // Return empty array on error
-        setLoading(false);
+        setFilterLoading(false);
       }
     );
 
@@ -193,7 +194,7 @@ export default function ScheduleTable() {
       return () => {};
     }
 
-    setLoading(true);
+    setFilterLoading(true);
     const sectionsPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/year_levels/${selectedYearLevel}/sections`;
 
     const unsubscribe = onSnapshot(
@@ -207,19 +208,18 @@ export default function ScheduleTable() {
           .sort((a, b) => a.id.localeCompare(b.id));
 
         setSections(sectionsData);
-        setLoading(false);
+        setFilterLoading(false);
       },
       (error) => {
         console.error("Error fetching sections:", error);
         toast.error("Failed to fetch sections.");
         setSections([]); // Return empty array on error
-        setLoading(false);
+        setFilterLoading(false);
       }
     );
 
     return () => unsubscribe();
   }, [selectedYearLevel, activeSession, selectedDepartment, selectedCourse]);
-
   // effect to fetch schedules when all filters are selected
   useEffect(() => {
     if (canAddSchedule) {
@@ -234,6 +234,59 @@ export default function ScheduleTable() {
     selectedSection,
     canAddSchedule,
   ]);
+  // effect to listen for changes in any subjects that are referenced in schedules
+  useEffect(() => {
+    if (!canAddSchedule || !activeSession) return;
+
+    // Listen for changes in any subjects that are referenced in our schedules
+    const unsubscribeList = [];
+
+    // For each schedule, set up a listener on its subject
+    scheduleData.forEach((schedule) => {
+      if (schedule.subjectId) {
+        // Construct the path to the subject document
+        const subjectPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/year_levels/${selectedYearLevel}/subjects/${schedule.subjectId}`;
+
+        // Set up the listener
+        const unsubscribe = onSnapshot(
+          doc(db, subjectPath),
+          (docSnapshot) => {
+            if (docSnapshot.exists()) {
+              const subjectData = docSnapshot.data();
+
+              // Update the schedule with the latest subject data
+              if (
+                subjectData.subjectCode !== schedule.subjectCode ||
+                subjectData.subjectName !== schedule.subjectName
+              ) {
+                setScheduleData((prevData) =>
+                  prevData.map((item) =>
+                    item.id === schedule.id
+                      ? {
+                          ...item,
+                          subjectCode: subjectData.subjectCode,
+                          subjectName: subjectData.subjectName,
+                        }
+                      : item
+                  )
+                );
+              }
+            }
+          },
+          (error) => {
+            console.error("Error listening for subject changes:", error);
+          }
+        );
+
+        unsubscribeList.push(unsubscribe);
+      }
+    });
+
+    // Clean up listeners when component unmounts or dependencies change
+    return () => {
+      unsubscribeList.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [scheduleData, canAddSchedule, activeSession]);
 
   // fetch schedules
   const fetchSchedules = async () => {
@@ -343,6 +396,7 @@ export default function ScheduleTable() {
 
       // Prepare the data to update in Firestore
       const scheduleData = {
+        subjectId: updatedSchedule.subjectId,
         subjectCode: updatedSchedule.subjectCode,
         subjectName: updatedSchedule.subjectName,
         roomName: updatedSchedule.roomName,
@@ -355,7 +409,7 @@ export default function ScheduleTable() {
         color: updatedSchedule.color || "blue",
         scheduleType: updatedSchedule.scheduleType || "lecture",
       };
-      
+
       // Update the document in Firestore
       await updateDoc(doc(db, schedulePath), scheduleData);
 
@@ -365,11 +419,54 @@ export default function ScheduleTable() {
           schedule.id === updatedSchedule.id ? updatedSchedule : schedule
         )
       );
-
-      toast.success("Schedule updated successfully");
     } catch (error) {
       console.error("Error updating schedule:", error);
       toast.error("Failed to update schedule");
+    }
+  };
+
+  const updateSchedulesForSubject = async (subjectId, updatedSubjectData) => {
+    if (!activeSession || !canAddSchedule) return;
+
+    try {
+      const schedulesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDepartment}/courses/${selectedCourse}/year_levels/${selectedYearLevel}/sections/${selectedSection}/schedules`;
+
+      // Query schedules that reference this subject
+      const schedulesQuery = query(
+        collection(db, schedulesPath),
+        where("subjectId", "==", subjectId)
+      );
+
+      const schedulesSnapshot = await getDocs(schedulesQuery);
+
+      // Update each schedule in Firestore
+      const updatePromises = schedulesSnapshot.docs.map((scheduleDoc) => {
+        return updateDoc(doc(db, schedulesPath, scheduleDoc.id), {
+          subjectCode: updatedSubjectData.subjectCode,
+          subjectName: updatedSubjectData.subjectName,
+        });
+      });
+
+      // Execute all updates in parallel
+      await Promise.all(updatePromises);
+
+      // Also update the local state for immediate UI feedback
+      if (schedulesSnapshot.docs.length > 0) {
+        setScheduleData((prevData) =>
+          prevData.map((schedule) =>
+            schedulesSnapshot.docs.some((doc) => doc.id === schedule.id)
+              ? {
+                  ...schedule,
+                  subjectCode: updatedSubjectData.subjectCode,
+                  subjectName: updatedSubjectData.subjectName,
+                }
+              : schedule
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating schedules for subject:", error);
+      toast.error("Failed to update associated schedules");
     }
   };
 
@@ -415,7 +512,7 @@ export default function ScheduleTable() {
     }
   };
 
-  if (loading || sessionLoading) {
+  if (loading || sessionLoading || sessionLoading) {
     return (
       <div className="w-full p-4 space-y-4">
         <div className="mb-4">
@@ -550,7 +647,7 @@ export default function ScheduleTable() {
                     <Select
                       value={selectedDepartment}
                       onValueChange={setSelectedDepartment}
-                      disabled={isNoActiveSession}
+                      disabled={isNoActiveSession || filterLoading}
                     >
                       <SelectTrigger
                         id="department"
@@ -582,7 +679,11 @@ export default function ScheduleTable() {
                     <Select
                       value={selectedCourse}
                       onValueChange={setSelectedCourse}
-                      disabled={!selectedDepartment || isNoActiveSession}
+                      disabled={
+                        !selectedDepartment ||
+                        isNoActiveSession ||
+                        filterLoading
+                      }
                     >
                       <SelectTrigger
                         className="w-full sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg"
@@ -614,7 +715,9 @@ export default function ScheduleTable() {
                     <Select
                       value={selectedYearLevel}
                       onValueChange={setSelectedYearLevel}
-                      disabled={!selectedCourse || isNoActiveSession}
+                      disabled={
+                        !selectedCourse || isNoActiveSession || filterLoading
+                      }
                     >
                       <SelectTrigger
                         className="w-full sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg"
@@ -646,7 +749,9 @@ export default function ScheduleTable() {
                     <Select
                       value={selectedSection}
                       onValueChange={setSelectedSection}
-                      disabled={!selectedYearLevel || isNoActiveSession}
+                      disabled={
+                        !selectedYearLevel || isNoActiveSession || filterLoading
+                      }
                     >
                       <SelectTrigger
                         className="w-full sm:max-w-xs md:max-w-sm lg:max-w-md xl:max-w-lg"

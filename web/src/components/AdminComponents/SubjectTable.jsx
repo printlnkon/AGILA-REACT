@@ -102,6 +102,25 @@ export default function SubjectTable() {
     }
     setLoading(true);
     const subjectPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDeptId}/courses/${selectedCourseId}/year_levels/${selectedYearLevelId}/subjects`;
+
+    // Find the selected department name
+    const selectedDept = departments.find((dept) => dept.id === selectedDeptId);
+    const departmentName = selectedDept ? selectedDept.departmentName : "";
+
+    // Find the selected course name
+    const selectedCourse = courses.find(
+      (course) => course.id === selectedCourseId
+    );
+    const courseName = selectedCourse ? selectedCourse.courseName : "";
+
+    // Find the selected year level name
+    const selectedYearLevel = yearLevels.find(
+      (yl) => yl.id === selectedYearLevelId
+    );
+    const yearLevelName = selectedYearLevel
+      ? selectedYearLevel.yearLevelName
+      : "";
+
     const unsubscribe = onSnapshot(
       collection(db, subjectPath),
       (snapshot) => {
@@ -112,9 +131,11 @@ export default function SubjectTable() {
           semesterId: activeSession.semesterId,
           semesterName: activeSession.semesterName,
           departmentId: selectedDeptId,
-          departmentName: activeSession.departmentName,
+          departmentName: departmentName,
           courseId: selectedCourseId,
+          courseName: courseName,
           yearLevelId: selectedYearLevelId,
+          yearLevelName: yearLevelName,
         }));
         setSubjects(fetchedSubjects);
         setLoading(false);
@@ -126,13 +147,22 @@ export default function SubjectTable() {
       }
     );
     return () => unsubscribe();
-  }, [selectedYearLevelId, activeSession, selectedDeptId, selectedCourseId]);
+  }, [selectedYearLevelId, activeSession, selectedDeptId, selectedCourseId, departments, courses, yearLevels]);
 
   const handleSubjectUpdated = (updatedSubject) => {
     setSubjects(
-      subjects.map((subject) =>
-        subject.id === updatedSubject.id ? updatedSubject : subject
-      )
+      subjects.map((subject) => {
+        if (subject.id === updatedSubject.id) {
+          return {
+            ...subject,             
+            subjectCode: updatedSubject.subjectCode,
+            subjectName: updatedSubject.subjectName,
+            description: updatedSubject.description,
+            units: updatedSubject.units
+          };
+        }
+        return subject;
+      })
     );
   };
 
