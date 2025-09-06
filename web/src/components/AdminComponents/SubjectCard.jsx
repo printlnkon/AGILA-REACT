@@ -1,6 +1,14 @@
 import { db } from "@/api/firebase";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { useState } from "react";
+import {
+  doc,
+  deleteDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +42,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Form Error component for edit dialog
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
@@ -46,7 +60,6 @@ const FormError = ({ message }) => {
   );
 };
 
-// Form validation function
 const validateForm = (data) => {
   const errors = {};
 
@@ -62,13 +75,97 @@ const validateForm = (data) => {
     errors.subjectName = "Subject name must be at least 3 characters";
   }
 
-  if (data.units === "" || isNaN(data.units)) {
-    errors.units = "Valid unit value is required";
-  } else if (Number(data.units) < 1 || Number(data.units) > 6) {
-    errors.units = "Units must be between 1 and 6";
+  if (!data.units || data.units === "") {
+    errors.units = "Please select a unit value";
   }
 
   return errors;
+};
+
+const updateScheduleReferences = async (
+  academicYearId,
+  semesterId,
+  subjectId,
+  updatedSubjectData
+) => {
+  try {
+    const schedulesPath = `academic_years/${academicYearId}/semesters/${semesterId}/schedules`;
+
+    // query all schedule entries that reference this subject
+    const scheduleQuery = query(
+      collection(db, schedulesPath),
+      where("subjectId", "==", subjectId)
+    );
+
+    const scheduleSnapshot = await getDocs(scheduleQuery);
+
+    // Update each schedule document with the new subject information
+    const updatePromises = scheduleSnapshot.docs.map((scheduleDoc) => {
+      return updateDoc(doc(db, schedulesPath, scheduleDoc.id), {
+        subjectCode: updatedSubjectData.subjectCode,
+        subjectName: updatedSubjectData.subjectName,
+      });
+    });
+
+    // Execute all updates in parallel
+    await Promise.all(updatePromises);
+
+    if (updatePromises.length > 0) {
+      toast.success(
+        `Updated ${updatePromises.length} schedule entries with new subject data`
+      );
+    }
+  } catch (error) {
+    console.error("Error updating schedule references:", error);
+    toast.error("Failed to update schedule references");
+    throw error;
+  }
+};
+
+const handleScheduleReferencesForDeletion = async (academicYearId, semesterId, subjectId) => {
+  try {
+    // Path to the schedules collection
+    const schedulesPath = `academic_years/${academicYearId}/semesters/${semesterId}/schedules`;
+    
+    // Query all schedule entries that reference this subject
+    const scheduleQuery = query(
+      collection(db, schedulesPath),
+      where("subjectId", "==", subjectId)
+    );
+    
+    const scheduleSnapshot = await getDocs(scheduleQuery);
+    
+    // Option 1: Update schedule entries to mark subject as deleted
+    const updatePromises = scheduleSnapshot.docs.map(scheduleDoc => {
+      return updateDoc(doc(db, schedulesPath, scheduleDoc.id), {
+        subjectId: "deleted",
+        subjectCode: "[DELETED]",
+        subjectName: "Deleted Subject",
+        isSubjectDeleted: true
+      });
+    });
+    
+    // Execute all updates in parallel
+    await Promise.all(updatePromises);
+    
+    // Option 2: If you prefer to delete the schedule entries instead,
+    // uncomment this code and comment out the above updatePromises section
+    /*
+    const deletePromises = scheduleSnapshot.docs.map(scheduleDoc => {
+      return deleteDoc(doc(db, schedulesPath, scheduleDoc.id));
+    });
+    
+    // Execute all deletions in parallel
+    await Promise.all(deletePromises);
+    */
+    
+    if (updatePromises.length > 0) {
+      console.log(`Updated ${updatePromises.length} schedule entries for deleted subject`);
+    }
+  } catch (error) {
+    console.error("Error handling schedule references for deletion:", error);
+    throw error;
+  }
 };
 
 export default function SubjectCard({
@@ -78,9 +175,23 @@ export default function SubjectCard({
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [subjectFormData, setSubjectFormData] = useState(subject);
+  const [subjectFormData, setSubjectFormData] = useState({
+    ...subject,
+    units: subject.units.toString(),
+  });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset form data when dialog opens or closes
+  useEffect(() => {
+    if (editDialogOpen) {
+      setSubjectFormData({
+        ...subject,
+        units: subject.units.toString(),
+      });
+      setFormErrors({});
+    }
+  }, [editDialogOpen, subject]);
 
   // Handle form input changes for edit dialog
   const handleChange = (e) => {
@@ -95,6 +206,17 @@ export default function SubjectCard({
     }
   };
 
+  const handleSelectChange = (value) => {
+    setSubjectFormData((prev) => ({ ...prev, units: value }));
+    if (formErrors.units) {
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.units;
+        return newErrors;
+      });
+    }
+  };
+
   // handle edit subject form submission
   const handleEditSubject = async (e) => {
     e.preventDefault();
@@ -104,60 +226,54 @@ export default function SubjectCard({
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       setIsSubmitting(false);
-      toast.error("Please fix the form errors", {
-        description:
-          "Check all required fields and correct any validation errors.",
-      });
+      toast.error("Please fix the form errors");
       return;
     }
 
     try {
-      const {
-        // Remove metadata fields that shouldn't be updated
-        id,
-        academicYearId,
-        semesterId,
-        departmentId,
-        courseId,
-        yearLevelId,
-        departmentName,
-        courseName,
-        yearLevelName, 
-        createdAt,
-        updatedAt, 
-        ...updateData
-      } = subjectFormData;
-
-      // Convert units to number if it exists
-      if (updateData.units) {
-        updateData.units = Number(updateData.units);
+      // Validate that all required path segments are available
+      if (
+        !subject.academicYearId ||
+        !subject.semesterId ||
+        !subject.departmentId ||
+        !subject.courseId ||
+        !subject.yearLevelId ||
+        !subject.id
+      ) {
+        throw new Error("Missing required metadata for subject update");
       }
 
-      // Remove any undefined values
-      Object.keys(updateData).forEach((key) => {
-        if (updateData[key] === undefined) {
-          delete updateData[key];
-        }
-      });
+      const updateData = {
+        subjectCode: subjectFormData.subjectCode,
+        subjectName: subjectFormData.subjectName,
+        description: subjectFormData.description,
+        units: parseFloat(subjectFormData.units),
+      };
 
-      await updateDoc(
-        doc(
-          db,
-          `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`
-        ),
-        updateData
+      const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
+
+      await updateDoc(doc(db, subjectPath), updateData);
+
+      await updateScheduleReferences(
+        subject.academicYearId,
+        subject.semesterId,
+        subject.id,
+        {
+          subjectCode: subjectFormData.subjectCode,
+          subjectName: subjectFormData.subjectName,
+        }
       );
 
-      // Include the ID for the parent component
-      onSubjectUpdated({ ...updateData, id: subject.id });
+      onSubjectUpdated({
+        id: subject.id,
+        ...updateData,
+      });
 
       toast.success("Subject updated successfully");
       setEditDialogOpen(false);
     } catch (err) {
       console.error("Error updating subject:", err);
-      toast.error("Failed to update subject", {
-        description: err.message || "An unexpected error occurred",
-      });
+      toast.error("Failed to update subject");
     } finally {
       setIsSubmitting(false);
     }
@@ -166,12 +282,16 @@ export default function SubjectCard({
   // Handle delete subject confirmation
   const handleDeleteSubject = async () => {
     try {
-      await deleteDoc(
-        doc(
-          db,
-          `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`
-        )
+      const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
+
+      await handleScheduleReferencesForDeletion(
+        subject.academicYearId,
+        subject.semesterId,
+        subject.id
       );
+
+      await deleteDoc(doc(db, subjectPath));
+
       onSubjectDeleted(subject.id);
 
       toast.success("Subject deleted successfully");
@@ -291,16 +411,20 @@ export default function SubjectCard({
                 <Label htmlFor="units">
                   Units <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="units"
-                  type="number"
-                  min="1"
-                  max="6"
-                  placeholder="e.g. 3"
-                  required
-                  value={subjectFormData.units}
-                  onChange={handleChange}
-                />
+                <Select
+                  value={subjectFormData.units.toString()}
+                  onValueChange={handleSelectChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select unit value" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1</SelectItem>
+                    <SelectItem value="1.5">1.5</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="3">3</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormError message={formErrors.units} />
               </div>
             </div>

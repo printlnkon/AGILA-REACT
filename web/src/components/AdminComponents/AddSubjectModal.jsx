@@ -15,6 +15,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const INITIAL_SUBJECT_DATA = {
   subjectCode: "",
@@ -55,23 +62,36 @@ export default function AddSubjectModal({
     }
   };
 
+  const handleSelectChange = (value) => {
+    setSubjectFormData((prev) => ({ ...prev, units: value }));
+    if (formErrors.units) {
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.units;
+        return newErrors;
+      });
+    }
+  };
+
   const validateForm = (data) => {
     const errors = {};
+    
     if (!data.subjectCode || data.subjectCode.trim() === "") {
       errors.subjectCode = "Subject code is required";
     } else if (data.subjectCode.length < 2) {
       errors.subjectCode = "Subject code must be at least 2 characters";
     }
+
     if (!data.subjectName || data.subjectName.trim() === "") {
       errors.subjectName = "Subject name is required";
     } else if (data.subjectName.length < 3) {
       errors.subjectName = "Subject name must be at least 3 characters";
     }
-    if (data.units === "" || isNaN(data.units)) {
-      errors.units = "Valid unit value is required";
-    } else if (Number(data.units) < 1 || Number(data.units) > 6) {
-      errors.units = "Units must be between 1 and 6";
+
+    if (!data.units || data.units.trim() === "") {
+      errors.units = "Select a unit value";
     }
+
     return errors;
   };
 
@@ -98,12 +118,14 @@ export default function AddSubjectModal({
       const subjectPath = `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.selectedDeptId}/courses/${session.selectedCourseId}/year_levels/${session.selectedYearLevelId}/subjects`;
       const newSubjectData = {
         ...subjectFormData,
-        units: Number(subjectFormData.units),
+        units: parseFloat(subjectFormData.units),
         createdAt: serverTimestamp(),
       };
+
       const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
       onSubjectAdded({ ...newSubjectData, id: docRef.id });
       toast.success("Subject added successfully");
+
       onOpenChange(false);
       setSubjectFormData(INITIAL_SUBJECT_DATA);
     } catch (err) {
@@ -174,16 +196,20 @@ export default function AddSubjectModal({
               <Label htmlFor="units">
                 Units <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="units"
-                type="number"
-                min="1"
-                max="6"
-                placeholder="e.g. 3"
-                required
+              <Select
                 value={subjectFormData.units}
-                onChange={handleChange}
-              />
+                onValueChange={handleSelectChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select unit value" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="1.5">1.5</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                </SelectContent>
+              </Select>
               <FormError message={formErrors.units} />
             </div>
           </div>

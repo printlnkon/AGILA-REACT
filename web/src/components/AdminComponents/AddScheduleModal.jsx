@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -163,6 +164,7 @@ export default function AddScheduleModal({
   const [availableRooms, setAvailableRooms] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [conflicts, setConflicts] = useState([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   // Form state with reducer
   const [formState, dispatch] = useReducer(formReducer, initialFormState);
@@ -611,12 +613,12 @@ export default function AddScheduleModal({
         subject: schedule.subjectName,
         conflict:
           tempSchedule.roomName === schedule.roomName
-            ? `Room conflict with ${schedule.subjectName}`
+            ? `Room conflict with ${schedule.subjectNo}`
             : `Instructor conflict with ${schedule.subjectName}`,
       }));
 
-    setConflicts(newConflicts);
-  };
+      setConflicts(newConflicts);
+    };
 
   // fetch subjects
   const fetchSubjects = async () => {
@@ -984,15 +986,152 @@ export default function AddScheduleModal({
 
       // Check for conflicts before submitting
       if (conflicts.length > 0) {
-        const confirmSubmit = window.confirm(
-          `There are ${conflicts.length} scheduling conflicts. Do you want to proceed anyway?`
+        setShowConflictDialog(true);
+        setLoading(false);
+        return;
+      }
+
+      // Update room type for lecture room
+      const roomRef = doc(db, "rooms", room);
+      await updateDoc(roomRef, {
+        roomType: roomType,
+        status: "scheduled",
+        updatedAt: new Date(),
+      });
+
+      // Lecture schedule object
+      const scheduleData = {
+        subjectId: subject,
+        subjectCode: subjects.find((s) => s.id === subject)?.code,
+        subjectName: subjects.find((s) => s.id === subject)?.name,
+        roomId: room,
+        roomName: rooms.find((r) => r.id === room)?.name,
+        instructorId: instructor,
+        instructorName: instructors.find((i) => i.id === instructor)?.name,
+        startTime: `${startHour}:${startMinute} ${startPeriod}`,
+        endTime: `${endHour}:${endMinute} ${endPeriod}`,
+        days: selectedDays,
+        roomType: "LECTURE",
+        color: color,
+        createdAt: new Date(),
+        hasLaboratory: hasLaboratory,
+      };
+
+      // Path to save schedules
+      const schedulesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/sections/${sectionId}/schedules`;
+
+      // Add lecture schedule document to firestore
+      const lectureDocRef = await addDoc(
+        collection(db, schedulesPath),
+        scheduleData
+      );
+
+      // Add the ID to the schedule data for the local state update
+      const newSchedule = {
+        id: lectureDocRef.id,
+        ...scheduleData,
+      };
+
+      // If laboratory component is enabled, create lab schedule
+      if (hasLaboratory) {
+        // Get selected days for laboratory
+        const selectedLabDays = Object.entries(labDays)
+          .filter(([_, isSelected]) => isSelected)
+          .map(([day]) => day);
+
+        // Update room type for laboratory room
+        const labRoomRef = doc(db, "rooms", labRoom);
+        await updateDoc(labRoomRef, {
+          roomType: "laboratory",
+          status: "scheduled",
+          updatedAt: new Date(),
+        });
+
+        // Laboratory schedule object
+        const labScheduleData = {
+          subjectId: subject,
+          subjectCode: subjects.find((s) => s.id === subject)?.code,
+          subjectName: subjects.find((s) => s.id === subject)?.name,
+          roomId: labRoom,
+          roomName: rooms.find((r) => r.id === labRoom)?.name,
+          instructorId: labInstructor,
+          instructorName: instructors.find((i) => i.id === labInstructor)?.name,
+          startTime: `${labStartHour}:${labStartMinute} ${labStartPeriod}`,
+          endTime: `${labEndHour}:${labEndMinute} ${labEndPeriod}`,
+          days: selectedLabDays,
+          roomType: "LABORATORY",
+          color: color,
+          createdAt: new Date(),
+          lectureScheduleId: lectureDocRef.id,
+          isLabComponent: true,
+        };
+
+        // Add laboratory schedule document to firestore
+        const labDocRef = await addDoc(
+          collection(db, schedulesPath),
+          labScheduleData
         );
 
-        if (!confirmSubmit) {
-          setLoading(false);
-          return;
-        }
+        // Add the lab schedule to the local state update
+        const newLabSchedule = {
+          id: labDocRef.id,
+          ...labScheduleData,
+        };
+
+        // If no conflicts, proceed with submission
+        await handleConfirmedConflictSubmit();
+        // Update both schedules
+        await onScheduleAdded([newSchedule, newLabSchedule]);
+      } else {
+        // Only update lecture schedule
+        await onScheduleAdded(newSchedule);
       }
+
+      toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
+      resetForm();
+      setOpen(false);
+    } catch (err) {
+      toast.error("Failed to add schedule");
+      console.error("Error adding schedule:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmedConflictSubmit = async () => {
+    setShowConflictDialog(false);
+    setLoading(true);
+
+    try {
+      const {
+        roomType,
+        subject,
+        room,
+        instructor,
+        color,
+        startHour,
+        startMinute,
+        startPeriod,
+        endHour,
+        endMinute,
+        endPeriod,
+        days,
+        hasLaboratory,
+        labStartHour,
+        labStartMinute,
+        labStartPeriod,
+        labEndHour,
+        labEndMinute,
+        labEndPeriod,
+        labDays,
+        labRoom,
+        labInstructor,
+      } = formState;
+
+      // Get selected days for lecture
+      const selectedDays = Object.entries(days)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([day]) => day);
 
       // Update room type for lecture room
       const roomRef = doc(db, "rooms", room);
@@ -1806,7 +1945,9 @@ export default function AddScheduleModal({
                                   });
                                   // Adjust hour and minute when switching to PM
                                   if (value === "PM") {
-                                    const hourNum = parseInt(formState.labEndHour);
+                                    const hourNum = parseInt(
+                                      formState.labEndHour
+                                    );
                                     if (hourNum > 8) {
                                       dispatch({
                                         type: "SET_FIELD",
@@ -2394,7 +2535,7 @@ export default function AddScheduleModal({
                   variant="destructive"
                   className="bg-red-50 border-red-200"
                 >
-                  <AlertTriangle className="h-4 w-4 mt-1 sm:mt-2" />
+                  <AlertTriangle className="h-5 w-5 mt-1 sm:mt-2" />
                   <AlertTitle className="text-sm sm:text-base">
                     Scheduling Conflicts Detected
                   </AlertTitle>
@@ -2419,6 +2560,58 @@ export default function AddScheduleModal({
                   </AlertDescription>
                 </Alert>
               )}
+
+              {/* Conflict Confirmation Dialog */}
+              <Dialog
+                open={showConflictDialog}
+                onOpenChange={setShowConflictDialog}
+              >
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Schedule Conflicts Detected</DialogTitle>
+                    <DialogDescription>
+                      There {conflicts.length === 1 ? "is" : "are"}{" "}
+                      {conflicts.length} scheduling{" "}
+                      {conflicts.length === 1 ? "conflict" : "conflicts"} with
+                      existing schedules. Do you want to proceed anyway?
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="max-h-[200px] overflow-y-auto mt-4">
+                    <ul className="list-disc pl-5 space-y-1">
+                      {conflicts.map((conflict) => (
+                        <li key={conflict.id} className="text-sm">
+                          <Badge
+                            variant="outline"
+                            className="mr-1 bg-red-50 border-red-300 text-red-700 text-[10px] sm:text-xs"
+                          >
+                            {conflict.subject}
+                          </Badge>
+                          {conflict.conflict}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <DialogFooter className="mt-6">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setShowConflictDialog(false)}
+                      className="cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmedConflictSubmit}
+                      className="cursor-pointer"
+                    >
+                      Proceed Anyway
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Cancel & Back btn */}
               <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-2">
