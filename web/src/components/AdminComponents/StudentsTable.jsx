@@ -171,14 +171,9 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-      const gender = row.original.gender;
-      const defaultPhoto =
-        gender === "Female"
-          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarImage src={photoURL || initials} alt="Student Photo" />
           <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
@@ -238,9 +233,21 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -253,9 +260,21 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -339,14 +358,14 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
               <DialogHeader>
                 <DialogTitle>Confirm Archive</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user "{user.firstName}{" "}
-                  {user.lastName}"? This will set their account status to
-                  inactive.
+                  Are you sure you want to archive the user <strong>"{user.firstName}{" "}
+                  {user.lastName}"</strong>? This will set their account status to{" "}
+                  <strong>inactive</strong>.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowArchiveDialog(false)}
                   className="cursor-pointer"
                 >
@@ -360,7 +379,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
                   }}
                   className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
-                  <Archive /> Archive
+                  Archive
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -397,7 +416,6 @@ export default function StudentsTable() {
     }
     setSelectedStudent(user);
     navigate(`/admin/students/profile`);
-    console.log("User details:", user);
   };
 
   const fetchActiveSession = useCallback(async () => {
@@ -412,9 +430,6 @@ export default function StudentsTable() {
       const yearSnapshot = await getDocs(qAcademicYear);
 
       if (yearSnapshot.empty) {
-        toast.error(
-          "No active academic year found. Please set one to manage departments."
-        );
         setActiveSession({ id: null, name: "No Active Session" });
         setDepartments([]);
         return false;
@@ -461,7 +476,9 @@ export default function StudentsTable() {
       return true;
     } catch (error) {
       console.error("Error fetching active session:", error);
-      toast.error("Failed to determine the active session.");
+      toast.error("No Active School Year", {
+        description: "Please set a school year and semester as active in the School Year & Semester module."
+      });
       return false;
     }
   }, []);
@@ -650,7 +667,7 @@ export default function StudentsTable() {
 
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
@@ -773,7 +790,7 @@ export default function StudentsTable() {
 
   // main content
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -1120,7 +1137,7 @@ export default function StudentsTable() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
                   className="cursor-pointer"
                 >

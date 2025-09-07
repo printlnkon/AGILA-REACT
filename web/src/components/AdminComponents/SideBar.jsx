@@ -1,5 +1,9 @@
+import { useState, useEffect, useMemo } from "react";
+import { Separator } from "@/components/ui/separator";
+import { SearchForm } from "@/components/ui/search-form";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Calendar,
   LayoutDashboard,
   Settings,
   UsersRound,
@@ -8,12 +12,13 @@ import {
   ChevronRight,
   Archive,
   BookOpen,
-  LibraryBig,
   ChevronsUpDown,
   Bell,
   Layers,
   Building2,
+  BookText,
   LayoutList,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -51,13 +56,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SearchForm } from "@/components/ui/search-form";
-import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Separator } from "@/components/ui/separator";
-import { useState, useEffect, useMemo } from "react";
 
+// navigation items for the admin
 const items = {
   navMain: [
     {
@@ -72,12 +73,23 @@ const items = {
       ],
     },
     {
+      title: "Classes",
+      url: "#",
+      items: [
+        {
+          title: "Classes",
+          url: "/admin/classes",
+          icon: LayoutList,
+        },
+      ],
+    },
+    {
       title: "Academic",
       url: "#",
       items: [
         {
-          title: "School Year and Semester",
-          url: "/admin/academicYearAndSemester",
+          title: "School Year & Semester",
+          url: "/admin/academic-year-semester",
           icon: BookOpen,
           // items: [
           //   {
@@ -100,9 +112,9 @@ const items = {
         //   ],
         // },
         {
-          title: "Department and Course",
-          url: "/admin/departmentAndCourse",
-          icon:  Building2,
+          title: "Department & Course",
+          url: "/admin/department-course",
+          icon: Building2,
           // items: [
           //   {
           //     title: "View Courses",
@@ -124,8 +136,8 @@ const items = {
         //   ],
         // },
         {
-          title: "Year Level and Section",
-          url: "/admin/yearLevelAndSection",
+          title: "Year Level & Section",
+          url: "/admin/year-level-section",
           icon: Layers,
           // items: [
           //   {
@@ -135,54 +147,30 @@ const items = {
           //   },
           // ],
         },
-        // {
-        //   title: "Section",
-        //   url: "/admin/section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-        //   title: "Course",
-        //   url: "/admin/course-section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-        //   title: "Course and Section",
-        //   url: "/admin/course-section",
-        //   icon: LibraryBig,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
-        // {
-          //   title: "Section",
-          //   url: "#",
-        //   icon: LayoutTemplate,
-        //   items: [
-        //     {
-        //       title: "View Sections",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
+        {
+          title: "Subject",
+          url: "/admin/subject",
+          icon: BookText,
+          // items: [
+          //   {
+          //     title: "View Courses",
+          //     url: "#",
+          //     icon: UsersRound,
+          //   },
+          // ],
+        },
+        {
+          title: "Schedule",
+          url: "/admin/schedule",
+          icon: CalendarDays,
+          items: [
+            {
+              title: "Rooms",
+              url: "/admin/room",
+              // icon: UsersRound,
+            },
+          ],
+        },
         // {
         //   title: "Schedules",
         //   url: "/admin/schedules",
@@ -309,17 +297,16 @@ export default function SideBar() {
       .filter(Boolean); // Remove empty categories
   }, [searchQuery]);
 
-  const getInitials = (firstName = "", lastName = "") => {
+  // get user initials
+  const getInitials = (firstName = "") => {
     const firstInitial = firstName ? firstName.charAt(0) : "";
-    const lastInitial = lastName ? lastName.charAt(0) : "";
-    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+    return `${firstInitial}`.toUpperCase() || "U";
   };
 
-  const userInitials = getInitials(
-    currentUser?.firstName,
-    currentUser?.lastName
-  );
+  // get only the firstName
+  const userInitials = getInitials(currentUser?.firstName);
 
+  // function to handle logout
   const handleLogout = async () => {
     try {
       await logout();
@@ -330,6 +317,7 @@ export default function SideBar() {
     }
   };
 
+  // determine if the menu item is active
   const isActive = (url) => {
     if (url === "/admin") {
       return location.pathname === "/admin";
@@ -508,9 +496,8 @@ export default function SideBar() {
                         >
                           <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage
-                              // will be changed once finalized the user creation
-                              src={"https://github.com/shadcn.png"}
-                              alt={currentUser?.name}
+                              src={userInitials}
+                              alt={currentUser?.name || "User"}
                             />
                             <AvatarFallback className="rounded-lg">
                               {userInitials}
@@ -518,7 +505,7 @@ export default function SideBar() {
                           </Avatar>
                           <div className="grid flex-1 text-left text-sm leading-tight">
                             <span className="truncate font-medium">
-                              {currentUser?.name}
+                              {currentUser?.firstName || "Unknown User"}
                             </span>
                           </div>
                           <ChevronsUpDown className="ml-auto size-4" />
@@ -533,7 +520,7 @@ export default function SideBar() {
                   </Tooltip>
                 </TooltipProvider>
                 <DropdownMenuContent
-                  className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
                   side={isMobile ? "bottom" : "right"}
                   align="end"
                   sideOffset={4}
@@ -542,8 +529,8 @@ export default function SideBar() {
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
                         <AvatarImage
-                          src={"https://github.com/shadcn.png"}
-                          alt={currentUser?.name}
+                          src={userInitials}
+                          alt={currentUser?.firstName || "User"}
                         />
                         <AvatarFallback className="rounded-lg">
                           {userInitials}
@@ -552,10 +539,10 @@ export default function SideBar() {
                       {/* inside the avatar */}
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
-                          {currentUser?.name}
+                          {currentUser?.firstName || "Unknown User"}
                         </span>
                         <span className="truncate text-xs">
-                          {currentUser?.email}
+                          {currentUser?.email || "No email"}
                         </span>
                       </div>
                     </div>

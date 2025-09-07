@@ -1,8 +1,14 @@
 import { db, auth, storage } from "@/api/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useState, useCallback } from "react";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -15,6 +21,7 @@ import {
   CircleAlert,
   CalendarIcon,
   LoaderCircle,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Select,
@@ -31,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -43,12 +51,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-const DEPARTMENTS = {
-  IT: "Information Technology",
-  CS: "Computer Science",
-  CPE: "Computer Engineering",
-};
+import { Card, CardContent } from "@/components/ui/card";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const ROLES = {
   PROGRAM_HEAD: "Program Head",
@@ -60,8 +64,9 @@ const INITIAL_FORM_DATA = {
   lastName: "",
   suffix: "",
   gender: "",
-  role: ROLES.PROGRAM_HEAD,
+  role: ROLES.PROGRAM_HEAD, // Set default role to PROGRAM HEAD
   department: "",
+  departmentName: "",
 };
 
 const MIN_AGE = 25;
@@ -70,13 +75,18 @@ const MAX_AGE = 70;
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="text-sm text-red-500 mt-1 flex items-center gap-1">
+    <div className="text-sm text-destructive mt-1 flex items-center gap-1">
       <CircleAlert className="w-4 h-4" />
       {message}
     </div>
   );
 };
 
+const generateEmployeeNumber = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// validate functions
 const validateName = (name, fieldName) => {
   if (!name || name.trim().length < 2)
     return `${fieldName} must be at least 2 characters long`;
@@ -90,16 +100,14 @@ const validateDateOfBirth = (date) => {
   if (!date) return "Date of birth is required";
   const today = new Date();
   let age = today.getFullYear() - date.getFullYear();
+
   const monthDiff = today.getMonth() - date.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate()))
     age--;
   if (age < MIN_AGE) return `User must be at least ${MIN_AGE} years old`;
   if (age > MAX_AGE) return `Please enter a valid date of birth`;
-  return null;
-};
 
-const generateEmployeeNumber = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return null;
 };
 
 const validateForm = (formData, date) => {
@@ -118,7 +126,6 @@ const validateForm = (formData, date) => {
   const dateError = validateDateOfBirth(date);
   if (dateError) errors.dateOfBirth = dateError;
   if (!formData.gender) errors.gender = "Gender is required";
-  if (!formData.role) errors.role = "Role is required";
   if (!formData.department) errors.department = "Department is required";
   return errors;
 };
@@ -132,6 +139,39 @@ export default function AddProgramHeadModal({ onUserAdded }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+
+  const { activeSession, loading: sessionLoading } = useActiveSession();
+
+  // fetch departments when the modal opens and activeSession is available
+  useEffect(() => {
+    async function fetchDepartments() {
+      if (dialogOpen && activeSession?.id && activeSession?.semesterId) {
+        setIsLoadingDepartments(true);
+        try {
+          const departmentsCollection = collection(
+            db,
+            `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`
+          );
+          const departmentsSnapshot = await getDocs(departmentsCollection);
+          const departmentsList = departmentsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            departmentName: doc.data().departmentName,
+            ...doc.data(),
+          }));
+          setDepartments(departmentsList);
+        } catch (error) {
+          console.error("Error fetching departments:", error);
+          toast.error("Failed to load departments");
+        } finally {
+          setIsLoadingDepartments(false);
+        }
+      }
+    }
+
+    fetchDepartments();
+  }, [dialogOpen, activeSession]);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -209,6 +249,19 @@ export default function AddProgramHeadModal({ onUserAdded }) {
       return;
     }
 
+    if (!activeSession) {
+      toast.error(
+        "Active academic session not found. Cannot add program head.",
+        {
+          description:
+            "Please ensure an active school year and semester are set.",
+          duration: 5000,
+        }
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const employeeNumber = generateEmployeeNumber();
       const email = `${formData.lastName
@@ -251,19 +304,20 @@ export default function AddProgramHeadModal({ onUserAdded }) {
         email,
         password,
         department: formData.department,
+        departmentName: formData.departmentName,
         status: "active",
-        role: formData.role,
+        role: ROLES.PROGRAM_HEAD,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const rolePath = formData.role.toLowerCase().replace(" ", "_");
+      const rolePath = ROLES.PROGRAM_HEAD.toLowerCase().replace(" ", "_");
       await setDoc(doc(db, `users/${rolePath}/accounts`, userId), userData);
 
       toast.success(
-        `User ${formData.firstName} ${formData.lastName} created successfully!`,
+        `Program Head ${formData.firstName} ${formData.lastName} created successfully!`,
         {
-          description: `Added as ${formData.role} in the ${formData.department} department.`,
+          description: `Added to the ${formData.departmentName}.`,
           duration: 5000,
         }
       );
@@ -303,14 +357,36 @@ export default function AddProgramHeadModal({ onUserAdded }) {
           Add Program Head
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl">
+      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="text-xl">Add User</DialogTitle>
+          <DialogTitle className="text-xl">Add Program Head</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. All fields marked with{" "}
-            <span className="text-red-500">*</span> are required.
+            Add a new program head to the system. All fields marked with{" "}
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
+
+        {!activeSession && !sessionLoading && (
+          <Card>
+            <CardContent className="flex items-start gap-3">
+              <AlertTriangle className="h-8 w-8 mt-2 flex-shrink-0 text-destructive" />
+              <div>
+                <p className="font-medium">No Active School Year</p>
+                <p className="text-sm text-destructive">
+                  Please set a school year and semester as active in the School
+                  Year &amp; Semester module to add Program Head account.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {sessionLoading && (
+          <div className="text-center py-3">
+            <LoaderCircle className="animate-spin inline mr-2" />
+            Loading school year...
+          </div>
+        )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
@@ -332,7 +408,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
               {/* first name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="firstName">
-                  First Name <span className="text-red-500">*</span>
+                  First Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="firstName"
@@ -357,7 +433,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
               {/* last name */}
               <div className="space-y-1 md:col-span-1">
                 <Label htmlFor="lastName">
-                  Last Name <span className="text-red-500">*</span>
+                  Last Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="lastName"
@@ -380,7 +456,7 @@ export default function AddProgramHeadModal({ onUserAdded }) {
                 <FormError message={formErrors.suffix} />
               </div>
               {/* photo upload */}
-              <div className="space-y-1 md:col-span-4">
+              <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="photo">Photo</Label>
                 <Input
                   id="photo"
@@ -393,11 +469,11 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* Gender and Date of Birth */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* gender */}
             <div className="space-y-1">
               <Label htmlFor="gender">
-                Gender <span className="text-red-500">*</span>
+                Gender <span className="text-destructive">*</span>
               </Label>
               <Select
                 required
@@ -415,7 +491,8 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
             <div className="space-y-1">
               <Label htmlFor="date">
-                Date of Birth <span className="text-red-500">*</span>
+                {/* date of birth */}
+                Date of Birth <span className="text-destructive">*</span>
               </Label>
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -446,95 +523,100 @@ export default function AddProgramHeadModal({ onUserAdded }) {
             </div>
           </div>
 
-          {/* System Access */}
-          <div>
-            <div className="flex items-center mb-2">
-              <h3 className="font-medium">System Access</h3>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="ml-1.5 h-3.5 w-3.5 text-gray-400 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Choose access to the system.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="role">
-                  Role <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  value={formData.role}
-                  onValueChange={(value) => handleSelectChange("role", value)}
-                >
-                  <SelectTrigger id="role" className="w-full">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ROLES.PROGRAM_HEAD}>
-                      Program Head
+          {/* academic information */}
+          <div className="flex items-center mb-2">
+            <h3 className="font-medium">Academic Information</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="ml-1.5 h-3.5 w-3.5 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Provide the program head's academic details.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* department */}
+            <div className="space-y-1">
+              <Label htmlFor="department">
+                Assign to Department <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                required
+                disabled={
+                  !activeSession ||
+                  isLoadingDepartments ||
+                  departments.length === 0
+                }
+                onValueChange={(value) => {
+                  const dept = departments.find((d) => d.id === value);
+                  handleSelectChange("department", value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    department: value,
+                    departmentName: dept?.departmentName || "",
+                  }));
+                  clearFieldError("department");
+                }}
+              >
+                <SelectTrigger id="department" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      sessionLoading || !activeSession
+                        ? "No active session"
+                        : !activeSession.semesterId
+                        ? "No active semester available"
+                        : isLoadingDepartments
+                        ? "Loading departments..."
+                        : departments.length === 0
+                        ? "No departments available"
+                        : "Select Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.departmentName}
                     </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.role} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="department">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  required
-                  onValueChange={(value) =>
-                    handleSelectChange("department", value)
-                  }
-                >
-                  <SelectTrigger id="department" className="w-full">
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DEPARTMENTS).map(([key, value]) => (
-                      <SelectItem key={key} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormError message={formErrors.department} />
-              </div>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormError message={formErrors.department} />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <DialogClose asChild>
+          <DialogFooter>
+            <div className="flex justify-end gap-3">
+              <DialogClose asChild>
+                <Button
+                  variant="ghost"
+                  className="cursor-pointer"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
               <Button
-                variant="ghost"
+                type="submit"
                 className="cursor-pointer"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !activeSession}
               >
-                Cancel
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin">
+                      <LoaderCircle />
+                    </span>
+                    Adding Program Head...
+                  </>
+                ) : (
+                  "Add"
+                )}
               </Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="animate-spin">
-                    <LoaderCircle />
-                  </span>
-                  Adding User...
-                </>
-              ) : (
-                "Add User"
-              )}
-            </Button>
-          </div>
+            </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

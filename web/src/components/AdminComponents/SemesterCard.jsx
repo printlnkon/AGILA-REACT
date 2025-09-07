@@ -1,9 +1,12 @@
-// SemesterCard.jsx
 import { useState } from "react";
-import { format } from "date-fns";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/api/firebase";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -11,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -40,8 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
 import {
   MoreHorizontal,
   LoaderCircle,
@@ -50,6 +49,13 @@ import {
   Trash2,
   Calendar as CalendarIcon,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 
 const getStatusConfig = (status) => {
   const config = {
@@ -74,6 +80,7 @@ export default function SemesterCard({
   academicYearId,
   onDataRefresh,
 }) {
+  const { activeSession } = useActiveSession();
   const statusConfig = getStatusConfig(semester.status);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
@@ -83,6 +90,8 @@ export default function SemesterCard({
     endDate: toDate(semester.endDate),
   });
   const [isSubmitting, setSubmitting] = useState(false);
+
+  const isActiveSemester = semester.status == "Active";
 
   // Sync state with props when the dialog is opened
   const handleEditOpenChange = (isOpen) => {
@@ -145,45 +154,54 @@ export default function SemesterCard({
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{semester.semesterName}</CardTitle>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0"
-                disabled={isActivating}
-              >
-                {isActivating ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4" />
+
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-8 w-8 p-0 cursor-pointer"
+                      disabled={isActivating}
+                    >
+                      {isActivating ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent align="end">
+                {!isActiveSemester && (
+                  <DropdownMenuItem
+                    onClick={() => onSetActive(semester)}
+                    className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
+                  >
+                    <Check className="mr-2 h-4 w-4" /> Set as Active
+                  </DropdownMenuItem>
                 )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {semester.status !== "Active" && (
                 <DropdownMenuItem
-                  onClick={() => onSetActive(semester)}
-                  className="text-green-600 cursor-pointer focus:bg-green-50 focus:text-green-700"
+                  onClick={() => handleEditOpenChange(true)}
+                  className="text-blue-600 cursor-pointer focus:bg-blue-50 focus:text-blue-700"
                 >
-                  <Check className="mr-2 h-4 w-4" /> Set as Active
+                  <Edit className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={() => handleEditOpenChange(true)}
-                className="text-blue-600 cursor-pointer focus:bg-blue-50 focus:text-blue-700"
-              >
-                <Edit className="mr-2 h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setDeleteOpen(true)}
-                className="text-red-600 cursor-pointer focus:bg-red-50 focus:text-red-700"
-                disabled={semester.status === "Active"}
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteOpen(true)}
+                  className="text-destructive cursor-pointer focus:bg-red-50 focus:text-red-700"
+                  disabled={semester.status === "Active"}
+                >
+                  <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
         </div>
         <CardDescription>
           <Badge variant="default" className={statusConfig}>
@@ -204,34 +222,14 @@ export default function SemesterCard({
         </div>
       </CardContent>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the semester "
-              <strong>{semester.semesterName}</strong>"? This action cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteClick}>
-              {" "}
-              <Trash2 className="mr-2 h-4 w-4" /> Delete{" "}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Edit Semester Dialog */}
       <Dialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Semester</DialogTitle>
+            <DialogDescription>
+              Update the semester details below. Click save when you're done.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -244,7 +242,7 @@ export default function SemesterCard({
                   setEditedData((prev) => ({ ...prev, semesterName: value }))
                 }
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="w-full col-span-3">
                   <SelectValue placeholder="Select a semester" />
                 </SelectTrigger>
                 <SelectContent>
@@ -260,16 +258,16 @@ export default function SemesterCard({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={`col-span-3 font-normal justify-start ${
+                    className={`col-span-3 font-normal justify-between ${
                       !editedData.startDate && "text-muted-foreground"
                     }`}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedData.startDate ? (
                       format(editedData.startDate, "PPP")
                     ) : (
                       <span>Pick a date</span>
                     )}
+                    <CalendarIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -279,6 +277,7 @@ export default function SemesterCard({
                     onSelect={(date) =>
                       setEditedData((prev) => ({ ...prev, startDate: date }))
                     }
+                    captionLayout="dropdown"
                     initialFocus
                   />
                 </PopoverContent>
@@ -290,16 +289,16 @@ export default function SemesterCard({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={`col-span-3 font-normal justify-start ${
+                    className={`col-span-3 font-normal justify-between ${
                       !editedData.endDate && "text-muted-foreground"
                     }`}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedData.endDate ? (
                       format(editedData.endDate, "PPP")
                     ) : (
                       <span>Pick a date</span>
                     )}
+                    <CalendarIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -309,6 +308,7 @@ export default function SemesterCard({
                     onSelect={(date) =>
                       setEditedData((prev) => ({ ...prev, endDate: date }))
                     }
+                    captionLayout="dropdown"
                     initialFocus
                   />
                 </PopoverContent>
@@ -316,16 +316,58 @@ export default function SemesterCard({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => handleEditOpenChange(false)}>
+            <Button
+              variant="ghost"
+              onClick={() => handleEditOpenChange(false)}
+              className="cursor-pointer"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveChanges} disabled={isSubmitting}>
+            <Button
+              onClick={handleSaveChanges}
+              disabled={isSubmitting}
+              className="cursor-pointer"
+            >
               {isSubmitting ? (
-                <LoaderCircle className="animate-spin mr-2" />
+                <>
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
+                  Saving...
+                </>
               ) : (
-                <Check className="mr-2 h-4 w-4" />
+                "Save Changes"
               )}
-              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the semester "
+              <strong>{semester.semesterName}</strong>"? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteOpen(false)}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteClick}
+              className="cursor-pointer"
+            >
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

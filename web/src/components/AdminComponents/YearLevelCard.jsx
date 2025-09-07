@@ -195,8 +195,16 @@ export default function YearLevelCard({
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              {isSubmitting && <LoaderCircle className="animate-spin" />}
-              <Trash2 /> Delete
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">
+                    <LoaderCircle />
+                  </span>
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

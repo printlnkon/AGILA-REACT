@@ -36,14 +36,13 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Pencil,
   Columns2,
-  Eye,
   Copy,
   Search,
   X,
   Archive,
   UsersRound,
+  UserRoundSearch,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -79,6 +78,12 @@ import {
   PaginationFirst,
   PaginationLast,
 } from "@/components/ui/pagination";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
 
@@ -96,28 +101,6 @@ const handleCopyStudentNumber = (studentNumber) => {
     .catch(() => {
       toast.error("Failed to copy Student Number");
     });
-};
-
-const handleViewUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement a view modal here or navigate to a details page
-  toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) {
-    toast.error("User data not found");
-    return;
-  }
-  // You can implement an edit modal here
-  toast.info(
-    `Edit functionality for ${user.firstName} ${user.lastName} - Coming soon`
-  );
-  console.log("Edit user:", user);
 };
 
 // table global filter for search
@@ -162,25 +145,32 @@ const createColumns = (handleArchiveUser) => [
     enableSorting: false,
     enableHiding: false,
   },
-
-  // student no. column
+  // Combined column for mobile view
   {
-    id: "studentNumber",
-    accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
+    id: "details",
+    header: ({ column }) => {
+      return <div className="mr-2 md:hidden">Details</div>;
+    },
+    cell: ({ row }) => {
+      const studentNumber =
+        row.original.studentNumber || row.original.employeeNumber || "N/A";
+      const email = row.original.email || "N/A";
+      const firstName = row.original.firstName || "";
+      const lastName = row.original.lastName || "";
+      const fullName = `${firstName} ${lastName}`.trim();
+
+      return (
+        <div className="flex flex-col md:hidden">
+          <span className="font-bold capitalize">{fullName}</span>
+          <span className="text-xs text-muted-foreground">{studentNumber}</span>
+          <span className="text-xs text-muted-foreground">{email}</span>
+        </div>
+      );
+    },
+    // Only show this column on screens smaller than md
+    className: "block md:hidden",
     enableHiding: true,
   },
-
-  // employee id
-  {
-    id: "employeeNumber",
-    accessorKey: "employeeNumber",
-    header: "Employee I.D",
-    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
-    enableHiding: true,
-  },
-
   // photo column
   {
     id: "Photo",
@@ -191,20 +181,32 @@ const createColumns = (handleArchiveUser) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-      const gender = row.original.gender;
-      const defaultPhoto =
-        gender === "Female"
-          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarImage src={photoURL || initials} alt="Student Photo" />
           <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
     },
   },
-
+  // student no. column
+  {
+    id: "studentNumber",
+    accessorKey: "studentNumber",
+    header: "Student No.",
+    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
+    className: "hidden md:table-cell",
+    enableHiding: true,
+  },
+  // employee id
+  {
+    id: "employeeNumber",
+    accessorKey: "employeeNumber",
+    header: "Employee I.D",
+    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
+    className: "hidden md:table-cell",
+    enableHiding: true,
+  },
   // name column
   {
     id: "name",
@@ -229,7 +231,6 @@ const createColumns = (handleArchiveUser) => [
       return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
     },
   },
-
   // email column
   {
     accessorKey: "email",
@@ -244,23 +245,20 @@ const createColumns = (handleArchiveUser) => [
         </Button>
       );
     },
-
     cell: ({ row }) => (
       <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
     ),
+    className: "hidden md:table-cell",
   },
-
   // role column
   {
     accessorKey: "role",
     header: "Role",
-    // filterFn: "equals",
     cell: ({ row }) => {
       const role = row.getValue("role") || "N/A";
       return <div className="capitalize">{role.replace("_", " ")}</div>;
     },
   },
-
   // date created
   {
     id: "Date Created",
@@ -269,13 +267,21 @@ const createColumns = (handleArchiveUser) => [
     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
-
   // last updated
   {
     id: "Last Updated",
@@ -284,13 +290,21 @@ const createColumns = (handleArchiveUser) => [
     cell: ({ row }) => {
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
-
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
-
   // status column
   {
     accessorKey: "status",
@@ -321,45 +335,41 @@ const createColumns = (handleArchiveUser) => [
 
       return (
         <>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-10 w-12 p-0 cursor-pointer">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleCopyStudentNumber(user.studentNumber)}
-                className="cursor-pointer"
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleViewUser(user)}
-                className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-              >
-                <Eye className="mr-2 h-4 w-4 text-green-600" />
-                View
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleEditUser(user)}
-                className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-              >
-                <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
-              >
-                <Archive className="mr-2 h-4 w-4 text-amber-600" />
-                Archive
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TooltipProvider>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="h-10 w-10 p-0 cursor-pointer"
+                    >
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">View More Actions</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleCopyStudentNumber(user.studentNumber)}
+                  className="cursor-pointer"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowArchiveDialog(true)}
+                  className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
+                >
+                  <Archive className="mr-2 h-4 w-4 text-amber-600" />
+                  Archive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TooltipProvider>
 
           {/* Archive Confirmation Dialog */}
           <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
@@ -377,7 +387,7 @@ const createColumns = (handleArchiveUser) => [
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowArchiveDialog(false)}
                   className="cursor-pointer"
                 >
@@ -391,7 +401,7 @@ const createColumns = (handleArchiveUser) => [
                   }}
                   className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
-                  <Archive /> Archive
+                  Archive
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -486,7 +496,6 @@ export default function AccountsTable() {
       const rolePath = user.role.toLowerCase().replace(" ", "_");
       // reference to the user document
       const userPath = `users/${rolePath}/accounts`;
-      console.log("Looking for user document at path:", userPath);
 
       const userDocRef = doc(db, userPath, user.id);
       const userSnap = await getDoc(userDocRef);
@@ -612,23 +621,27 @@ export default function AccountsTable() {
 
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
           {/* skeleton for subtitle */}
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        <div className="flex items-center gap-2 py-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
           {/* skeleton for export button */}
           <Skeleton className="h-9 w-28" />
 
-          {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
+          {/* search + filters */}
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+            {/* skeleton for search box */}
+            <Skeleton className="relative w-full sm:max-w-xs h-9" />
 
-          {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-2" />
-          <Skeleton className="h-9 w-36 ml-2" />
+            {/* skeleton for filter by role */}
+            <Skeleton className="h-9 w-full sm:w-36" />
+            {/* skeleton for filter columns */}
+            <Skeleton className="h-9 w-full sm:w-36" />
+          </div>
         </div>
 
         {/* skeleton for table */}
@@ -640,8 +653,8 @@ export default function AccountsTable() {
                 {/* skeletons for select */}
                 <Skeleton className="h-5 w-5 rounded-sm" />
                 {/* skeleton for photo */}
-                <Skeleton className="h-4" style={{ width: "15%" }} />
                 <Skeleton className="h-4 w-10" />
+                <Skeleton className="h-4" style={{ width: "15%" }} />
 
                 {/* 6 flexible-width skeletons */}
                 {Array(6)
@@ -677,8 +690,8 @@ export default function AccountsTable() {
                     {/* skeletons for select */}
                     <Skeleton className="h-5 w-5 rounded-md" />
                     {/* skeleton for photo */}
-                    <Skeleton className="h-4" style={{ width: "15%" }} />
                     <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-4" style={{ width: "15%" }} />
 
                     {/* 6 flexible-width skeletons */}
                     {Array(6)
@@ -734,36 +747,36 @@ export default function AccountsTable() {
 
   // main content
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Accounts</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-2xl font-bold">Manage Accounts</h1>
+          <p className="text-sm text-muted-foreground">
             Add, edit, or archive accounts available in the system.
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 py-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer"
+              className="w-full sm:w-auto text-amber-600 hover:text-amber-800 cursor-pointer"
             >
-              <X />
+              <X className="w-4 h-4 mr-2" />
               Clear selection
             </Button>
             <Button
               variant="warning"
               size="sm"
               onClick={() => setShowBatchArchiveDialog(true)}
-              className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+              className="w-full sm:w-auto bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
             >
-              <Archive />
+              <Archive className="w-4 h-4 mr-2" />
               Batch Archive
             </Button>
           </div>
@@ -772,98 +785,105 @@ export default function AccountsTable() {
         {/* export format */}
         <ExportExcelFormat />
 
-        {/* search */}
-        <div className="relative max-w-sm flex-1">
-          {/* search icon */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
-          <Input
-            placeholder="Search users..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pl-10 max-w-sm"
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {/* clear button */}
-            {globalFilter && (
-              <button
-                onClick={() => setGlobalFilter("")}
-                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4 text-primary" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* filter by role */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-2 cursor-pointer">
-              <Search /> Filter By Role <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              checked={table.getColumn("role")?.getFilterValue() === undefined}
-              onCheckedChange={() => {
-                table.getColumn("role")?.setFilterValue(undefined);
-              }}
-            >
-              All Roles
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {["academic head", "program head", "teacher", "student"].map(
-              (role) => (
-                <DropdownMenuCheckboxItem
-                  key={role}
-                  checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={(checked) => {
-                    table
-                      .getColumn("role")
-                      ?.setFilterValue(checked ? role : undefined);
-                  }}
-                  className="capitalize"
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+          {/* search */}
+          <div className="relative w-full sm:max-w-xs">
+            {/* search icon */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
+            <Input
+              placeholder="Search users..."
+              value={globalFilter ?? ""}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              className="pl-10 w-full"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+              {/* clear button */}
+              {globalFilter && (
+                <button
+                  onClick={() => setGlobalFilter("")}
+                  className="p-1 mr-2 hover:bg-transparent rounded-full cursor-pointer"
                 >
-                  {role.replace("_", " ")}
-                </DropdownMenuCheckboxItem>
-              )
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
 
-        {/* filter columns */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-2 cursor-pointer">
-              <Columns2 /> Filter Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                const label =
-                  typeof column.columnDef.header === "string"
-                    ? column.columnDef.header
-                    : column.id;
-
-                return (
+          {/* filter by role */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                checked={
+                  table.getColumn("role")?.getFilterValue() === undefined
+                }
+                onCheckedChange={() => {
+                  table.getColumn("role")?.setFilterValue(undefined);
+                }}
+              >
+                All Roles
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              {["academic head", "program head", "teacher", "student"].map(
+                (role) => (
                   <DropdownMenuCheckboxItem
-                    key={column.id}
+                    key={role}
+                    checked={table.getColumn("role")?.getFilterValue() === role}
+                    onCheckedChange={(checked) => {
+                      table
+                        .getColumn("role")
+                        ?.setFilterValue(checked ? role : undefined);
+                    }}
                     className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
                   >
-                    {label}
+                    {role.replace("_", " ")}
                   </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                )
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* filter columns */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
+                <Columns2 className="mr-2 h-4 w-4" /> Filter Columns{" "}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter(
+                  (column) => column.getCanHide() && column.id !== "details"
+                )
+                .map((column) => {
+                  const label =
+                    typeof column.columnDef.header === "string"
+                      ? column.columnDef.header
+                      : column.id;
+
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* data table */}
@@ -936,7 +956,7 @@ export default function AccountsTable() {
         </div>
 
         {/* rows per page */}
-        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4 w-full sm:w-auto">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">
               Rows per page
@@ -965,7 +985,6 @@ export default function AccountsTable() {
               </SelectContent>
             </Select>
           </div>
-
           {/* pagination */}
           <Pagination className="flex items-center">
             <PaginationContent className="flex flex-wrap justify-center gap-1">
@@ -976,7 +995,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanPreviousPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
+                      : "cursor-pointer h-8 w-8 p-0"
                   }
                 />
               </PaginationItem>
@@ -988,7 +1007,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanPreviousPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
+                      : "cursor-pointer h-8 w-8 p-0"
                   }
                 />
               </PaginationItem>
@@ -998,11 +1017,13 @@ export default function AccountsTable() {
                   {/* compact pagination on smaller screens */}
                   <div className="hidden xs:flex items-center">
                     {/* first page */}
-                    <PaginationItem>
+                    <PaginationItem className="hidden sm:block">
+                      {" "}
+                      {/* Hide on extra small mobile */}
                       <PaginationLink
                         onClick={() => table.setPageIndex(0)}
                         isActive={table.getState().pagination.pageIndex === 0}
-                        className="cursor-pointer"
+                        className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
                       >
                         1
                       </PaginationLink>
@@ -1010,7 +1031,9 @@ export default function AccountsTable() {
 
                     {/* show ellipsis if currentPage > 3 */}
                     {table.getState().pagination.pageIndex > 2 && (
-                      <PaginationItem>
+                      <PaginationItem className="hidden sm:block">
+                        {" "}
+                        {/* Hide on extra small mobile */}
                         <PaginationEllipsis />
                       </PaginationItem>
                     )}
@@ -1024,13 +1047,15 @@ export default function AccountsTable() {
                         Math.abs(i - table.getState().pagination.pageIndex) <= 1
                       ) {
                         return (
-                          <PaginationItem key={i}>
+                          <PaginationItem key={i} className="hidden sm:block">
+                            {" "}
+                            {/* Hide on extra small mobile */}
                             <PaginationLink
                               onClick={() => table.setPageIndex(i)}
                               isActive={
                                 table.getState().pagination.pageIndex === i
                               }
-                              className="cursor-pointer"
+                              className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
                             >
                               {i + 1}
                             </PaginationLink>
@@ -1043,14 +1068,18 @@ export default function AccountsTable() {
                     {/* show ellipsis if currentPage < lastPage - 2 */}
                     {table.getState().pagination.pageIndex <
                       table.getPageCount() - 3 && (
-                      <PaginationItem>
+                      <PaginationItem className="hidden sm:block">
+                        {" "}
+                        {/* Hide on extra small mobile */}
                         <PaginationEllipsis />
                       </PaginationItem>
                     )}
 
                     {/* last page */}
                     {table.getPageCount() > 1 && (
-                      <PaginationItem>
+                      <PaginationItem className="hidden sm:block">
+                        {" "}
+                        {/* Hide on extra small mobile */}
                         <PaginationLink
                           onClick={() =>
                             table.setPageIndex(table.getPageCount() - 1)
@@ -1059,7 +1088,7 @@ export default function AccountsTable() {
                             table.getState().pagination.pageIndex ===
                             table.getPageCount() - 1
                           }
-                          className="cursor-pointer"
+                          className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
                         >
                           {table.getPageCount()}
                         </PaginationLink>
@@ -1067,9 +1096,9 @@ export default function AccountsTable() {
                     )}
                   </div>
 
-                  {/* page indicator */}
+                  {/* page indicator for all screen sizes */}
                   <div className="flex items-center">
-                    <Label className="text-sm font-medium mx-1">
+                    <Label className="text-sm font-medium mx-1 whitespace-nowrap">
                       Page {table.getState().pagination.pageIndex + 1} of{" "}
                       {table.getPageCount()}
                     </Label>
@@ -1084,7 +1113,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
+                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
                   }
                 />
               </PaginationItem>
@@ -1095,19 +1124,21 @@ export default function AccountsTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
+                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
                   }
                 />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-
+          
           {/* Batch Archive Dialog */}
           <Dialog
             open={showBatchArchiveDialog}
             onOpenChange={setShowBatchArchiveDialog}
           >
-            <DialogContent>
+            <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md">
+              {" "}
+              {/* Adjusted max-width for responsiveness */}
               <DialogHeader>
                 <DialogTitle>Confirm Batch Archive</DialogTitle>
                 <DialogDescription>
@@ -1120,11 +1151,13 @@ export default function AccountsTable() {
                   <strong>inactive</strong>.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter>
+              <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                {" "}
+                {/* Responsive button layout */}
                 <Button
                   variant="outline"
                   onClick={() => setShowBatchArchiveDialog(false)}
-                  className="cursor-pointer"
+                  className="w-full sm:w-auto cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -1134,7 +1167,7 @@ export default function AccountsTable() {
                     handleBatchArchive();
                     setShowBatchArchiveDialog(false);
                   }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+                  className="w-full sm:w-auto bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
                   <Archive /> Archive Users
                 </Button>

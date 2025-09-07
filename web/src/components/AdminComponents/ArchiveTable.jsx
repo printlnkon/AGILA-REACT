@@ -65,15 +65,12 @@ import {
   ChevronDown,
   MoreHorizontal,
   Columns2,
-  Eye,
   Trash2,
-  Copy,
   Search,
   X,
   RotateCcw,
   FolderArchive,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   flexRender,
   getCoreRowModel,
@@ -82,6 +79,13 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ArchiveTable() {
   const [archivedUsers, setArchivedUsers] = useState([]);
@@ -89,37 +93,32 @@ export default function ArchiveTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchRestoreDialog, setShowBatchRestoreDialog] = useState(false);
   const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
 
+  // table global filter for search
+  const searchGlobalFilter = (row, columnId, filterValue) => {
+    const studentNumber = row.original.studentNumber?.toLowerCase() || "";
+    const employeeNo = row.original.employeeNo?.toLowerCase() || "";
+    const email = row.original.email?.toLowerCase() || "";
+    const firstName = row.original.firstName?.toLowerCase() || "";
+    const lastName = row.original.lastName?.toLowerCase() || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const search = filterValue.toLowerCase();
+
+    return (
+      studentNumber.includes(search) ||
+      employeeNo.includes(search) ||
+      email.includes(search) ||
+      fullName.includes(search)
+    );
+  };
+
   // Action handlers
-  // const handleCopyId = (userId) => {
-  //   if (!userId) {
-  //     toast.error("User ID not found");
-  //     return;
-  //   }
-  //   navigator.clipboard
-  //     .writeText(userId)
-  //     .then(() => {
-  //       toast.success("User ID copied to clipboard");
-  //     })
-  //     .catch(() => {
-  //       toast.error("Failed to copy User ID");
-  //     });
-  // };
-
-  // const handleViewUser = (user) => {
-  //   if (!user) {
-  //     toast.error("User data not found");
-  //     return;
-  //   }
-  //   // You can implement a view modal here or navigate to a details page
-  //   toast.info(`Viewing user: ${user.firstName} ${user.lastName}`);
-  //   console.log("User details:", user);
-  // };
-
   const handleRestoreUser = async (user) => {
     if (!user || !user.id || !user.role) {
       toast.error("Invalid user data");
@@ -346,6 +345,32 @@ export default function ArchiveTable() {
     }
   };
 
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+
+    try {
+      // For Firestore Timestamps
+      if (timestamp.toDate && typeof timestamp.toDate === "function") {
+        return format(timestamp.toDate(), "MMMM do, yyyy");
+      }
+
+      // For ISO strings or timestamp numbers
+      if (typeof timestamp === "string" || typeof timestamp === "number") {
+        return format(new Date(timestamp), "MMMM do, yyyy");
+      }
+
+      // For Date objects
+      if (timestamp instanceof Date) {
+        return format(timestamp, "MMMM do, yyyy");
+      }
+
+      return "-";
+    } catch (error) {
+      console.error("Date formatting error:", error, timestamp);
+      return "-";
+    }
+  };
+
   // initial data loading
   useEffect(() => {
     fetchArchivedUsers();
@@ -389,14 +414,9 @@ export default function ArchiveTable() {
         const lastName = row.original.lastName || "";
         const initials =
           (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-        const gender = row.original.gender;
-        const defaultPhoto =
-          gender === "Female"
-            ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-            : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
         return (
           <Avatar className="w-10 h-10">
-            <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+            <AvatarImage src={photoURL || initials} alt="Student Photo" />
             <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
           </Avatar>
         );
@@ -461,14 +481,7 @@ export default function ArchiveTable() {
       accessorKey: "createdAt",
       header: "Date Created",
       cell: ({ row }) => {
-        const timestamp = row.original.createdAt;
-        if (!timestamp) return <div>-</div>;
-
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div>{formatDate(row.original.createdAt)}</div>;
       },
     },
 
@@ -478,14 +491,7 @@ export default function ArchiveTable() {
       accessorKey: "updatedAt",
       header: "Last Updated",
       cell: ({ row }) => {
-        const timestamp = row.original.updatedAt;
-        if (!timestamp) return <div>-</div>;
-
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div>{formatDate(row.original.updatedAt)}</div>;
       },
     },
     // status column
@@ -514,51 +520,41 @@ export default function ArchiveTable() {
 
         return (
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-10 w-10 p-0 cursor-pointer"
-                >
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* <DropdownMenuItem
-                  onClick={() => handleCopyId(user.id)}
-                  className="cursor-pointer"
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy ID
-                </DropdownMenuItem> */}
-                {/* <DropdownMenuSeparator /> */}
-                {/* <DropdownMenuItem
-                  onClick={() => handleViewUser(user)}
-                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
-                >
-                  <Eye className="mr-2 h-4 w-4 text-green-600" />
-                  View
-                </DropdownMenuItem>
-                <DropdownMenuSeparator /> */}
-                <DropdownMenuItem
-                  onClick={() => setShowRestoreDialog(true)}
-                  className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
-                  Restore
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600 hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
-                >
-                  <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                  Delete Permanently
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
+            <TooltipProvider>
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-10 w-10 p-0 cursor-pointer"
+                      >
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">View More Actions</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setShowRestoreDialog(true)}
+                    className="text-blue-600 hover:text-blue-700 focus:text-blue-700 hover:bg-blue-50 focus:bg-blue-50 cursor-pointer"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
+                    Restore
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive hover:text-red-700 focus:text-red-700 hover:bg-red-50 focus:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                    Delete Permanently
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TooltipProvider>
             {/* delete confirmation dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <DialogContent>
@@ -588,7 +584,7 @@ export default function ArchiveTable() {
                     }}
                     className="cursor-pointer"
                   >
-                    <Trash2 /> Delete Permanently
+                    Delete Permanently
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -625,7 +621,7 @@ export default function ArchiveTable() {
                       setShowRestoreDialog(false);
                     }}
                   >
-                    <RotateCcw /> Restore
+                    Restore
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -646,6 +642,7 @@ export default function ArchiveTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: searchGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -653,13 +650,14 @@ export default function ArchiveTable() {
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
   });
 
   // loading state
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
@@ -778,7 +776,7 @@ export default function ArchiveTable() {
 
   // Render main table
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -815,7 +813,7 @@ export default function ArchiveTable() {
               variant="destructive"
               size="sm"
               onClick={() => setShowBatchDeleteDialog(true)}
-              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+              className="cursor-pointer"
             >
               <Trash2 />
               Batch Delete
@@ -828,23 +826,22 @@ export default function ArchiveTable() {
           {/* search icon */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search archived users by email..."
-            value={table.getColumn("email")?.getFilterValue() ?? ""}
+            placeholder="Search archived users..."
+            value={globalFilter ?? ""}
             onChange={(event) => {
               const value = event.target.value;
-              table.getColumn("email")?.setFilterValue(value);
+              setGlobalFilter(value);
             }}
             className="pl-10 max-w-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {/* clear button */}
-            {table.getColumn("email")?.getFilterValue() && (
+            {globalFilter && (
               <button
-                onClick={() => table.getColumn("email")?.setFilterValue("")}
+                onClick={() => setGlobalFilter("")}
                 className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                aria-label="Clear search"
               >
-                <X className="h-4 w-4 text-primary" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -1157,13 +1154,16 @@ export default function ArchiveTable() {
                 <DialogTitle>Confirm Batch Restore</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to restore{" "}
-                  {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? They will be moved back to active accounts.
+                  <strong>
+                    {table.getFilteredSelectedRowModel().rows.length} selected
+                    users?
+                  </strong>{" "}
+                  They will be moved back to active accounts.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchRestoreDialog(false)}
                   className="cursor-pointer"
                 >
@@ -1176,7 +1176,7 @@ export default function ArchiveTable() {
                     setShowBatchRestoreDialog(false);
                   }}
                 >
-                  <RotateCcw /> Restore All
+                  Restore All
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1192,26 +1192,30 @@ export default function ArchiveTable() {
                 <DialogTitle>Confirm Batch Delete</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to permanently delete{" "}
-                  {table.getFilteredSelectedRowModel().rows.length} selected
-                  users? This action cannot be undone.
+                  <strong>
+                    {table.getFilteredSelectedRowModel().rows.length} selected
+                    users?
+                  </strong>{" "}
+                  This action cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchDeleteDialog(false)}
                   className="cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                  variant="destructive"
+                  className=" cursor-pointer"
                   onClick={() => {
                     handleBatchDeleteUser();
                     setShowBatchDeleteDialog(false);
                   }}
                 >
-                  <Trash2 /> Delete All
+                  Delete All
                 </Button>
               </DialogFooter>
             </DialogContent>

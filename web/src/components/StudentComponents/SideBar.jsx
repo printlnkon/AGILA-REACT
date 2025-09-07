@@ -1,13 +1,18 @@
+import { useState, useEffect, useMemo } from "react";
+import { Separator } from "@/components/ui/separator";
+import { SearchForm } from "@/components/ui/search-form";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Calendar,
   LayoutDashboard,
   Settings,
-  ChevronUp,
-  User2,
-  Building,
   LogOut,
   GalleryVerticalEnd,
-  CircleUserRound,
+  ChevronsUpDown,
+  Bell,
+  User2,
+  Building,
+  Calendar,
 } from "lucide-react";
 import {
   Sidebar,
@@ -20,17 +25,26 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SearchForm } from "@/components/ui/search-form";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuth } from "@/context/AuthContext";
 
+// navigation items for the student
 const items = {
   navMain: [
     {
@@ -59,7 +73,7 @@ const items = {
           icon: Building,
         },
         {
-          title: "Schedule",
+          title: "Class Schedule",
           url: "#",
           icon: Calendar,
         },
@@ -70,8 +84,89 @@ const items = {
 
 export default function SideBar() {
   const { currentUser, logout } = useAuth();
-  const navigate = useNavigate();
 
+  // sidebar
+  const { isMobile, state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  // router
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // search
+  const [inputValue, setInputValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [inputValue]);
+
+  // filtering logic
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) {
+      return items.navMain;
+    }
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+
+    return items.navMain
+      .map((category) => {
+        const filteredCategoryItems = category.items
+          .map((item) => {
+            // filter for sub-items
+            if (item.items) {
+              const filteredSubItems = item.items.filter((subItem) =>
+                subItem.title.toLowerCase().includes(lowerCaseQuery)
+              );
+              if (
+                item.title.toLowerCase().includes(lowerCaseQuery) ||
+                filteredSubItems.length > 0
+              ) {
+                // if parent title doesn't match, show matching sub-items
+                if (!item.title.toLowerCase().includes(lowerCaseQuery)) {
+                  return { ...item, items: filteredSubItems };
+                }
+                // otherwise, show parent and all sub-items
+                return item;
+              }
+            }
+            // For items without sub-items
+            if (item.title.toLowerCase().includes(lowerCaseQuery)) {
+              return item;
+            }
+            return null;
+          })
+          .filter(Boolean); // Remove null entries
+
+        if (filteredCategoryItems.length > 0) {
+          return { ...category, items: filteredCategoryItems };
+        }
+        return null;
+      })
+      .filter(Boolean); // Remove empty categories
+  }, [searchQuery]);
+
+  // get user initials
+  const getInitials = (firstName = "", lastName = "") => {
+    const firstInitial = firstName ? firstName.charAt(0) : "";
+    const lastInitial = lastName ? lastName.charAt(0) : "";
+    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+  };
+
+  // get the firstName and lastName
+  const userInitials = getInitials(
+    currentUser?.firstName,
+    currentUser?.lastName
+  );
+
+  // function to handle logout
   const handleLogout = async () => {
     try {
       await logout();
@@ -82,14 +177,11 @@ export default function SideBar() {
     }
   };
 
-  const location = useLocation();
-
+  // determine if the menu item is active
   const isActive = (url) => {
     if (url === "/student") {
-      // Only highlight home when exactly at /student
       return location.pathname === "/student";
     }
-
     return (
       location.pathname === url ||
       (location.pathname.startsWith(url + "/") && url !== "/student")
@@ -109,7 +201,9 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-blue-900">AGILA</span>
+                    <span className="font-bold text-muted-background">
+                      AGILA
+                    </span>
                     <span className="">v1.0.0</span>
                   </div>
                 </Link>
@@ -121,8 +215,8 @@ export default function SideBar() {
         {/* content */}
         <SidebarContent>
           {/* search */}
-          <SearchForm />
-          {items.navMain.map((category) => (
+          <SearchForm searchQuery={inputValue} setSearchQuery={setInputValue} />
+          {filteredItems.map((category) => (
             <SidebarGroup key={category.title}>
               <SidebarGroupLabel>{category.title}</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -130,21 +224,22 @@ export default function SideBar() {
                   {category.items.map((menuItem) => (
                     <SidebarMenuItem key={menuItem.title}>
                       <SidebarMenuButton
-                        asChild
+                        tooltip={isCollapsed ? menuItem.title : undefined}
                         className={`
-                        transition-all duration-200 ease-in-out
-                        ${
-                          isActive(menuItem.url)
-                            ? "bg-blue-900 text-white font-medium"
-                            : ""
-                        }
-                      `}
+                          transition-all duration-200 ease-in-out
+                          ${
+                            isActive(menuItem.url)
+                              ? "font-bold bg-sidebar-primary text-white"
+                              : ""
+                          }
+                        `}
+                        asChild
                       >
-                        <Link to={menuItem.url}>
+                        <Link to={menuItem.url} className="flex items-center">
                           {menuItem.icon && (
-                            <menuItem.icon className="mr-2 h-4 w-4" />
+                            <menuItem.icon className="h-4 w-4" />
                           )}
-                          {menuItem.title}
+                          <span>{menuItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -155,26 +250,89 @@ export default function SideBar() {
           ))}
         </SidebarContent>
 
+        <Separator className="my-2" />
+
         {/* footer */}
         <SidebarFooter className="mt-auto">
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton>
-                    <CircleUserRound /> {currentUser?.firstName || "User"}
-                    <ChevronUp className="ml-auto" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                          size="lg"
+                          className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+                        >
+                          <Avatar className="h-8 w-8 rounded-lg">
+                            <AvatarImage
+                              src={userInitials}
+                              alt={userInitials}
+                            />
+                            <AvatarFallback className="rounded-lg">
+                              {userInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-medium">
+                              {currentUser?.firstName} {currentUser?.lastName}
+                            </span>
+                          </div>
+                          <ChevronsUpDown className="ml-auto size-4" />
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    {isCollapsed && (
+                      <TooltipContent side="right">
+                        <p>Profile</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenuContent
-                  side="top"
-                  className="w-[--radix-popper-anchor-width]"
+                  className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                  side={isMobile ? "bottom" : "right"}
+                  align="end"
+                  sideOffset={4}
                 >
-                  <DropdownMenuItem>
-                    <Settings /> <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut /> <span>Sign out</span>
+                  <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarImage src={userInitials} alt={userInitials} />
+                        <AvatarFallback className="rounded-lg">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* inside the avatar */}
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-medium">
+                          {currentUser?.firstName} {currentUser?.lastName}
+                        </span>
+                        <span className="truncate text-xs">
+                          {currentUser?.email || "No email"}
+                        </span>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Settings />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Bell />
+                      Notifications
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                  >
+                    <LogOut />
+                    Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
