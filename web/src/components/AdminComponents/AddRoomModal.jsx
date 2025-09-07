@@ -75,7 +75,6 @@ export default function AddRoomModal({ onRoomAdded }) {
       const roomData = {
         roomNo: formData.roomNo,
         floor: formData.floor,
-        status: formData.status || "available",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
