@@ -559,25 +559,42 @@ export default function AddScheduleModal({
     const startB = parseTime(scheduleB.startTime);
     const endB = parseTime(scheduleB.endTime);
 
-    // Check if schedules overlap in time
-    const startsDuring =
-      (startA.totalMinutes <= startB.totalMinutes &&
-        startB.totalMinutes < endA.totalMinutes) ||
-      (startB.totalMinutes <= startA.totalMinutes &&
-        startA.totalMinutes < endB.totalMinutes);
+    // Schedule A starts or ends during Schedule B
+    const aOverlapsB =
+      (startA.totalMinutes < endB.totalMinutes &&
+        startA.totalMinutes >= startB.totalMinutes) ||
+      (endA.totalMinutes <= endB.totalMinutes &&
+        endA.totalMinutes > startB.totalMinutes);
 
-    // Check if schedules have the same room or instructor
-    const sameRoom = scheduleA.roomName === scheduleB.roomName;
-    const sameInstructor =
-      scheduleA.instructorName === scheduleB.instructorName;
+    // Schedule B starts or ends during Schedule A
+    const bOverlapsA =
+      (startB.totalMinutes < endA.totalMinutes &&
+        startB.totalMinutes >= startA.totalMinutes) ||
+      (endB.totalMinutes <= endA.totalMinutes &&
+        endB.totalMinutes > startA.totalMinutes);
 
-    // Check if schedules are on the same day
-    const sameDays = scheduleA.days.some((day) => scheduleB.days.includes(day));
+    // One schedule completely contains the other
+    const aContainsB =
+      startA.totalMinutes <= startB.totalMinutes &&
+      endA.totalMinutes >= endB.totalMinutes;
+    const bContainsA =
+      startB.totalMinutes <= startA.totalMinutes &&
+      endB.totalMinutes >= endA.totalMinutes;
 
-    return startsDuring && (sameRoom || sameInstructor) && sameDays;
+    // Schedules start or end at exactly the same time
+    const sameStartOrEnd =
+      startA.totalMinutes === startB.totalMinutes ||
+      startA.totalMinutes === endB.totalMinutes ||
+      endA.totalMinutes === startB.totalMinutes ||
+      endA.totalMinutes === endB.totalMinutes;
+
+    return (
+      aOverlapsB || bOverlapsA || aContainsB || bContainsA || sameStartOrEnd
+    );
   };
 
   // Check for conflicts
+  // Fix for the checkConflicts function
   const checkConflicts = () => {
     const {
       startHour,
@@ -589,36 +606,167 @@ export default function AddScheduleModal({
       days,
       room,
       instructor,
+      hasLaboratory,
+      labStartHour,
+      labStartMinute,
+      labStartPeriod,
+      labEndHour,
+      labEndMinute,
+      labEndPeriod,
+      labDays,
+      labRoom,
+      labInstructor,
     } = formState;
 
     const startTime = `${startHour}:${startMinute} ${startPeriod}`;
     const endTime = `${endHour}:${endMinute} ${endPeriod}`;
 
-    // Create a temporary schedule
-    const tempSchedule = {
-      startTime,
-      endTime,
-      days: Object.entries(days)
+    const selectedDays = Object.entries(days)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([day]) => day);
+
+    // Track already checked schedules to avoid duplicates
+    const processedScheduleIds = new Set();
+    const detectedConflicts = [];
+
+    // Check lecture conflicts with existing schedules
+    existingSchedules.forEach((schedule) => {
+      // Skip the schedule if it's the one being edited
+      if (schedule.id === formState.editingScheduleId) {
+        return;
+      }
+
+      // Check for time and day overlap
+      const timeOverlap = checkTimeConflict(
+        { startTime, endTime },
+        { startTime: schedule.startTime, endTime: schedule.endTime }
+      );
+
+      // Check day overlap
+      const dayOverlap = selectedDays.some((day) =>
+        schedule.days.includes(day)
+      );
+
+      if (timeOverlap && dayOverlap) {
+        // Check each type of conflict independently
+
+        // Room conflict
+        if (room === schedule.roomId) {
+          detectedConflicts.push({
+            id: `${schedule.id}-room`,
+            subject: schedule.subjectName,
+            type: "room",
+            conflict: `Room ${schedule.roomName} is already booked for ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+          });
+        }
+
+        // Instructor conflict
+        if (instructor === schedule.instructorId) {
+          detectedConflicts.push({
+            id: `${schedule.id}-instructor`,
+            subject: schedule.subjectName,
+            type: "instructor",
+            conflict: `Instructor ${schedule.instructorName} is already teaching ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+          });
+        }
+
+        // Student schedule conflict (same section)
+        if (
+          !schedule.isLabComponent &&
+          !processedScheduleIds.has(`${schedule.id}-section`)
+        ) {
+          detectedConflicts.push({
+            id: `${schedule.id}-section`,
+            subject: schedule.subjectName,
+            type: "section",
+            conflict: `This section already has ${schedule.subjectCode} scheduled at this time`,
+          });
+          processedScheduleIds.add(`${schedule.id}-section`);
+        }
+      }
+    });
+
+    // Check laboratory conflicts if lab is included
+    if (hasLaboratory && labRoom && labInstructor) {
+      const labStartTimeString = `${labStartHour}:${labStartMinute} ${labStartPeriod}`;
+      const labEndTimeString = `${labEndHour}:${labEndMinute} ${labEndPeriod}`;
+
+      // Get selected days for laboratory
+      const selectedLabDays = Object.entries(labDays)
         .filter(([_, isSelected]) => isSelected)
-        .map(([day]) => day),
-      roomName: rooms.find((r) => r.id === room)?.name || "",
-      instructorName: instructors.find((i) => i.id === instructor)?.name || "",
-    };
+        .map(([day]) => day);
 
-    // Check against existing schedules
-    const newConflicts = existingSchedules
-      .filter((schedule) => checkTimeConflict(tempSchedule, schedule))
-      .map((schedule) => ({
-        id: schedule.id,
-        subject: schedule.subjectName,
-        conflict:
-          tempSchedule.roomName === schedule.roomName
-            ? `Room conflict with ${schedule.subjectNo}`
-            : `Instructor conflict with ${schedule.subjectName}`,
-      }));
+      existingSchedules.forEach((schedule) => {
+        // Skip the schedule if it's the one being edited
+        if (schedule.id === formState.editingLabScheduleId) {
+          return;
+        }
 
-      setConflicts(newConflicts);
-    };
+        // Check for time overlap using our helper function
+        const labTimeOverlap = checkTimeConflict(
+          { startTime: labStartTimeString, endTime: labEndTimeString },
+          { startTime: schedule.startTime, endTime: schedule.endTime }
+        );
+
+        // Check lab day overlap
+        const labDayOverlap = selectedLabDays.some((day) =>
+          schedule.days.includes(day)
+        );
+
+        if (labTimeOverlap && labDayOverlap) {
+          // Lab room conflict
+          if (labRoom === schedule.roomId) {
+            detectedConflicts.push({
+              id: `${schedule.id}-labRoom`,
+              subject: schedule.subjectName,
+              type: "labRoom",
+              conflict: `Laboratory room ${schedule.roomName} is already booked for ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+            });
+          }
+
+          // Lab instructor conflict
+          if (labInstructor === schedule.instructorId) {
+            detectedConflicts.push({
+              id: `${schedule.id}-labInstructor`,
+              subject: schedule.subjectName,
+              type: "labInstructor",
+              conflict: `Laboratory instructor ${schedule.instructorName} is already teaching ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+            });
+          }
+        }
+      });
+
+      // Check if lecture and lab schedules conflict with each other
+      const selfTimeOverlap = checkTimeConflict(
+        { startTime, endTime },
+        { startTime: labStartTimeString, endTime: labEndTimeString }
+      );
+
+      const selfDayOverlap = selectedLabDays.some((day) =>
+        selectedDays.includes(day)
+      );
+
+      // Check if lecture instructor is teaching the lab at the same time
+      if (selfTimeOverlap && selfDayOverlap && instructor === labInstructor) {
+        detectedConflicts.push({
+          id: "self-conflict",
+          subject: "This schedule",
+          type: "self",
+          conflict:
+            "The same instructor cannot teach lecture and laboratory sessions at overlapping times",
+        });
+      }
+    }
+
+    // Remove any duplicate conflicts
+    const uniqueConflicts = Array.from(
+      new Map(
+        detectedConflicts.map((conflict) => [conflict.id, conflict])
+      ).values()
+    );
+
+    setConflicts(uniqueConflicts);
+  };
 
   // fetch subjects
   const fetchSubjects = async () => {
@@ -776,7 +924,7 @@ export default function AddScheduleModal({
 
     // Existing validations
     if (!roomType) {
-      newErrors.roomType = "Schedule type is required";
+      newErrors.roomType = "Room type is required";
       isValid = false;
     }
 
@@ -1087,7 +1235,7 @@ export default function AddScheduleModal({
         await onScheduleAdded(newSchedule);
       }
 
-      toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
+      // toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
       resetForm();
       setOpen(false);
     } catch (err) {
@@ -1310,12 +1458,41 @@ export default function AddScheduleModal({
                 )}
               </div>
 
+              {/* Subject Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="subject" className="text-sm">
+                  Subject <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formState.subject}
+                  onValueChange={(value) =>
+                    dispatch({ type: "SET_FIELD", field: "subject", value })
+                  }
+                >
+                  <SelectTrigger id="subject" className="w-full">
+                    <SelectValue placeholder="Select Subject" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.code} - {subject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.subject && (
+                  <p className="text-xs sm:text-sm text-destructive mt-1">
+                    {errors.subject}
+                  </p>
+                )}
+              </div>
+
               {/* Time Selection */}
-              {formState.roomType && (
+              {formState.roomType && formState.subject && (
                 <>
                   {/* Time selection */}
-                  <div className="space-y-2 mb-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Start Time */}
                       <div className="space-y-2">
                         <Label htmlFor="startTime" className="text-sm">
@@ -1631,7 +1808,7 @@ export default function AddScheduleModal({
                     <Label className="text-sm">
                       Day <span className="text-destructive">*</span>
                     </Label>
-                    <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3 mt-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3">
                       {Object.entries(DAY_LABELS).map(([key, label]) => (
                         <div key={key} className="flex items-center space-x-2">
                           <Checkbox
@@ -1674,14 +1851,161 @@ export default function AddScheduleModal({
                     </div>
                   )}
 
+                  {/* Room Selection */}
+                  {formState.roomType &&
+                    formState.subject &&
+                    Object.values(formState.days).some((day) => day) && (
+                      <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <Label htmlFor="room" className="text-sm">
+                              Room <span className="text-destructive">*</span>
+                            </Label>
+                          </div>
+                          <Select
+                            value={formState.room}
+                            onValueChange={(value) =>
+                              dispatch({
+                                type: "SET_FIELD",
+                                field: "room",
+                                value,
+                              })
+                            }
+                          >
+                            <SelectTrigger id="room" className="w-full">
+                              <SelectValue
+                                placeholder={
+                                  availableRooms.length
+                                    ? "Select Lecture Room"
+                                    : "No available lecture rooms"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent
+                              position="popper"
+                              className="max-h-[200px] overflow-y-auto"
+                            >
+                              {availableRooms.length > 0 ? (
+                                // Group rooms by floor
+                                Object.entries(
+                                  availableRooms.reduce((acc, room) => {
+                                    const floor = room.floor || "Other";
+                                    if (!acc[floor]) acc[floor] = [];
+                                    acc[floor].push(room);
+                                    return acc;
+                                  }, {})
+                                )
+                                  .sort(([floorA], [floorB]) => {
+                                    // Sort floors numerically
+                                    const numA = parseInt(floorA);
+                                    const numB = parseInt(floorB);
+                                    if (isNaN(numA)) return 1;
+                                    if (isNaN(numB)) return -1;
+                                    return numA - numB;
+                                  })
+                                  .map(([floor, rooms]) => (
+                                    <div key={floor}>
+                                      <div className="text-xs font-bold text-muted-foreground">
+                                        {floor === "Other"
+                                          ? "Other Rooms"
+                                          : `Floor ${floor}`}
+                                      </div>
+                                      {rooms
+                                        .sort((a, b) => {
+                                          // Sort rooms within each floor numerically
+                                          const roomNumA = parseInt(
+                                            a.roomNo.replace(/\D/g, "")
+                                          );
+                                          const roomNumB = parseInt(
+                                            b.roomNo.replace(/\D/g, "")
+                                          );
+                                          return roomNumA - roomNumB;
+                                        })
+                                        .map((room) => (
+                                          <SelectItem
+                                            key={room.id}
+                                            value={room.id}
+                                          >
+                                            {room.name}
+                                          </SelectItem>
+                                        ))}
+                                    </div>
+                                  ))
+                              ) : (
+                                <SelectItem value="no-rooms" disabled>
+                                  No available rooms
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {errors.room && (
+                            <p className="text-xs sm:text-sm text-destructive mt-1">
+                              {errors.room}
+                            </p>
+                          )}
+                          {availableRooms.length === 0 &&
+                            formState.roomType &&
+                            formState.subject &&
+                            Object.values(formState.days).some(
+                              (day) => day
+                            ) && (
+                              <p className="text-xs sm:text-sm text-amber-600 mt-1">
+                                No rooms available for selected time and day.
+                                Try selecting different time or day, or add a
+                                new room.
+                              </p>
+                            )}
+                        </div>
+
+                        {/* Instructor Selection */}
+                        {formState.room && (
+                          <div className="space-y-2">
+                            <Label htmlFor="instructor" className="text-sm">
+                              Instructor{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={formState.instructor}
+                              onValueChange={(value) =>
+                                dispatch({
+                                  type: "SET_FIELD",
+                                  field: "instructor",
+                                  value,
+                                })
+                              }
+                            >
+                              <SelectTrigger id="instructor" className="w-full">
+                                <SelectValue placeholder="Select Lecture Instructor" />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {instructors.map((instructor) => (
+                                  <SelectItem
+                                    key={instructor.id}
+                                    value={instructor.id}
+                                  >
+                                    {instructor.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errors.instructor && (
+                              <p className="text-xs sm:text-sm text-destructive mt-1">
+                                {errors.instructor}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                   {/* Laboratory Time and Day Selection */}
                   {formState.hasLaboratory && (
                     <div className="mt-4 border-t pt-4 space-y-4">
                       <h3 className="font-bold text-lg">Laboratory Schedule</h3>
 
                       {/* Laboratory Time Selection */}
-                      <div className="space-y-2 mb-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {/* Lab Start Time */}
                           <div className="space-y-2">
                             <Label htmlFor="labStartTime" className="text-sm">
@@ -2003,16 +2327,17 @@ export default function AddScheduleModal({
                       {/* Laboratory Days Selection */}
                       <div className="space-y-2">
                         <Label className="text-sm">
-                          Laboratory Days{" "}
+                          Laboratory Day{" "}
                           <span className="text-destructive">*</span>
                         </Label>
-                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3 mt-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3">
                           {Object.entries(DAY_LABELS).map(([key, label]) => (
                             <div
                               key={`lab-${key}`}
                               className="flex items-center space-x-2"
                             >
                               <Checkbox
+                                value
                                 id={`lab-day-${key}`}
                                 checked={formState.labDays[key]}
                                 onCheckedChange={() =>
@@ -2033,287 +2358,136 @@ export default function AddScheduleModal({
                         </div>
                       </div>
 
-                      {/* Laboratory Room Selection */}
-                      <div className="space-y-2">
-                        <Label htmlFor="labRoom" className="text-sm">
-                          Laboratory Room{" "}
-                          <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                          value={formState.labRoom}
-                          onValueChange={(value) =>
-                            dispatch({
-                              type: "SET_FIELD",
-                              field: "labRoom",
-                              value,
-                            })
-                          }
-                        >
-                          <SelectTrigger id="labRoom" className="w-full">
-                            <SelectValue
-                              placeholder={
-                                availableRooms.length
-                                  ? "Select Laboratory Room"
-                                  : "No available laboratory rooms"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent
-                            position="popper"
-                            className="max-h-[200px] overflow-y-auto"
-                          >
-                            {availableRooms.length > 0 ? (
-                              // Group rooms by floor
-                              Object.entries(
-                                availableRooms.reduce((acc, room) => {
-                                  const floor = room.floor || "Other";
-                                  if (!acc[floor]) acc[floor] = [];
-                                  acc[floor].push(room);
-                                  return acc;
-                                }, {})
-                              )
-                                .sort(([floorA], [floorB]) => {
-                                  // Sort floors numerically
-                                  const numA = parseInt(floorA);
-                                  const numB = parseInt(floorB);
-                                  if (isNaN(numA)) return 1;
-                                  if (isNaN(numB)) return -1;
-                                  return numA - numB;
+                      {Object.values(formState.labDays).some((day) => day) && (
+                        <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
+                          {/* Laboratory Room Selection */}
+                          <div className="space-y-2">
+                            <Label htmlFor="labRoom" className="text-sm">
+                              Laboratory Room{" "}
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Select
+                              value={formState.labRoom}
+                              onValueChange={(value) =>
+                                dispatch({
+                                  type: "SET_FIELD",
+                                  field: "labRoom",
+                                  value,
                                 })
-                                .map(([floor, rooms]) => (
-                                  <div key={floor}>
-                                    <div className="text-xs font-bold text-muted-foreground">
-                                      {floor === "Other"
-                                        ? "Other Rooms"
-                                        : `Floor ${floor}`}
-                                    </div>
-                                    {rooms
-                                      .sort((a, b) => {
-                                        // Sort rooms within each floor numerically
-                                        const roomNumA = parseInt(
-                                          a.roomNo.replace(/\D/g, "")
-                                        );
-                                        const roomNumB = parseInt(
-                                          b.roomNo.replace(/\D/g, "")
-                                        );
-                                        return roomNumA - roomNumB;
-                                      })
-                                      .map((room) => (
-                                        <SelectItem
-                                          key={room.id}
-                                          value={room.id}
-                                        >
-                                          {room.name}
-                                        </SelectItem>
-                                      ))}
-                                  </div>
-                                ))
-                            ) : (
-                              <SelectItem value="no-rooms" disabled>
-                                No available rooms
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Laboratory Instructor Selection (can be optional) */}
-                      <div className="space-y-2">
-                        <Label htmlFor="labInstructor" className="text-sm">
-                          Laboratory Instructor{" "}
-                          <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                          value={formState.labInstructor}
-                          onValueChange={(value) =>
-                            dispatch({
-                              type: "SET_FIELD",
-                              field: "labInstructor",
-                              value,
-                            })
-                          }
-                        >
-                          <SelectTrigger id="labInstructor" className="w-full">
-                            <SelectValue placeholder="Select Laboratory Instructor" />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {instructors.map((instructor) => (
-                              <SelectItem
-                                key={`lab-instructor-${instructor.id}`}
-                                value={instructor.id}
+                              }
+                            >
+                              <SelectTrigger id="labRoom" className="w-full">
+                                <SelectValue
+                                  placeholder={
+                                    availableRooms.length
+                                      ? "Select Laboratory Room"
+                                      : "No available laboratory rooms"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent
+                                position="popper"
+                                className="max-h-[200px] overflow-y-auto"
                               >
-                                {instructor.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                                {availableRooms.length > 0 ? (
+                                  // Group rooms by floor
+                                  Object.entries(
+                                    availableRooms.reduce((acc, room) => {
+                                      const floor = room.floor || "Other";
+                                      if (!acc[floor]) acc[floor] = [];
+                                      acc[floor].push(room);
+                                      return acc;
+                                    }, {})
+                                  )
+                                    .sort(([floorA], [floorB]) => {
+                                      // Sort floors numerically
+                                      const numA = parseInt(floorA);
+                                      const numB = parseInt(floorB);
+                                      if (isNaN(numA)) return 1;
+                                      if (isNaN(numB)) return -1;
+                                      return numA - numB;
+                                    })
+                                    .map(([floor, rooms]) => (
+                                      <div key={floor}>
+                                        <div className="text-xs font-bold text-muted-foreground">
+                                          {floor === "Other"
+                                            ? "Other Rooms"
+                                            : `Floor ${floor}`}
+                                        </div>
+                                        {rooms
+                                          .sort((a, b) => {
+                                            // Sort rooms within each floor numerically
+                                            const roomNumA = parseInt(
+                                              a.roomNo.replace(/\D/g, "")
+                                            );
+                                            const roomNumB = parseInt(
+                                              b.roomNo.replace(/\D/g, "")
+                                            );
+                                            return roomNumA - roomNumB;
+                                          })
+                                          .map((room) => (
+                                            <SelectItem
+                                              key={room.id}
+                                              value={room.id}
+                                            >
+                                              {room.name}
+                                            </SelectItem>
+                                          ))}
+                                      </div>
+                                    ))
+                                ) : (
+                                  <SelectItem value="no-rooms" disabled>
+                                    No available rooms
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                  {/* Subject Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-sm">
-                      Subject <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={formState.subject}
-                      onValueChange={(value) =>
-                        dispatch({ type: "SET_FIELD", field: "subject", value })
-                      }
-                      disabled={
-                        !Object.values(formState.days).some((day) => day)
-                      }
-                    >
-                      <SelectTrigger id="subject" className="w-full">
-                        <SelectValue placeholder="Select Subject" />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.code} - {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.subject && (
-                      <p className="text-xs sm:text-sm text-destructive mt-1">
-                        {errors.subject}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Room Selection */}
-              {formState.roomType &&
-                formState.subject &&
-                Object.values(formState.days).some((day) => day) && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="room" className="text-sm">
-                        Room <span className="text-destructive">*</span>
-                      </Label>
-                    </div>
-                    <Select
-                      value={formState.room}
-                      onValueChange={(value) =>
-                        dispatch({ type: "SET_FIELD", field: "room", value })
-                      }
-                    >
-                      <SelectTrigger id="room" className="w-full">
-                        <SelectValue
-                          placeholder={
-                            availableRooms.length
-                              ? "Select Lecture Room"
-                              : "No available lecture rooms"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent
-                        position="popper"
-                        className="max-h-[200px] overflow-y-auto"
-                      >
-                        {availableRooms.length > 0 ? (
-                          // Group rooms by floor
-                          Object.entries(
-                            availableRooms.reduce((acc, room) => {
-                              const floor = room.floor || "Other";
-                              if (!acc[floor]) acc[floor] = [];
-                              acc[floor].push(room);
-                              return acc;
-                            }, {})
-                          )
-                            .sort(([floorA], [floorB]) => {
-                              // Sort floors numerically
-                              const numA = parseInt(floorA);
-                              const numB = parseInt(floorB);
-                              if (isNaN(numA)) return 1;
-                              if (isNaN(numB)) return -1;
-                              return numA - numB;
-                            })
-                            .map(([floor, rooms]) => (
-                              <div key={floor}>
-                                <div className="text-xs font-bold text-muted-foreground">
-                                  {floor === "Other"
-                                    ? "Other Rooms"
-                                    : `Floor ${floor}`}
-                                </div>
-                                {rooms
-                                  .sort((a, b) => {
-                                    // Sort rooms within each floor numerically
-                                    const roomNumA = parseInt(
-                                      a.roomNo.replace(/\D/g, "")
-                                    );
-                                    const roomNumB = parseInt(
-                                      b.roomNo.replace(/\D/g, "")
-                                    );
-                                    return roomNumA - roomNumB;
+                          {/* Laboratory Instructor Selection (can be optional) */}
+                          {formState.labRoom && (
+                            <div className="space-y-2">
+                              <Label
+                                htmlFor="labInstructor"
+                                className="text-sm"
+                              >
+                                Laboratory Instructor{" "}
+                                <span className="text-destructive">*</span>
+                              </Label>
+                              <Select
+                                value={formState.labInstructor}
+                                onValueChange={(value) =>
+                                  dispatch({
+                                    type: "SET_FIELD",
+                                    field: "labInstructor",
+                                    value,
                                   })
-                                  .map((room) => (
-                                    <SelectItem key={room.id} value={room.id}>
-                                      {room.name}
+                                }
+                              >
+                                <SelectTrigger
+                                  id="labInstructor"
+                                  className="w-full"
+                                >
+                                  <SelectValue placeholder="Select Laboratory Instructor" />
+                                </SelectTrigger>
+                                <SelectContent position="popper">
+                                  {instructors.map((instructor) => (
+                                    <SelectItem
+                                      key={`lab-instructor-${instructor.id}`}
+                                      value={instructor.id}
+                                    >
+                                      {instructor.name}
                                     </SelectItem>
                                   ))}
-                              </div>
-                            ))
-                        ) : (
-                          <SelectItem value="no-rooms" disabled>
-                            No available rooms
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {errors.room && (
-                      <p className="text-xs sm:text-sm text-destructive mt-1">
-                        {errors.room}
-                      </p>
-                    )}
-                    {availableRooms.length === 0 &&
-                      formState.roomType &&
-                      formState.subject &&
-                      Object.values(formState.days).some((day) => day) && (
-                        <p className="text-xs sm:text-sm text-amber-600 mt-1">
-                          No rooms available for selected time and day. Try
-                          selecting different time or day, or add a new room.
-                        </p>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
                       )}
-                  </div>
-                )}
-
-              {/* Instructor Selection */}
-              {formState.room && (
-                <div className="space-y-2">
-                  <Label htmlFor="instructor" className="text-sm">
-                    Instructor <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formState.instructor}
-                    onValueChange={(value) =>
-                      dispatch({
-                        type: "SET_FIELD",
-                        field: "instructor",
-                        value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="instructor" className="w-full">
-                      <SelectValue placeholder="Select Lecture Instructor" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {instructors.map((instructor) => (
-                        <SelectItem key={instructor.id} value={instructor.id}>
-                          {instructor.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.instructor && (
-                    <p className="text-xs sm:text-sm text-destructive mt-1">
-                      {errors.instructor}
-                    </p>
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
               {/* Color Selection */}
@@ -2405,23 +2579,29 @@ export default function AddScheduleModal({
                   Schedule Summary
                 </h3>
                 <div className="bg-muted p-3 sm:p-4 rounded-md">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-md sm:text-md">
-                    <div className="col-span-1 sm:col-span-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-y-3 gap-x-2 text-md sm:text-md">
+                    <div className="col-span-2 sm:col-span-2">
+                      <h4 className="font-bold">Lecture Schedule</h4>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Room Type:</p>
+                      <p>
+                        {formState.roomType
+                          ? `${
+                              formState.roomType.charAt(0).toUpperCase() +
+                              formState.roomType.slice(1)
+                            }${formState.hasLaboratory ? " w/ Laboratory" : ""}`
+                          : "Not set"}
+                      </p>
+                    </div>
+                    <div>
                       <p className="font-semibold">Subject:</p>
                       <p className="break-words">
                         {subjects.find((s) => s.id === formState.subject)
                           ?.name || "Not set"}
                       </p>
                     </div>
-                    <div>
-                      <p className="font-semibold">Room Type:</p>
-                      <p>
-                        {formState.roomType
-                          ? formState.roomType.charAt(0).toUpperCase() +
-                            formState.roomType.slice(1)
-                          : "Not set"}
-                      </p>
-                    </div>
+
                     <div>
                       <p className="font-semibold">Lecture Room No.:</p>
                       <p>
@@ -2462,7 +2642,7 @@ export default function AddScheduleModal({
                     {/* Laboratory info in summary */}
                     {formState.hasLaboratory && (
                       <div className="col-span-1 sm:col-span-2">
-                        <h4 className="font-bold mb-2">Laboratory Schedule</h4>
+                        <h4 className="font-bold">Laboratory Schedule</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-2 text-md sm:text-md">
                           <div>
                             <p className="font-semibold">Lab Room No.:</p>
@@ -2542,21 +2722,19 @@ export default function AddScheduleModal({
                   <AlertDescription className="text-xs sm:text-sm">
                     <p className="mb-2">
                       This schedule conflicts with {conflicts.length} existing
-                      schedule(s):
+                      schedule(s).{" "}
+                      {/* Remove the detailed listing from here since it's duplicated */}
+                      {conflicts.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="p-0 h-auto text-xs sm:text-sm underline text-blue-600 cursor-pointer"
+                          onClick={() => setShowConflictDialog(true)}
+                        >
+                          View conflict details
+                        </Button>
+                      )}
                     </p>
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1">
-                      {conflicts.map((conflict) => (
-                        <li key={conflict.id}>
-                          <Badge
-                            variant="outline"
-                            className="mr-1 bg-red-50 border-red-300 text-red-700 text-[10px] sm:text-xs"
-                          >
-                            {conflict.subject}
-                          </Badge>
-                          {conflict.conflict}
-                        </li>
-                      ))}
-                    </ul>
                   </AlertDescription>
                 </Alert>
               )}
@@ -2578,19 +2756,57 @@ export default function AddScheduleModal({
                   </DialogHeader>
 
                   <div className="max-h-[200px] overflow-y-auto mt-4">
-                    <ul className="list-disc pl-5 space-y-1">
-                      {conflicts.map((conflict) => (
-                        <li key={conflict.id} className="text-sm">
-                          <Badge
-                            variant="outline"
-                            className="mr-1 bg-red-50 border-red-300 text-red-700 text-[10px] sm:text-xs"
-                          >
-                            {conflict.subject}
-                          </Badge>
-                          {conflict.conflict}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="space-y-3">
+                      {/* Group conflicts by type */}
+                      {[...new Set(conflicts.map((c) => c.type))].map(
+                        (type) => (
+                          <div key={type}>
+                            <h4 className="font-semibold mb-1 capitalize">
+                              {type === "room"
+                                ? "Room Conflicts"
+                                : type === "instructor"
+                                ? "Instructor Conflicts"
+                                : type === "section"
+                                ? "Section Schedule Conflicts"
+                                : type === "labRoom"
+                                ? "Laboratory Room Conflicts"
+                                : type === "labInstructor"
+                                ? "Laboratory Instructor Conflicts"
+                                : type === "self"
+                                ? "Self Conflicts"
+                                : "Other Conflicts"}
+                            </h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                              {conflicts
+                                .filter((conflict) => conflict.type === type)
+                                .map((conflict) => (
+                                  <li
+                                    key={`${conflict.type}-${conflict.id}`}
+                                    className="text-sm"
+                                  >
+                                    <Badge
+                                      variant="outline"
+                                      className={`mr-1 text-[10px] sm:text-xs ${
+                                        type === "room" || type === "labRoom"
+                                          ? "bg-blue-50 border-blue-300 text-blue-700"
+                                          : type === "instructor" ||
+                                            type === "labInstructor"
+                                          ? "bg-purple-50 border-purple-300 text-purple-700"
+                                          : type === "section"
+                                          ? "bg-amber-50 border-amber-300 text-amber-700"
+                                          : "bg-red-50 border-red-300 text-red-700"
+                                      }`}
+                                    >
+                                      {conflict.subject}
+                                    </Badge>
+                                    {conflict.conflict}
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    </div>
                   </div>
 
                   <DialogFooter className="mt-6">
