@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import AcademicHeadEditViewProfile from "@/components/AdminComponents/AcademicHeadEditViewProfile";
 
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) {
@@ -22,64 +24,128 @@ const handleCopyEmployeeNo = (employeeNo) => {
 };
 
 export default function AcademicHeadViewProfile() {
-  const { selectedAcademicHead } = useAcademicHeadProfile();
+  const { selectedAcademicHead, updateAcademicHeadProfile } =
+    useAcademicHeadProfile();
+  const [isEditing, setIsEditing] = useState(false);
 
-  if (!selectedAcademicHead) return <div>No academic head selected.</div>;
+  const handleSaveChanges = async (updatedAcademicHeadData) => {
+    const success = await updateAcademicHeadProfile(updatedAcademicHeadData);
+    if (success) {
+      setIsEditing(false);
+    }
+  };
 
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  if (!selectedAcademicHead) {
+    return (
+      <div className="flex items-center justify-center h-full p-4">
+        <p className="text-muted-foreground">No academic head selected.</p>
+      </div>
+    );
+  }
+
+  // edit profile mode
+  if (isEditing) {
+    return (
+      <div className="w-full p-4 lg:p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              Edit Academic Head Profile
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Update and manage academic head details.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <AcademicHeadEditViewProfile
+            academicHead={selectedAcademicHead}
+            onSave={handleSaveChanges}
+            onCancel={handleCancelEdit}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // view profile mode
   return (
-    <div className="w-full">
-      <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6">
-        <div className="grid auto-rows-min gap-2 sm:gap-4">
-          <div className="mb-4 flex items-center justify-between">
+    <div className="w-full p-4 lg:p-6">
+      <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
+        <div className="grid auto-rows-min gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Academic Head Profile</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold">
+                Academic Head Profile
+              </h1>
+              <p className="text-sm text-muted-foreground">
                 View and manage academic head details.
               </p>
             </div>
           </div>
         </div>
-        {/* go back btn */}
-        <div className="gap-2 space-y-4">
+
+        <div className="flex justify-between">
           <Button
-            className="bg-primary cursor-pointer"
+            variant="outline"
+            className="cursor-pointer text-sm gap-2"
             onClick={() => window.history.back()}
           >
-            <ArrowLeft />
-            Go Back
+            <ArrowLeft className="w-4 h-4" />
+            Previous
           </Button>
+          <div className="ml-2">
+            <Button
+              onClick={() => setIsEditing(true)}
+              className="cursor-pointer"
+            >
+              <Edit className="w-4 h-4" />
+              Edit Profile
+            </Button>
+          </div>
         </div>
 
-        {/* student info */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* profile card */}
+          {/* display profile picture */}
           <Card className="w-full max-w-sm mx-auto lg:mx-0">
-            <CardContent className="flex flex-col items-center">
-              {/* avatar */}
-              <img
-                src={
-                  selectedAcademicHead.photoURL ||
-                  (selectedAcademicHead.gender === "Female"
-                    ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-                    : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede")
-                }
-                alt="Avatar"
-                className="w-32 h-32 mb-2 rounded-full"
-              />
-              <div className="flex flex-col items-center text-center w-full">
-                {/* name */}
-                <div className="text-xl font-semibold">
-                  {selectedAcademicHead.firstName}{" "}
-                  {selectedAcademicHead.middleName || ""}{" "}
-                  {selectedAcademicHead.lastName}
+            <CardContent className="p-4 md:p-1 flex flex-col items-center">
+              {selectedAcademicHead.photoURL ? (
+                <img
+                  src={selectedAcademicHead.photoURL}
+                  alt="Avatar"
+                  className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://placehold.co/128x128/b6e3f4/4a4a4a?text=Student";
+                  }}
+                />
+              ) : (
+                <div
+                  className="w-28 h-28 sm:w-32 sm:h-32 mb-4 rounded-full border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold select-none"
+                  aria-label="Avatar"
+                >
+                  {`${(selectedAcademicHead.firstName?.charAt(0) || "")}${(selectedAcademicHead.lastName?.charAt(0) || "")}`}
                 </div>
-                {/* employee no. */}
-                <div className="text-sm text-muted-foreground flex items-center gap-2 mb-2">
+              )}
+              <div className="flex flex-col items-center text-center w-full">
+                <div className="text-lg sm:text-xl font-semibold">
+                  {selectedAcademicHead.firstName}{" "}
+                  {selectedAcademicHead.middleName || " "}
+                  {selectedAcademicHead.lastName}{" "}
+                  {selectedAcademicHead.suffix || ""}
+                </div>
+                <div className="text-sm text-muted-foreground flex items-center gap-2 mb-4">
                   <span>
                     Employee No. {selectedAcademicHead.employeeNumber}
                   </span>
                   <Button
-                    className="w-5 h-5 rounded-sm bg-primary/35 cursor-pointer"
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 rounded-md cursor-pointer"
                     onClick={() =>
                       handleCopyEmployeeNo(selectedAcademicHead.employeeNumber)
                     }
@@ -87,20 +153,19 @@ export default function AcademicHeadViewProfile() {
                     <Copy className="w-3 h-3" />
                   </Button>
                 </div>
-                <Separator className="my-2 w-full" />
+                <Separator className="w-full" />
               </div>
-              <div className="flex flex-row w-full mt-2 gap-4 justify-between">
-                {/* status */}
-                <div className="text-sm flex-1 flex justify-around">
-                  <Badge className="capitalize font-medium rounded-full px-4 py-2 bg-green-600 text-white">
-                    <span className="font-semibold">Status:</span>{" "}
+
+              <div className="flex flex-col sm:flex-row w-full mt-4 gap-2">
+                <div className="text-sm flex-1 flex justify-center">
+                  <Badge className="capitalize font-medium rounded-md px-3 py-1 bg-green-100 text-green-800">
+                    <span className="font-semibold mr-1">Status:</span>
                     {selectedAcademicHead.status || "N/A"}
                   </Badge>
                 </div>
-                {/* role */}
-                <div className="text-sm flex-1 flex justify-around">
-                  <Badge className="capitalize font-medium rounded-full px-4 py-2">
-                    <span className="font-semibold">Role:</span>{" "}
+                <div className="text-sm flex-1 flex justify-center">
+                  <Badge className="capitalize font-medium rounded-md px-3 py-1">
+                    <span className="font-semibold mr-1">Role:</span>
                     {selectedAcademicHead.role || "N/A"}
                   </Badge>
                 </div>
@@ -109,52 +174,63 @@ export default function AcademicHeadViewProfile() {
           </Card>
 
           <div className="flex flex-col gap-4 w-full">
-            {/* teacher info */}
             <Card className="w-full">
               <CardHeader>
-                <div className="font-semibold text-xl">Student Information</div>
+                <div className="font-semibold text-lg sm:text-xl">
+                  Academic Head Information
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="divide-y ml-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">First Name:</span>
-                    <span>{selectedAcademicHead.firstName}</span>
-                    <span className="font-semibold">Last Name:</span>
-                    <span>{selectedAcademicHead.lastName}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      First Name
+                    </p>
+                    <p className="text-sm">{selectedAcademicHead.firstName}</p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Email:</span>
-                    <span>{selectedAcademicHead.email}</span>
-                    <span className="font-semibold">Birthday:</span>
-                    <span>{selectedAcademicHead.dateOfBirth}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Middle Name
+                    </p>
+                    <p className="text-sm">
+                      {selectedAcademicHead.middleName || "N/A"}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-4 py-3 gap-y-2">
-                    <span className="font-semibold">Gender:</span>
-                    <span>{selectedAcademicHead.gender}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Last Name
+                    </p>
+                    <p className="text-sm">{selectedAcademicHead.lastName}</p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            {/* academic info */}
-            <Card className="w-full">
-              <CardHeader>
-                <div className="font-semibold text-xl">
-                  Academic Information
-                </div>
-              </CardHeader>
-              <CardContent className="">
-                <div className="divide-y ml-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 py-3 lg:grid-cols-2 xl:grid-cols-4 gap-y-2">
-                    <span className="font-semibold">TEST:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
-                    <span className="font-bold">TEST:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Suffix
+                    </p>
+                    <p className="text-sm">
+                      {selectedAcademicHead.suffix || "N/A"}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 py-3 lg:grid-cols-2 xl:grid-cols-4 gap-y-2">
-                    <span className="font-semibold">TEST:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
-                    <span className="font-semibold">TEST:</span>
-                    <span>TEEEEEEEEEEEEEESTING</span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Email
+                    </p>
+                    <p className="text-sm break-all">
+                      {selectedAcademicHead.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Birthday
+                    </p>
+                    <p className="text-sm">
+                      {selectedAcademicHead.dateOfBirth}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Gender
+                    </p>
+                    <p className="text-sm">{selectedAcademicHead.gender}</p>
                   </div>
                 </div>
               </CardContent>

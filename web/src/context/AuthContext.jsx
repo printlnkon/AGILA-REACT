@@ -56,6 +56,7 @@ export default function AuthProvider({ children }) {
         email: matched.email,
         name: matched.name,
         firstName: matched.firstName,
+        lastName: matched.lastName,
         role: matched.role,
       });
 
@@ -67,6 +68,7 @@ export default function AuthProvider({ children }) {
       sessionStorage.setItem("email", matched.email);
       sessionStorage.setItem("name", matched.name);
       sessionStorage.setItem("firstName", matched.firstName);
+      sessionStorage.setItem("lastName", matched.lastName);
 
       return matched.role; // return role for redirect purposes
     } catch (error) {
@@ -86,6 +88,7 @@ export default function AuthProvider({ children }) {
       sessionStorage.removeItem("email");
       sessionStorage.removeItem("name");
       sessionStorage.removeItem("firstName");
+      sessionStorage.removeItem("lastName");
       setCurrentUser(null);
       setUserRole(null);
     } catch (error) {
@@ -105,6 +108,7 @@ export default function AuthProvider({ children }) {
           const email = sessionStorage.getItem("email");
           const name = sessionStorage.getItem("name");
           const firstName = sessionStorage.getItem("firstName");
+          const lastName = sessionStorage.getItem("lastName");
 
           if (role && email) {
             if (isMounted) {
@@ -113,6 +117,7 @@ export default function AuthProvider({ children }) {
                 email,
                 name,
                 firstName,
+                lastName,
                 role,
               });
               setUserRole(role);
@@ -139,6 +144,7 @@ export default function AuthProvider({ children }) {
                     email: userData.email,
                     name: userData.name,
                     firstName: userData.firstName || "",
+                    lastName: userData.lastName || "",
                     role: r,
                   };
                   setCurrentUser(userInfo);
@@ -151,6 +157,9 @@ export default function AuthProvider({ children }) {
                   sessionStorage.setItem("name", userData.name);
                   if (userData.firstName) {
                     sessionStorage.setItem("firstName", userData.firstName);
+                  }
+                  if (userData.lastName) {
+                    sessionStorage.setItem("lastName", userData.lastName);
                   }
                 }
                 break; // exit loop once found

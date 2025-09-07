@@ -69,6 +69,8 @@ export default function AddYearLevelModal({ course, session, disabled }) {
 
       await addDoc(yearLevelsRef, {
         yearLevelName: yearLevelName.trim(),
+        courseId: course.id,
+        departmentId: session.departmentId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -98,12 +100,15 @@ export default function AddYearLevelModal({ course, session, disabled }) {
         <DialogHeader>
           <DialogTitle>Add Year Level to {course?.courseName}</DialogTitle>
           <DialogDescription>
-            Select a year level to add to this course.
+            Select a year level to add to this course. All fields marked with{" "}
+            <span className="text-destructive">*</span> are required.
           </DialogDescription>
         </DialogHeader>
         {/* year level selection */}
         <div className="py-4">
-          <Label className="mb-2">Year Level</Label>
+          <Label className="mb-2">
+            Year Level <span className="text-destructive">*</span>
+          </Label>
           <Select
             value={yearLevelName}
             onValueChange={setYearLevelName}
@@ -140,7 +145,7 @@ export default function AddYearLevelModal({ course, session, disabled }) {
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Adding...
+                Adding year level...
               </>
             ) : (
               <>Add</>

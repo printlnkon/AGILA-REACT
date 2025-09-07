@@ -1,12 +1,8 @@
-import {
-  SidebarProvider,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { Outlet } from "react-router-dom";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { ThemeProvider } from "@/context/ThemeProvider";
 import SideBar from "@/components/AdminComponents/SideBar";
 import Header from "@/components/AdminComponents/Header";
-import { Outlet } from "react-router-dom";
-import { ThemeProvider } from "@/context/ThemeProvider";
 
 export default function Admin() {
   return (

@@ -1,21 +1,21 @@
-// AcademicYearAndSemesterTable.jsx
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import { CalendarDays, Plus, LoaderCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/api/firebase";
+import { toast } from "sonner";
+import { CalendarDays } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   collection,
   query,
   getDocs,
   doc,
   writeBatch,
+  updateDoc,
   deleteDoc,
   addDoc,
   serverTimestamp,
   orderBy,
 } from "firebase/firestore";
-import { Card, CardContent } from "@/components/ui/card";
 import AddAcademicYearModal from "@/components/AdminComponents/AddAcademicYearModal";
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
 import AcademicYearCard from "@/components/AdminComponents/AcademicYearCard";
@@ -146,7 +146,7 @@ export default function AcademicYearAndSemesterTable() {
     try {
       await batch.commit();
       toast.success(
-        `"${acadYearToActivate.acadYear}" is now the active academic year.`
+        `${acadYearToActivate.acadYear} is now the active academic year.`
       );
       fetchAcademicData();
     } catch (error) {
@@ -154,6 +154,21 @@ export default function AcademicYearAndSemesterTable() {
       toast.error("Failed to set active academic year.");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleUpdateAcademicYear = async (id, editedYearName) => {
+    try {
+      const acadYearRef = doc(db, "academic_years", id);
+      await updateDoc(acadYearRef, {
+        acadYear: editedYearName,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(`School Year updated to "${editedYearName}"`);
+      fetchAcademicData();
+    } catch (error) {
+      console.error("Error updating academic year: ", error);
+      toast.error("Failed to update academic year.");
     }
   };
 
@@ -238,7 +253,7 @@ export default function AcademicYearAndSemesterTable() {
     try {
       await batch.commit();
       toast.success(
-        `"${semesterToActivate.semesterName}" is now the active semester.`
+        `${semesterToActivate.semesterName} is now the active semester.`
       );
       fetchAcademicData();
     } catch (error) {
@@ -276,12 +291,60 @@ export default function AcademicYearAndSemesterTable() {
     setAddSemesterModalOpen(true);
   };
 
+  // Loading Skeleton Component
+  const LoadingSkeleton = () => {
+    return (
+      <div className="w-full p-4 space-y-4">
+        <div className="mb-4">
+          {/* header */}
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="mt-2 h-4 w-80" />
+        </div>
+        <div className="flex items-center gap-2 py-4">
+          <Skeleton className="h-9 w-40" />
+        </div>
+        {/* skeleton for academicyearcard */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-9 w-full mt-2" />
+              {/* skeleton for semestercard */}
+              <div className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="border rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="border rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-24" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <LoadingSkeleton />;
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
@@ -317,6 +380,7 @@ export default function AcademicYearAndSemesterTable() {
               key={acadYear.id}
               acadYear={acadYear}
               onSetActive={handleSetActiveAcademicYear}
+              onUpdate={handleUpdateAcademicYear}
               onDelete={handleDeleteAcademicYear}
               onAddSemesterClick={() => openAddSemesterModal(acadYear)}
               isActivating={actionLoading === acadYear.id}
@@ -324,6 +388,7 @@ export default function AcademicYearAndSemesterTable() {
               handleDeleteSemester={handleDeleteSemester}
               actionLoading={actionLoading}
               onDataRefresh={fetchAcademicData}
+              existingYears={academicYears.map((ay) => ay.acadYear)}
             />
           ))}
         </div>
@@ -331,9 +396,9 @@ export default function AcademicYearAndSemesterTable() {
         <Card className="py-12 mt-4">
           <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
             <CalendarDays className="h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium">No academic years found.</p>
+            <p className="text-lg font-medium">No school years found.</p>
             <p className="text-sm text-muted-foreground">
-              Click "Add Academic Year" to create one.
+              Click "Add School Year" to create one.
             </p>
           </CardContent>
         </Card>
@@ -341,51 +406,3 @@ export default function AcademicYearAndSemesterTable() {
     </div>
   );
 }
-
-// Loading Skeleton Component
-const LoadingSkeleton = () => {
-  return (
-    <div className="w-full">
-      <div className="mb-4">
-        {/* header */}
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="mt-2 h-4 w-80" />
-      </div>
-      <div className="flex items-center gap-2 py-4">
-        <Skeleton className="h-9 w-40" />
-      </div>
-      {/* skeleton for academicyearcard */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {[...Array(2)].map((_, i) => (
-          <div key={i} className="border rounded-lg p-4 space-y-3">
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-7 w-32" />
-              <Skeleton className="h-6 w-20 rounded-full" />
-            </div>
-            <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-9 w-full mt-2" />
-            {/* skeleton for semestercard */}
-            <div className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};

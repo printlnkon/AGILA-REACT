@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,8 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import {
   Dialog,
@@ -39,7 +41,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Pencil,
   Columns2,
   Eye,
   Copy,
@@ -91,25 +92,12 @@ import {
 import AddAcademicHeadModal from "@/components/AdminComponents/AddAcademicHeadModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
-// Reuse StudentTable logic, replacing student with academic_head role
-
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) return toast.error("Employee No. not found");
   navigator.clipboard
     .writeText(employeeNo)
     .then(() => toast.success("Employee No. copied to clipboard"))
     .catch(() => toast.error("Failed to copy Employee No."));
-};
-
-const handleViewUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Viewing: ${user.firstName} ${user.lastName}`);
-  console.log("User details:", user);
-};
-
-const handleEditUser = (user) => {
-  if (!user) return toast.error("User not found");
-  toast.info(`Edit Academic Head: ${user.firstName} ${user.lastName}`);
 };
 
 const searchGlobalFilter = (row, columnId, filterValue) => {
@@ -170,14 +158,9 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
-      const gender = row.original.gender;
-      const defaultPhoto =
-        gender === "Female"
-          ? "https://api.dicebear.com/9.x/adventurer/svg?seed=Female&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede"
-          : "https://api.dicebear.com/9.x/adventurer/svg?seed=Male&flip=true&earringsProbability=5&skinColor=ecad80&backgroundColor=b6e3f4,c0aede";
       return (
         <Avatar className="w-10 h-10">
-          <AvatarImage src={photoURL || defaultPhoto} alt="Student Photo" />
+          <AvatarImage src={photoURL || initials} alt="Student Photo" />
           <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
@@ -226,9 +209,21 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -240,9 +235,21 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
 
-      // convert timestamp to date
-      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-      return <div>{format(date, "MMMM do, yyyy")}</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
     },
   },
 
@@ -323,14 +330,17 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
               <DialogHeader>
                 <DialogTitle>Confirm Archive</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user "{user.firstName}{" "}
-                  {user.lastName}"? This will set their account status to
-                  inactive.
+                  Are you sure you want to archive the user{" "}
+                  <strong>
+                    "{user.firstName} {user.lastName}"
+                  </strong>
+                  ? This will set their account status to{" "}
+                  <strong>inactive</strong>.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowArchiveDialog(false)}
                   className="cursor-pointer"
                 >
@@ -344,7 +354,7 @@ const createColumns = (handleArchiveUser, handleViewAcademicHeadProfile) => [
                   }}
                   className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
-                  <Archive /> Archive
+                  Archive
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -365,6 +375,7 @@ export default function AcademicHeadsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
 
   // navigate to student profile
   const navigate = useNavigate();
@@ -378,8 +389,87 @@ export default function AcademicHeadsTable() {
     }
     setSelectedAcademicHead(user);
     navigate(`/admin/academic-heads/profile`);
-    console.log("User details:", user);
   };
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      // Find the active academic year first
+      const academicYearsRef = collection(db, "academic_years");
+      const qAcademicYear = query(
+        academicYearsRef,
+        where("status", "==", "Active")
+      );
+
+      const yearSnapshot = await getDocs(qAcademicYear);
+
+      if (yearSnapshot.empty) {
+        setActiveSession({ id: null, name: "No Active Session" });
+        setDepartments([]);
+        return false;
+      }
+
+      const academicYearDoc = yearSnapshot.docs[0];
+      const academicYearData = {
+        id: academicYearDoc.id,
+        ...academicYearDoc.data(),
+      };
+
+      // Find the active semester within that academic year's sub-collection
+      const semestersRef = collection(
+        db,
+        "academic_years",
+        academicYearData.id,
+        "semesters"
+      );
+      const qSemester = query(semestersRef, where("status", "==", "Active"));
+
+      const semesterSnapshot = await getDocs(qSemester);
+
+      if (semesterSnapshot.empty) {
+        setActiveSession({
+          ...academicYearData,
+          semesterName: "No Active Semester",
+        });
+        return false;
+      }
+
+      const semesterDoc = semesterSnapshot.docs[0];
+      const semesterData = semesterDoc.data();
+      const semesterId = semesterDoc.id;
+
+      // Combine data from both documents into the activeSession state
+      const sessionInfo = {
+        id: academicYearData.id,
+        acadYear: academicYearData.acadYear,
+        semesterName: semesterData.semesterName,
+        semesterId: semesterId,
+      };
+
+      setActiveSession(sessionInfo);
+      return true;
+    } catch (error) {
+      console.error("Error fetching active session:", error);
+      toast.error("No Active School Year", {
+        description:
+          "Please set a school year and semester as active in the School Year & Semester module.",
+      });
+      return false;
+    }
+  }, []);
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const hasActiveSession = await fetchActiveSession();
+
+      if (!hasActiveSession) {
+        // Still proceed with fetching users regardless of active session status
+        // await fetchUsers();
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchActiveSession]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -507,7 +597,7 @@ export default function AcademicHeadsTable() {
 
   if (loading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           {/* skeleton for title */}
           <Skeleton className="h-8 w-64" />
@@ -629,7 +719,7 @@ export default function AcademicHeadsTable() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full p-4 space-y-4">
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
@@ -641,7 +731,10 @@ export default function AcademicHeadsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddAcademicHeadModal onUserAdded={fetchUsers} />
+        <AddAcademicHeadModal
+          onUserAdded={fetchUsers}
+          activeSession={activeSession}
+        />
         {/* bulk upload button */}
         <AddUserBulkUpload role="academic_head" onUserAdded={fetchUsers} />
 
@@ -977,7 +1070,7 @@ export default function AcademicHeadsTable() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
                   className="cursor-pointer"
                 >

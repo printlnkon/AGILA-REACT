@@ -73,6 +73,9 @@ export default function AddSectionModal({ course, yearLevel, session }) {
 
       await addDoc(sectionsRef, {
         sectionName: sectionName.trim(),
+        yearLevelId: yearLevel.id,
+        courseId: course.id,
+        departmentId: session.departmentId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -134,7 +137,7 @@ export default function AddSectionModal({ course, yearLevel, session }) {
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Adding...
+                Adding section..
               </>
             ) : (
               <>Add</>

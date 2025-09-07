@@ -102,7 +102,7 @@ export default function ExportExcelFormat() {
               disabled={!selectedRole}
               className="cursor-pointer"
             >
-              <Download /> Download
+              Download
             </Button>
           </DialogFooter>
         </DialogContent>

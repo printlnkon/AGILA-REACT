@@ -23,9 +23,13 @@ export default function Header() {
 
   const customBreadcrumbNames = {
     // admin paths
-    "academicYearAndSemester": "School Year and Semester",
-    "departmentAndCourse": "Department and Course",
-    "yearLevelAndSection": "Year Level and Section",
+    "classes": "Classes",
+    "academic-year-semester": "School Year & Semester",
+    "department-course": "Department & Course",
+    "year-level-section": "Year Level & Section",
+    "subject": "Subjects",
+    "schedule": "Schedule",
+    "Room": "Room",
     "accounts": "Accounts",
     "academic-heads": "Academic Heads",
     "program-heads": "Program Heads",
@@ -35,10 +39,11 @@ export default function Header() {
   };
 
   const viewProfileBreadcrumbs = {
+    "classes": "Class List",
     "academic-heads": "Academic Head Profile",
     "program-heads": "Program Head Profile",
-    students: "Student Profile",
-    teachers: "Teacher Profile",
+    "students": "Student Profile",
+    "teachers": "Teacher Profile",
   };
 
   // function to capitalize the first letter

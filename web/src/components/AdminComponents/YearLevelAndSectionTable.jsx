@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
 import {
   collection,
-  query,
-  where,
   getDocs,
   onSnapshot,
   doc,
@@ -18,11 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, AlertTriangle, Layers, Building2, BookOpen } from "lucide-react";
+import { Info, AlertTriangle, Layers } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { useActiveSession } from "@/context/ActiveSessionContext";
 import AddYearLevelModal from "@/components/AdminComponents/AddYearLevelModal";
 import YearLevelCard from "@/components/AdminComponents/YearLevelCard";
 
@@ -33,7 +33,7 @@ const getYearLevelNumber = (name) => {
 };
 
 export default function YearLevelAndSectionTable() {
-  const [activeSession, setActiveSession] = useState(null);
+  const { activeSession, loading: sessionLoading } = useActiveSession();
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [selectedDeptId, setSelectedDeptId] = useState("");
@@ -41,56 +41,15 @@ export default function YearLevelAndSectionTable() {
   const [yearLevels, setYearLevels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Effect to get the active academic session
-  useEffect(() => {
-    const q = query(
-      collection(db, "academic_years"),
-      where("status", "==", "Active")
-    );
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      if (!querySnapshot.empty) {
-        const sessionDoc = querySnapshot.docs[0];
-        const semQuery = query(
-          collection(sessionDoc.ref, "semesters"),
-          where("status", "==", "Active")
-        );
-        const semSnapshot = await getDocs(semQuery);
-        if (!semSnapshot.empty) {
-          const semesterDoc = semSnapshot.docs[0];
-          setActiveSession({
-            id: sessionDoc.id,
-            ...sessionDoc.data(),
-            semesterId: semesterDoc.id,
-            ...semesterDoc.data(),
-          });
-        } else {
-          setActiveSession({
-            id: sessionDoc.id,
-            ...sessionDoc.data(),
-            semesterId: null,
-            semesterName: null,
-          });
-          toast.error(
-            `No active semester found for the academic year ${
-              sessionDoc.data().acadYear
-            }.`
-          );
-          setLoading(false);
-        }
-      } else {
-        setActiveSession(null);
-        toast.error("No active academic year found. Please set one.");
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
   // Effect to get departments for the active session
   useEffect(() => {
-    if (!activeSession) {
-      // if no active session, it doesn't load departments
+    if (sessionLoading) {
+      return; // Wait until session loading completes
+    }
+
+    if (!activeSession || !activeSession.semesterId) {
       setDepartments([]);
+      setLoading(false);
       return;
     }
 
@@ -102,11 +61,11 @@ export default function YearLevelAndSectionTable() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [activeSession]);
+  }, [activeSession, sessionLoading]);
 
   // Effect to get courses when a department is selected
   useEffect(() => {
-    if (!selectedDeptId || !activeSession) {
+    if (!selectedDeptId || !activeSession || !activeSession.semesterId) {
       setCourses([]);
       setSelectedCourseId("");
       return;
@@ -120,7 +79,7 @@ export default function YearLevelAndSectionTable() {
 
   // Effect to get year levels when a course is selected
   useEffect(() => {
-    if (!selectedCourseId) {
+    if (!selectedCourseId || !activeSession || !activeSession.semesterId) {
       setYearLevels([]);
       return;
     }
@@ -179,9 +138,9 @@ export default function YearLevelAndSectionTable() {
   const getSelectedCourse = () =>
     courses.find((c) => c.id === selectedCourseId);
 
-  if (loading) {
+  if (loading || sessionLoading) {
     return (
-      <div className="w-full">
+      <div className="w-full p-4 space-y-4">
         <div className="mb-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="mt-2 h-4 w-80" />
@@ -241,10 +200,11 @@ export default function YearLevelAndSectionTable() {
     );
   }
 
-  const isNoActiveSession = activeSession && !activeSession.id;
+  const isNoActiveSession = !activeSession || !activeSession.id;
+  const isNoActiveSemester = activeSession && !activeSession.semesterId;
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col p-4 space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Year Level and Section</h1>
@@ -267,20 +227,20 @@ export default function YearLevelAndSectionTable() {
             <div>
               <p className="font-semibold">
                 {!isNoActiveSession
-                  ? "Year Levels and Sections for Active Academic Year and Semester"
-                  : "No Active Academic Year"}
+                  ? "Year Levels and Sections for Active School Year and Semester"
+                  : "No Active School Year"}
               </p>
               {!isNoActiveSession ? (
                 <p className="text-sm font-bold text-primary">
                   {activeSession.acadYear} |{" "}
-                  {activeSession.semesterName
-                    ? ` ${activeSession.semesterName}`
+                  {!isNoActiveSemester
+                    ? activeSession.semesterName
                     : "No Active Semester"}
                 </p>
               ) : (
                 <p className="text-sm text-destructive">
-                  Please go to the Academic Year module and set an active
-                  session to manage year levels and sections.
+                  Please go to the School Year module and set an active session
+                  to manage year levels and sections.
                 </p>
               )}
             </div>
@@ -288,11 +248,11 @@ export default function YearLevelAndSectionTable() {
         </Card>
       </div>
 
-      {/* only show the add year level button and filter if there's an active active academic year and semester */}
-      {!isNoActiveSession ? (
+      {/* only show the add year level button and filter if there's an active academic year and semester */}
+      {!isNoActiveSession && !isNoActiveSemester ? (
         <>
           {/* department filter */}
-          <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-4">
             {/* add year level btn */}
             <div>
               <AddYearLevelModal
@@ -303,6 +263,10 @@ export default function YearLevelAndSectionTable() {
             </div>
             {/* department and course filters */}
             <Card>
+              <CardHeader>
+                <CardTitle>Filter Year Level and Section</CardTitle>
+              </CardHeader>
+              <Separator />
               <CardContent>
                 <div className="flex flex-col md:flex-row gap-4">
                   {/* department filter */}
@@ -314,7 +278,7 @@ export default function YearLevelAndSectionTable() {
                     <Select
                       value={selectedDeptId}
                       onValueChange={setSelectedDeptId}
-                      disabled={!activeSession || departments.length === 0}
+                      disabled={departments.length === 0}
                     >
                       <SelectTrigger className="w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-lg">
                         <SelectValue placeholder="Select Department" />
@@ -386,27 +350,23 @@ export default function YearLevelAndSectionTable() {
                 </div>
               ) : (
                 // if yearlevels is empty and not loading, render the empty state card
-                !loading && (
-                  <Card className="py-12">
-                    <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
-                      <Layers className="h-12 w-12 text-muted-foreground" />
-                      <p className="text-lg font-medium">
-                        No year levels found.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Click "Add Year Level" to get started.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )
+                <Card className="py-12">
+                  <CardContent className="flex flex-col items-center justify-center space-y-2">
+                    <Layers className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-lg font-medium">No year levels found.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Click "Add Year Level" to get started.
+                    </p>
+                  </CardContent>
+                </Card>
               )
             ) : (
               // empty state when no department and course is selected
               <Card className="py-12">
-                <CardContent className="flex flex-col items-center justify-center space-y-2 pt-6">
+                <CardContent className="flex flex-col items-center justify-center space-y-2">
                   <Layers className="h-12 w-12 text-muted-foreground" />
                   <p className="text-lg font-medium">
-                    No department and course selected.
+                    No filters selected.
                   </p>
                   <p className="text-center text-muted-foreground">
                     Please select a department and course to see the year levels
@@ -417,6 +377,17 @@ export default function YearLevelAndSectionTable() {
             )}
           </div>
         </>
+      ) : isNoActiveSemester && !isNoActiveSession ? (
+        <Card className="py-12">
+          <CardContent className="flex flex-col items-center justify-center space-y-2">
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <p className="text-lg font-medium">No Active Semester</p>
+            <p className="text-center text-muted-foreground">
+              Please set an active semester in the School Year module to manage
+              year levels and sections.
+            </p>
+          </CardContent>
+        </Card>
       ) : null}
     </div>
   );

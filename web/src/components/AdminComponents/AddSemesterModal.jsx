@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { LoaderCircle, Calendar as CalendarIcon, Check } from "lucide-react";
+import { LoaderCircle, Calendar as CalendarIcon } from "lucide-react";
 
 export default function AddSemesterModal({
   open,
@@ -99,16 +99,18 @@ export default function AddSemesterModal({
           <DialogDescription>
             Add a new semester for{" "}
             {activeAcadYear ? (
-              <strong>{activeAcadYear.acadYear}</strong>
+              <strong>{activeAcadYear.acadYear}.</strong>
             ) : (
               "the active academic year"
-            )}
+            )}{" "}
+            All fields marked with <span className="text-destructive">*</span> are
+            required.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="semesterName" className="text-right">
-              Semester
+              Semester <span className="text-destructive">*</span>
             </Label>
             <Select
               onValueChange={(value) =>
@@ -127,7 +129,7 @@ export default function AddSemesterModal({
           {/* start date */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="startDate" className="text-right">
-              Start Date
+              Start Date <span className="text-destructive">*</span>
             </Label>
             <Popover
               open={isStartDatePickerOpen}
@@ -166,7 +168,7 @@ export default function AddSemesterModal({
           {/* end date */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="endDate" className="text-right">
-              End Date
+              End Date <span className="text-destructive">*</span>
             </Label>
             <Popover
               open={isEndDatePickerOpen}

@@ -197,7 +197,7 @@ export default function AddCourseModal({
                 <span className="animate-spin">
                   <LoaderCircle />
                 </span>
-                Adding...
+                Adding course...
               </>
             ) : (
               <>Add</>

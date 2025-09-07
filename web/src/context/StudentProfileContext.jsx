@@ -1,5 +1,7 @@
-import { useEffect } from "react";
-import { createContext, useContext, useState } from "react";
+import { db } from "@/api/firebase";
+import { toast } from "sonner";
+import { doc, updateDoc } from "firebase/firestore";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const StudentProfileContext = createContext();
 
@@ -24,9 +26,29 @@ export function StudentProfileProvider({ children }) {
     }
   };
 
+  // update student data in the database
+  const updateStudentProfile = async (updatedData) => {
+    if (!updatedData || !updatedData.id) {
+      toast.error("Invalid student data.");
+      return;
+    }
+
+    try {
+      const studentDocRef = doc(db, "users/student/accounts", updatedData.id);
+      await updateDoc(studentDocRef, { ...updatedData, updatedAt: new Date() });
+
+      setSelectedStudent(updatedData); // update context state
+      toast.success("Student profile updated successfully.");
+      return true;
+    } catch (error) {
+      toast.error("Failed to update student profile.");
+      return false;
+    }
+  };
+
   return (
     <StudentProfileContext.Provider
-      value={{ selectedStudent, setSelectedStudent }}
+      value={{ selectedStudent, setSelectedStudent, updateStudentProfile }}
     >
       {children}
     </StudentProfileContext.Provider>
