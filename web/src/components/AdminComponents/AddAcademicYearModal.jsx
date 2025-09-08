@@ -13,8 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Plus, LoaderCircle, CalendarCheck } from "lucide-react";
+import { Plus, LoaderCircle, CalendarCheck, } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function AddAcademicYearModal({
   open,
@@ -26,56 +33,51 @@ export default function AddAcademicYearModal({
   const [loading, setLoading] = useState(false);
   const [canAddYear, setCanAddYear] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [availableYears, setAvailableYears] = useState([]);
 
-  // calculate the next academic year when component mounts or when existingyears changes
+  // Generate available years when component mounts or when existingYears changes
   useEffect(() => {
-    calculateNextAcademicYear();
+    generateAvailableYears();
   }, [existingYears]);
 
-  const calculateNextAcademicYear = () => {
-    if (!existingYears || existingYears.length === 0) {
-      // if no years exist yet, start with the current year
-      const currentYear = new Date().getFullYear();
-      setNextAcademicYear(`S.Y - ${currentYear}-${currentYear + 1}`);
+  const generateAvailableYears = () => {
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [];
+
+    // Generate 10 years options (current year and 9 future years)
+    for (let i = 0; i < 5; i++) {
+      const startYear = currentYear + i;
+      const endYear = startYear + 1;
+      const yearOption = `S.Y - ${startYear}-${endYear}`;
+
+      // Check if this year already exists in existingYears
+      const isDisabled = existingYears && existingYears.includes(yearOption);
+
+      yearOptions.push({
+        value: yearOption,
+        label: yearOption,
+        disabled: isDisabled,
+      });
+    }
+
+    setAvailableYears(yearOptions);
+
+    // Select the first non-disabled year as default
+    const firstAvailableYear = yearOptions.find((year) => !year.disabled);
+    if (firstAvailableYear) {
+      setNextAcademicYear(firstAvailableYear.value);
       setCanAddYear(true);
       setErrorMessage("");
-      return;
-    }
-
-    // sort existing years to find the most recent one
-    const sortedYears = [...existingYears].sort((a, b) => {
-      const yearA = parseInt(a.split("-")[1]);
-      const yearB = parseInt(b.split("-")[1]);
-      return yearB - yearA;
-    });
-
-    const latestYear = sortedYears[0];
-
-    // extract the end year from the latest academic year
-    const match = latestYear.match(/(\d{4})-(\d{4})/);
-
-    if (!match) {
-      setCanAddYear(false);
-      setErrorMessage(
-        "Unable to determine the next academic year due to invalid format."
-      );
-      return;
-    }
-
-    const endYear = parseInt(match[2]);
-    const nextStartYear = endYear;
-    const nextEndYear = endYear + 1;
-
-    const proposedNextYear = `S.Y - ${nextStartYear}-${nextEndYear}`;
-
-    if (existingYears.includes(proposedNextYear)) {
-      setCanAddYear(false);
-      setErrorMessage("The next sequential academic year already exists.");
     } else {
-      setNextAcademicYear(proposedNextYear);
-      setCanAddYear(true);
-      setErrorMessage("");
+      setCanAddYear(false);
+      setErrorMessage("No available academic years to add.");
     }
+  };
+
+  const handleYearChange = (value) => {
+    setNextAcademicYear(value);
+    setCanAddYear(true);
+    setErrorMessage("");
   };
 
   const handleSubmit = async (e) => {
@@ -104,25 +106,42 @@ export default function AddAcademicYearModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" /> Add School Year
+          <Plus className="h-4 w-4" /> Add School Year
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add School Year</DialogTitle>
           <DialogDescription>
-            Add <strong>{nextAcademicYear}</strong> school year to the system.
+            Select a school year to add to the system.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <Label htmlFor="nextYear">Next School Year</Label>
-            <div className="flex items-center p-3 border rounded-md bg-muted/20">
-              <CalendarCheck className="mr-2 h-4 w-4 text-primary" />
-              <span className="font-medium">
-                {nextAcademicYear || "No available academic year"}
-              </span>
-            </div>
+          <div className="grid gap-2 py-4">
+            <Label htmlFor="schoolYear">Select School Year</Label>
+            <Select
+              value={nextAcademicYear}
+              onValueChange={handleYearChange}
+              disabled={availableYears.length === 0}
+            >
+              <SelectTrigger className="w-full flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4" />
+                  <SelectValue placeholder="Select a school year" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((year) => (
+                  <SelectItem
+                    key={year.value}
+                    value={year.value}
+                    disabled={year.disabled}
+                  >
+                    {year.disabled ? `${year.label}` : year.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {!canAddYear && (
               <Alert variant="destructive" className="mt-2">

@@ -443,15 +443,14 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
               Room Schedules - {room?.roomNo}
             </DialogTitle>
             <DialogDescription>
-              Cannot display schedules: No active academic session found.
+              No active academic session found.
             </DialogDescription>
           </DialogHeader>
-          <div className="text-center py-10">
+          <div className="text-center">
             <CalendarDays className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No Active Session</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              There is currently no active academic year or semester. Please
-              activate an academic session to view schedules.
+              There is currently no active academic year or semester.
             </p>
           </div>
           <div className="mt-6 flex justify-end">
