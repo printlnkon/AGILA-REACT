@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import {
   Dialog,
@@ -28,6 +29,7 @@ const INITIAL_SUBJECT_DATA = {
   subjectName: "",
   description: "",
   units: "",
+  withLaboratory: false,
 };
 
 const FormError = ({ message }) => {
@@ -75,7 +77,7 @@ export default function AddSubjectModal({
 
   const validateForm = (data) => {
     const errors = {};
-    
+
     if (!data.subjectCode || data.subjectCode.trim() === "") {
       errors.subjectCode = "Subject code is required";
     } else if (data.subjectCode.length < 2) {
@@ -119,6 +121,7 @@ export default function AddSubjectModal({
       const newSubjectData = {
         ...subjectFormData,
         units: parseFloat(subjectFormData.units),
+        withLaboratory: subjectFormData.withLaboratory || false,
         createdAt: serverTimestamp(),
       };
 
@@ -211,6 +214,20 @@ export default function AddSubjectModal({
                 </SelectContent>
               </Select>
               <FormError message={formErrors.units} />
+            </div>
+            {/* w/ laboratory checkbox */}
+            <div className="space-y-1 flex items-center gap-2 mt-2">
+              <Label htmlFor="withLaboratory">W/ Laboratory</Label>
+              <Checkbox
+                id="withLaboratory"
+                checked={subjectFormData.withLaboratory}
+                onCheckedChange={(checked) => {
+                  setSubjectFormData((prev) => ({
+                    ...prev,
+                    withLaboratory: checked,
+                  }));
+                }}
+              />
             </div>
           </div>
           {/* description */}

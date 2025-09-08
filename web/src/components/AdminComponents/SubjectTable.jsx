@@ -158,7 +158,8 @@ export default function SubjectTable() {
             subjectCode: updatedSubject.subjectCode,
             subjectName: updatedSubject.subjectName,
             description: updatedSubject.description,
-            units: updatedSubject.units
+            units: updatedSubject.units,
+            withLaboratory: updatedSubject.withLaboratory
           };
         }
         return subject;
