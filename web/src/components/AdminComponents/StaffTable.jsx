@@ -89,6 +89,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import AddStaffAccountModal from "@/components/AdminComponents/AddStaffAccountModal";
 
 // Action handlers
 const handleCopyEmployeeNumber = (employeeNumber) => {
@@ -450,6 +451,8 @@ export default function StaffTable() {
       toast.error("User data not found");
       return;
     }
+
+    // navigate to the appropriate pofile page based on role
     switch (user.role) {
       case "Academic Head":
         navigate(`/admin/academic-heads/profile`, {
@@ -547,6 +550,7 @@ export default function StaffTable() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchStaff();
   }, [refreshTrigger]);
@@ -870,6 +874,9 @@ export default function StaffTable() {
             </Button>
           </div>
         )}
+
+        {/* add staff button */}
+        <AddStaffAccountModal onUserAdded={handleUserAdded} />
 
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
           {/* search */}
