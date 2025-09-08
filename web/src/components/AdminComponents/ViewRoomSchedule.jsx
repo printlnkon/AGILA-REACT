@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { db } from "@/api/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  collectionGroup,
+  query,
+  where,
+  getDoc,
+  getDocs,
+} from "firebase/firestore";
 import { Calendar, Clock, Users, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,7 +30,15 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   const [loading, setLoading] = useState(true);
   const [fetchTriggered, setFetchTriggered] = useState(false);
 
-  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const DAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
   const TIME_SLOTS = [
     "7:00 AM - 7:30 AM",
     "8:00 AM - 8:30 AM",
@@ -54,7 +69,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
               <div
                 key={index}
                 className={cn(
-                  "h-[60px] px-2 text-xs flex items-center justify-center text-muted-foreground",
+                  "h-[55px] px-2 text-xs flex items-center justify-center text-muted-foreground",
                   index !== 0 && "border-t"
                 )}
               >
@@ -66,7 +81,9 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
           {/* Day columns */}
           {DAYS.map((day) => {
             const daySchedules = schedules.filter((schedule) =>
-              schedule.days.map(d => d.toLowerCase()).includes(day.toLowerCase())
+              schedule.days
+                .map((d) => d.toLowerCase())
+                .includes(day.toLowerCase())
             );
 
             return (
@@ -80,47 +97,72 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
                 {TIME_SLOTS.map((_, index) => (
                   <div
                     key={index}
-                    className={cn("h-[60px]", index !== 0 && "border-t")}
+                    className={cn("h-[55px]", index !== 0 && "border-t")}
                   />
                 ))}
 
                 {/* Schedule items */}
-                {daySchedules.map((schedule) => (
-                  <div
-                    key={`${day}-${schedule.id}`}
-                    style={getSchedulePosition(schedule)}
-                    className={cn(
-                      "absolute left-0 right-0 mx-1 p-1 rounded border",
-                      "bg-secondary hover:bg-secondary/80",
-                      "text-sm overflow-hidden flex flex-col justify-center"
-                    )}
-                  >
-                    <div className="space-y-0.5 flex justify-center items-center">
-                      {/* subject code */}
-                      <div className="text-lg font-semibold truncate text-center">
-                        {schedule.subjectCode}
+                {daySchedules.map((schedule) => {
+                  const { top, height } = getSchedulePosition(schedule);
+                  const totalHours = calculateTotalHours(
+                    schedule.startTime,
+                    schedule.endTime
+                  );
+                  const { bg, hoverBg, text } =
+                    getScheduleColorClasses(schedule);
+
+                  return (
+                    <div
+                      key={`${day}-${schedule.id}`}
+                      className={`absolute w-full px-2 py-1 rounded-md overflow-hidden text-center
+                    transition-colors cursor-pointer flex flex-col justify-center
+                    ${bg} ${hoverBg} ${text}`}
+                      style={{
+                        top: `${12 + top}px`, // Add header height offset (12px)
+                        height: `${Math.max(height, 60)}px`,
+                        zIndex: 1,
+                      }}
+                      onClick={() =>
+                        handleScheduleClick && handleScheduleClick(schedule)
+                      }
+                    >
+                      {/* section name with schedule type */}
+                      <div className="text-[12px] font-medium opacity-80 mb-0.5 truncate">
+                        {schedule.sectionName || "Section"} •{" "}
+                        {getScheduleTypeName(schedule)}
                       </div>
-                    </div>
-                    {/* section name */}
-                    <div className="truncate text-md text-center">
-                      {schedule.sectionName}
-                      {/* start and end time */}
-                      <div className="flex items-center justify-center gap-1 text-[12px] text-muted-foreground/90">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {schedule.startTime} - {schedule.endTime}
-                          <span className="ml-1">
-                            ({calculateTotalHours(schedule.startTime, schedule.endTime)} hours)
+
+                      {/* subject code with subject name */}
+                      <div className="font-semibold text-sm leading-tight truncate">
+                        {schedule.subjectCode && `${schedule.subjectCode} - `}
+                        {schedule.subjectName}
+                      </div>
+
+                      {/* room information */}
+                      <div className="text-[12px] mt-0.5 truncate">
+                        {schedule.roomName || room?.roomNo}
+                      </div>
+
+                      {/* time information and total hours */}
+                      {height >= 75 && (
+                        <div className="flex justify-center items-center gap-1 mt-1 text-[12px]">
+                          <Clock className="h-2.5 w-2.5" />
+                          <span className="truncate">
+                            {schedule.startTime} - {schedule.endTime}
                           </span>
-                        </span>
-                      </div>
-                      {/* instructor/teacher name */}
-                      <div className="truncate text-md text-muted-foreground text-center">
-                        {schedule.instructorName}
-                      </div>
+                          <span className="truncate">({totalHours} hrs)</span>
+                        </div>
+                      )}
+
+                      {/* instructor name - only show if we have enough space */}
+                      {height >= 100 && (
+                        <div className="truncate text-[12px] mt-1 italic">
+                          {schedule.instructorName}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Empty state */}
                 {daySchedules.length === 0 && (
@@ -138,38 +180,131 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     );
   };
 
+  // function to determine schedule type name
+  const getScheduleTypeName = (schedule) => {
+    if (
+      schedule.isLabComponent === true ||
+      schedule.scheduleType === "LABORATORY" ||
+      schedule.scheduleType?.toLowerCase() === "laboratory" ||
+      schedule.roomType === "laboratory"
+    ) {
+      return "Laboratory";
+    }
+    return "Lecture";
+  };
+
+  // function to get schedule color classes
+  const getScheduleColorClasses = (schedule) => {
+    // default colors if no color is specified
+    const defaultBg = "bg-secondary";
+    const defaultHoverBg = "hover:bg-secondary/80";
+    const defaultText = "";
+
+    // return early with defaults if no color specified
+    if (!schedule.color)
+      return { bg: defaultBg, hoverBg: defaultHoverBg, text: defaultText };
+
+    // map of color values to tailwind classes
+    const colorMap = {
+      blue: {
+        bg: "bg-blue-500",
+        hoverBg: "hover:bg-blue-600",
+        text: "text-white",
+      },
+      green: {
+        bg: "bg-green-500",
+        hoverBg: "hover:bg-green-600",
+        text: "text-white",
+      },
+      red: {
+        bg: "bg-red-500",
+        hoverBg: "hover:bg-red-600",
+        text: "text-white",
+      },
+      purple: {
+        bg: "bg-purple-500",
+        hoverBg: "hover:bg-purple-600",
+        text: "text-white",
+      },
+      orange: {
+        bg: "bg-orange-500",
+        hoverBg: "hover:bg-orange-600",
+        text: "text-white",
+      },
+      pink: {
+        bg: "bg-pink-500",
+        hoverBg: "hover:bg-pink-600",
+        text: "text-white",
+      },
+      cyan: {
+        bg: "bg-cyan-500",
+        hoverBg: "hover:bg-cyan-600",
+        text: "text-white",
+      },
+      amber: {
+        bg: "bg-amber-500",
+        hoverBg: "hover:bg-amber-600",
+        text: "text-black",
+      },
+      lime: {
+        bg: "bg-lime-500",
+        hoverBg: "hover:bg-lime-600",
+        text: "text-black",
+      },
+      teal: {
+        bg: "bg-teal-500",
+        hoverBg: "hover:bg-teal-600",
+        text: "text-white",
+      },
+    };
+
+    return (
+      colorMap[schedule.color] || {
+        bg: defaultBg,
+        hoverBg: defaultHoverBg,
+        text: defaultText,
+      }
+    );
+  };
+
   const getSchedulePosition = (schedule) => {
     const timeToMinutes = (time) => {
-      const [hours, minutes] = time.split(':');
-      let hour = parseInt(hours);
-      const minute = parseInt(minutes.split(' ')[0]);
-      const period = time.includes('PM');
+      const [hourPart, minutePart] = time.split(":");
+      let hour = parseInt(hourPart);
+      const minuteAndPeriod = minutePart.split(" ");
+      const minute = parseInt(minuteAndPeriod[0]);
+      const isPM = minuteAndPeriod[1] === "PM";
 
-      if (period && hour !== 12) hour += 12;
-      if (!period && hour === 12) hour = 0;
+      if (isPM && hour !== 12) hour += 12;
+      if (!isPM && hour === 12) hour = 0;
 
       return hour * 60 + minute;
     };
 
+    // Calculate position based on time
     const startMinutes = timeToMinutes(schedule.startTime);
     const endMinutes = timeToMinutes(schedule.endTime);
+    const startOfDay = timeToMinutes("7:00 AM"); // First time slot
 
-    const startOfDay = timeToMinutes('7:00 AM'); // First time slot
-    const top = ((startMinutes - startOfDay) / 30) * 30; // 30px per 30 minutes
-    const height = ((endMinutes - startMinutes) / 30) * 30;
+    // Each time slot is 60px high
+    const slotHeight = 60;
+    // Calculate position relative to the start of the day
+    const top = ((startMinutes - startOfDay) / 60) * slotHeight;
+    // Calculate height based on duration
+    const height = ((endMinutes - startMinutes) / 60) * slotHeight;
 
     return {
-      top: `${top}px`,
-      height: `${Math.max(height, 30)}px`, // Minimum height of 30px
+      top: top,
+      height: height,
     };
   };
 
   const calculateTotalHours = (startTime, endTime) => {
     const timeToMinutes = (time) => {
-      const [hours, minutes] = time.split(':');
+      const [hours, minutes] = time.split(":");
       let hour = parseInt(hours);
-      const minute = parseInt(minutes.split(' ')[0]);
-      const period = time.includes('PM');
+      const minute = parseInt(minutes.split(" ")[0]);
+      const period = time.includes("PM");
 
       if (period && hour !== 12) hour += 12;
       if (!period && hour === 12) hour = 0;
@@ -182,7 +317,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     const diffMinutes = endMinutes - startMinutes;
     const hours = (diffMinutes / 60).toFixed(1);
 
-    return hours.endsWith('.0') ? hours.slice(0, -2) : hours;
+    return hours.endsWith(".0") ? hours.slice(0, -2) : hours;
   };
 
   // use callBack - implement later
@@ -210,98 +345,62 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   const fetchRoomSchedules = async () => {
     setLoading(true);
     try {
-      // Get all departments
-      const departmentsRef = collection(
-        db,
-        `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments`
-      );
-      const departmentsSnapshot = await getDocs(departmentsRef);
-
-      const allSchedules = [];
-
-      // For each department
-      for (const deptDoc of departmentsSnapshot.docs) {
-        const departmentId = deptDoc.id;
-        const departmentName = deptDoc.data().name || "Unknown Department";
-
-        // Get all courses in this department
-        const coursesRef = collection(
-          db,
-          `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses`
-        );
-        const coursesSnapshot = await getDocs(coursesRef);
-
-        // For each course
-        for (const courseDoc of coursesSnapshot.docs) {
-          const courseId = courseDoc.id;
-          const courseName = courseDoc.data().courseName || "Unknown Course";
-
-          // Get all year levels in this course
-          const yearLevelsRef = collection(
-            db,
-            `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels`
-          );
-          const yearLevelsSnapshot = await getDocs(yearLevelsRef);
-
-          // For each year level
-          for (const yearLevelDoc of yearLevelsSnapshot.docs) {
-            const yearLevel = yearLevelDoc.id;
-            const yearLevelName =
-              yearLevelDoc.data().yearLevelName || `Year ${yearLevel}`;
-
-            // Get all sections in this year level
-            const sectionsRef = collection(
-              db,
-              `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/sections`
-            );
-            const sectionsSnapshot = await getDocs(sectionsRef);
-
-            // For each section
-            for (const sectionDoc of sectionsSnapshot.docs) {
-              const sectionId = sectionDoc.id;
-              const sectionData = sectionDoc.data();
-              const sectionName =
-                sectionData.sectionName || `Section ${sectionId}`;
-
-              // Get schedules for this section that use the current room
-              const schedulesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/sections/${sectionId}/schedules`;
-              const schedulesRef = collection(db, schedulesPath);
-              const q = query(schedulesRef, where("roomId", "==", room.id));
-              const schedulesSnapshot = await getDocs(q);
-
-              // Process each schedule
-              for (const scheduleDoc of schedulesSnapshot.docs) {
-                const scheduleData = scheduleDoc.data();
-
-                // Extract days from the schedule data
-                // const days = {
-                //   monday: scheduleData.monday || "false",
-                //   tuesday: scheduleData.tuesday || "false",
-                //   wednesday: scheduleData.wednesday || "false",
-                //   thursday: scheduleData.thursday || "false",
-                //   friday: scheduleData.friday || "false",
-                //   saturday: scheduleData.saturday || "false",
-                //   sunday: scheduleData.sunday || "false",
-                // };
-
-                // Add to schedules array with all necessary information
-                allSchedules.push({
-                  id: scheduleDoc.id,
-                  ...scheduleData,
-                  days: scheduleData.days || [], // days is now an array of strings
-                  subjectName: scheduleData.subjectName || "Unknown Subject",
-                  subjectCode: scheduleData.subjectCode || "",
-                  sectionName: sectionName,
-                  courseName: courseName,
-                  yearLevelName: yearLevelName,
-                  departmentName: departmentName,
-                  instructorName: scheduleData.instructorName || "Unassigned",
-                });
-              }
-            }
-          }
-        }
+      if (!activeSession?.id || !activeSession?.semesterId || !room?.id) {
+        console.error("Missing required data for fetching schedules");
+        return;
       }
+
+      // Simply query by roomId and filter results in memory
+      const schedulesQuery = query(
+        collectionGroup(db, "schedules"),
+        where("roomId", "==", room.id)
+      );
+
+      const schedulesSnapshot = await getDocs(schedulesQuery);
+
+      // Process all schedules in parallel
+      const allSchedulesPromises = schedulesSnapshot.docs.map(
+        async (scheduleDoc) => {
+          const scheduleData = scheduleDoc.data();
+          const sectionPath = scheduleDoc.ref.parent.parent.path;
+
+          // Extract section ID from path
+          const pathParts = sectionPath.split("/");
+          const sectionId = pathParts[pathParts.length - 2];
+
+          // Get section data
+          const sectionRef = scheduleDoc.ref.parent.parent;
+          const sectionDoc = await getDoc(sectionRef);
+          const sectionName =
+            sectionDoc.data()?.sectionName || `Section ${sectionId}`;
+
+          // Get year level data
+          const yearLevelRef = sectionRef.parent.parent;
+          const yearLevelDoc = await getDoc(yearLevelRef);
+          const yearLevelName =
+            yearLevelDoc.data()?.yearLevelName || "Unknown Year";
+
+          // Get course data
+          const courseRef = yearLevelRef.parent.parent;
+          const courseDoc = await getDoc(courseRef);
+          const courseName = courseDoc.data()?.courseName || "Unknown Course";
+
+          return {
+            id: scheduleDoc.id,
+            ...scheduleData,
+            days: scheduleData.days || [],
+            subjectName: scheduleData.subjectName || "Unknown Subject",
+            subjectCode: scheduleData.subjectCode || "",
+            sectionName: sectionName,
+            courseName: courseName,
+            yearLevelName: yearLevelName,
+            departmentName: scheduleData.departmentName || "Unknown Department",
+            instructorName: scheduleData.instructorName || "Unassigned",
+          };
+        }
+      );
+
+      const allSchedules = await Promise.all(allSchedulesPromises);
 
       setSchedules(allSchedules);
     } catch (error) {
@@ -310,20 +409,6 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
       setLoading(false);
     }
   };
-
-  // function to format time
-  const formatTime = (time) => {
-    if (!time) return "N/A";
-    return time;
-  };
-
-  // get days array from schedule
-  const getDays = (days) => {
-    if (!Array.isArray(days) || days.length === 0) return ["N/A"];
-    return days.map(day =>
-      day.charAt(0).toUpperCase() + day.slice(1).toLowerCase()
-    );
-  };;
 
   // Show loading while fetching active session
   if (sessionLoading) {
@@ -339,21 +424,6 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
               Loading active session information...
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {Array(3)
-              .fill(0)
-              .map((_, index) => (
-                <div key={index} className="flex flex-col space-y-3">
-                  <Skeleton className="h-6 w-3/4" />
-                  <div className="flex space-x-4">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                  <Skeleton className="h-10 w-full" />
-                  <Separator />
-                </div>
-              ))}
-          </div>
         </DialogContent>
       </Dialog>
     );
@@ -409,25 +479,64 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
           </DialogDescription>
         </DialogHeader>
 
+        {/* loading skeleton */}
         <div className="mt-4 flex-1">
           {loading ? (
-            // Loading skeletons
-            <div className="space-y-4">
-              {Array(3).fill(0).map((_, index) => (
-                <div key={index} className="flex flex-col space-y-3">
-                  <Skeleton className="h-6 w-3/4" />
-                  <div className="flex space-x-4">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-32" />
+            <div className="border rounded-lg mt-4 overflow-hidden">
+              <div className="grid grid-cols-8 relative">
+                {/* Time column skeleton */}
+                <div className="border-r relative">
+                  <div className="h-12 border-b flex items-center justify-center">
+                    <Skeleton className="h-5 w-25" />
                   </div>
-                  <Skeleton className="h-10 w-full" />
-                  <Separator />
+                  {Array(8)
+                    .fill(0)
+                    .map((_, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "h-[60px] px-2 flex items-center gap-4 justify-center",
+                          index !== 0 && "border-t"
+                        )}
+                      >
+                        <Skeleton className="h-4 w-14" />
+                        <Skeleton className="h-4 w-14" />
+                      </div>
+                    ))}
                 </div>
-              ))}
+
+                {/* Day columns skeleton */}
+                {Array(7)
+                  .fill(0)
+                  .map((_, dayIndex) => (
+                    <div
+                      key={dayIndex}
+                      className="relative border-r min-h-full"
+                    >
+                      {/* Day header skeleton */}
+                      <div className="h-12 border-b flex items-center justify-center">
+                        <Skeleton className="h-5 w-25" />
+                      </div>
+
+                      {/* Time slot gridlines */}
+                      {Array(8)
+                        .fill(0)
+                        .map((_, index) => (
+                          <div
+                            key={index}
+                            className={cn(
+                              "h-[60px]",
+                              index !== 0 && "border-t"
+                            )}
+                          ></div>
+                        ))}
+                    </div>
+                  ))}
+              </div>
             </div>
           ) : schedules.length === 0 ? (
             // Empty state
-            <div className="text-center py-10">
+            <div className="text-center">
               <CalendarDays className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-semibold">
                 No schedules found.
@@ -438,9 +547,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
             </div>
           ) : (
             // Calendar View
-            <ScrollArea className="h-[60vh]">
-              {renderCalendar()}
-            </ScrollArea>
+            <ScrollArea className="h-[60vh]">{renderCalendar()}</ScrollArea>
           )}
         </div>
 

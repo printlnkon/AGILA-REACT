@@ -727,7 +727,8 @@ export default function ScheduleCalendar({
         {height >= 75 && (
           <div className="flex justify-center items-center gap-1 mt-1 text-[12px]">
             <Clock className="h-2.5 w-2.5" />
-            <span className="truncate">{totalHours}</span>
+            <span className="truncate">{schedule.startTime} - {schedule.endTime}</span>
+            <span className="truncate">({totalHours} hrs)</span>
           </div>
         )}
 
