@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import { db } from "@/api/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Calendar, Clock, Users, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -15,14 +15,6 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useActiveSession } from "@/context/ActiveSessionContext";
 
 export default function ViewRoomSchedule({ open, onOpenChange, room }) {
@@ -31,6 +23,169 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   const [loading, setLoading] = useState(true);
   const [fetchTriggered, setFetchTriggered] = useState(false);
 
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const TIME_SLOTS = [
+    "7:00 AM - 7:30 AM",
+    "8:00 AM - 8:30 AM",
+    "9:00 AM - 9:30 AM",
+    "10:00 AM - 10:30 AM",
+    "11:00 AM - 11:30 AM",
+    "12:00 PM - 12:30 PM",
+    "1:00 PM - 1:30 PM",
+    "2:00 PM - 2:30 PM",
+    "3:00 PM - 3:30 PM",
+    "4:00 PM - 4:30 PM",
+    "5:00 PM - 5:30 PM",
+    "6:00 PM - 6:30 PM",
+    "7:00 PM - 7:30 PM",
+    "8:00 PM - 8:30 PM",
+  ];
+
+  const renderCalendar = () => {
+    return (
+      <div className="border rounded-lg mt-4 overflow-hidden">
+        <div className="grid grid-cols-8 relative">
+          {/* Time column */}
+          <div className="border-r relative">
+            <div className="h-12 border-b flex items-center justify-center font-semibold">
+              Time
+            </div>
+            {TIME_SLOTS.map((time, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "h-[60px] px-2 text-xs flex items-center justify-center text-muted-foreground",
+                  index !== 0 && "border-t"
+                )}
+              >
+                {time}
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {DAYS.map((day) => {
+            const daySchedules = schedules.filter((schedule) =>
+              schedule.days.map(d => d.toLowerCase()).includes(day.toLowerCase())
+            );
+
+            return (
+              <div key={day} className="relative border-r min-h-full">
+                {/* Day header */}
+                <div className="h-12 border-b flex items-center justify-center font-semibold">
+                  {day}
+                </div>
+
+                {/* Time slot gridlines */}
+                {TIME_SLOTS.map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn("h-[60px]", index !== 0 && "border-t")}
+                  />
+                ))}
+
+                {/* Schedule items */}
+                {daySchedules.map((schedule) => (
+                  <div
+                    key={`${day}-${schedule.id}`}
+                    style={getSchedulePosition(schedule)}
+                    className={cn(
+                      "absolute left-0 right-0 mx-1 p-1 rounded border",
+                      "bg-secondary hover:bg-secondary/80",
+                      "text-sm overflow-hidden flex flex-col justify-center"
+                    )}
+                  >
+                    <div className="space-y-0.5 flex justify-center items-center">
+                      {/* subject code */}
+                      <div className="text-lg font-semibold truncate text-center">
+                        {schedule.subjectCode}
+                      </div>
+                    </div>
+                    {/* section name */}
+                    <div className="truncate text-md text-center">
+                      {schedule.sectionName}
+                      {/* start and end time */}
+                      <div className="flex items-center justify-center gap-1 text-[12px] text-muted-foreground/90">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {schedule.startTime} - {schedule.endTime}
+                          <span className="ml-1">
+                            ({calculateTotalHours(schedule.startTime, schedule.endTime)} hours)
+                          </span>
+                        </span>
+                      </div>
+                      {/* instructor/teacher name */}
+                      <div className="truncate text-md text-muted-foreground text-center">
+                        {schedule.instructorName}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Empty state */}
+                {daySchedules.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center mt-12">
+                    <span className="text-xs text-muted-foreground">
+                      No classes
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const getSchedulePosition = (schedule) => {
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(':');
+      let hour = parseInt(hours);
+      const minute = parseInt(minutes.split(' ')[0]);
+      const period = time.includes('PM');
+
+      if (period && hour !== 12) hour += 12;
+      if (!period && hour === 12) hour = 0;
+
+      return hour * 60 + minute;
+    };
+
+    const startMinutes = timeToMinutes(schedule.startTime);
+    const endMinutes = timeToMinutes(schedule.endTime);
+
+    const startOfDay = timeToMinutes('7:00 AM'); // First time slot
+    const top = ((startMinutes - startOfDay) / 30) * 30; // 30px per 30 minutes
+    const height = ((endMinutes - startMinutes) / 30) * 30;
+
+    return {
+      top: `${top}px`,
+      height: `${Math.max(height, 30)}px`, // Minimum height of 30px
+    };
+  };
+
+  const calculateTotalHours = (startTime, endTime) => {
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(':');
+      let hour = parseInt(hours);
+      const minute = parseInt(minutes.split(' ')[0]);
+      const period = time.includes('PM');
+
+      if (period && hour !== 12) hour += 12;
+      if (!period && hour === 12) hour = 0;
+
+      return hour * 60 + minute;
+    };
+
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+    const diffMinutes = endMinutes - startMinutes;
+    const hours = (diffMinutes / 60).toFixed(1);
+
+    return hours.endsWith('.0') ? hours.slice(0, -2) : hours;
+  };
+
+  // use callBack - implement later
   useEffect(() => {
     // Reset fetch trigger when modal closes
     if (!open) {
@@ -51,6 +206,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     }
   }, [open, room, activeSession]);
 
+  // fetch room schedules
   const fetchRoomSchedules = async () => {
     setLoading(true);
     try {
@@ -118,21 +274,21 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
                 const scheduleData = scheduleDoc.data();
 
                 // Extract days from the schedule data
-                const days = {
-                  monday: scheduleData.monday || false,
-                  tuesday: scheduleData.tuesday || false,
-                  wednesday: scheduleData.wednesday || false,
-                  thursday: scheduleData.thursday || false,
-                  friday: scheduleData.friday || false,
-                  saturday: scheduleData.saturday || false,
-                  sunday: scheduleData.sunday || false,
-                };
+                // const days = {
+                //   monday: scheduleData.monday || "false",
+                //   tuesday: scheduleData.tuesday || "false",
+                //   wednesday: scheduleData.wednesday || "false",
+                //   thursday: scheduleData.thursday || "false",
+                //   friday: scheduleData.friday || "false",
+                //   saturday: scheduleData.saturday || "false",
+                //   sunday: scheduleData.sunday || "false",
+                // };
 
                 // Add to schedules array with all necessary information
                 allSchedules.push({
                   id: scheduleDoc.id,
                   ...scheduleData,
-                  days: days,
+                  days: scheduleData.days || [], // days is now an array of strings
                   subjectName: scheduleData.subjectName || "Unknown Subject",
                   subjectCode: scheduleData.subjectCode || "",
                   sectionName: sectionName,
@@ -161,21 +317,13 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     return time;
   };
 
-  // to get days array from schedule
-  const getDays = (scheduleDays) => {
-    if (!scheduleDays) return ["N/A"];
-
-    const days = [];
-    if (scheduleDays.monday) days.push("Monday");
-    if (scheduleDays.tuesday) days.push("Tuesday");
-    if (scheduleDays.wednesday) days.push("Wednesday");
-    if (scheduleDays.thursday) days.push("Thursday");
-    if (scheduleDays.friday) days.push("Friday");
-    if (scheduleDays.saturday) days.push("Saturday");
-    if (scheduleDays.sunday) days.push("Sunday");
-
-    return days.length > 0 ? days : ["N/A"];
-  };
+  // get days array from schedule
+  const getDays = (days) => {
+    if (!Array.isArray(days) || days.length === 0) return ["N/A"];
+    return days.map(day =>
+      day.charAt(0).toUpperCase() + day.slice(1).toLowerCase()
+    );
+  };;
 
   // Show loading while fetching active session
   if (sessionLoading) {
@@ -218,7 +366,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   ) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -248,8 +396,8 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[85vw] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Room Schedules - {room?.roomNo}
@@ -261,24 +409,21 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
           </DialogDescription>
         </DialogHeader>
 
-        {/* loading skeleton state */}
-        <div className="mt-4">
+        <div className="mt-4 flex-1">
           {loading ? (
             // Loading skeletons
             <div className="space-y-4">
-              {Array(3)
-                .fill(0)
-                .map((_, index) => (
-                  <div key={index} className="flex flex-col space-y-3">
-                    <Skeleton className="h-6 w-3/4" />
-                    <div className="flex space-x-4">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                    <Skeleton className="h-10 w-full" />
-                    <Separator />
+              {Array(3).fill(0).map((_, index) => (
+                <div key={index} className="flex flex-col space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <div className="flex space-x-4">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32" />
                   </div>
-                ))}
+                  <Skeleton className="h-10 w-full" />
+                  <Separator />
+                </div>
+              ))}
             </div>
           ) : schedules.length === 0 ? (
             // Empty state
@@ -292,74 +437,14 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
               </p>
             </div>
           ) : (
-            // Schedule list
-            <ScrollArea className="h-[60vh] pr-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Schedule</TableHead>
-                    <TableHead>Section</TableHead>
-                    <TableHead>Instructor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schedules.map((schedule) => (
-                    <TableRow key={schedule.id}>
-                      {/* subject code & name */}
-                      <TableCell>
-                        <div className="text-md">
-                          {schedule.subjectName || "Unknown Subject"}
-                        </div>
-                        <div className="text-md text-muted-foreground">
-                          {schedule.subjectCode || "No code"}
-                        </div>
-                      </TableCell>
-                      {/* schedule time & day */}
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {getDays(schedule.days || schedule).map((day) => (
-                            <Badge
-                              key={day}
-                              className="text-md"
-                            >
-                              {day}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <Clock className="h-3 w-3" />
-                          <span className="text-md">
-                            {formatTime(schedule.startTime)} -{" "}
-                            {formatTime(schedule.endTime)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      {/* section, course, and year level name */}
-                      <TableCell>
-                        <div>
-                          <Badge className="text-md">{schedule.sectionName || "No Section"}</Badge>
-                        </div>
-                        <div className="text-md text-muted-foreground mt-1">
-                          {schedule.yearLevelName}
-                        </div>
-                      </TableCell>
-                      {/* instructor/teacher */}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span>{schedule.instructorName || "Unassigned"}</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            // Calendar View
+            <ScrollArea className="h-[60vh]">
+              {renderCalendar()}
             </ScrollArea>
           )}
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-4 flex justify-end">
           <DialogClose asChild>
             <Button className="cursor-pointer">Close</Button>
           </DialogClose>

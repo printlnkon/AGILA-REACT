@@ -2,12 +2,11 @@ import * as z from "zod";
 import { db } from "@/api/firebase";
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { collection, getDocs, updateDoc } from "firebase/firestore";
-import { useForm, Controller } from "react-hook-form";
+import { collection, getDocs } from "firebase/firestore";
+import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +25,6 @@ import {
   CalendarDays,
   CalendarIcon,
   CalendarRange,
-  LoaderCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -46,13 +44,6 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import AddScheduleModal from "@/components/AdminComponents/AddScheduleModal";
 import EditScheduleModal from "@/components/AdminComponents/EditScheduleModal";
 // import ScheduleList from "@/components/AdminComponents/ScheduleList";
@@ -529,11 +520,7 @@ export default function ScheduleCalendar({
           : selectedSchedule.instructorName,
         roomId: selectedRoom?.id || selectedSchedule.roomId,
         roomName: selectedRoom ? selectedRoom.name : selectedSchedule.roomName,
-        // Don't set these full time strings as they're not used in the form inputs
-        // startTime: selectedSchedule.startTime,
-        // endTime: selectedSchedule.endTime,
         days: selectedSchedule.days || [],
-        // Set the individual time components
         startHour: startHour,
         startMinute: startMinute,
         startPeriod: startPeriod,
@@ -645,39 +632,6 @@ export default function ScheduleCalendar({
     return `${schedule.startTime} - ${schedule.endTime}`;
   };
 
-  // format the current day date
-  const formatCurrentDayDate = (dayKey) => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    // Convert our day key to a number (0 = monday in our system)
-    const dayKeys = Object.keys(days);
-    const selectedDayIndex = dayKeys.indexOf(dayKey);
-
-    // Convert to JavaScript's day numbers (0 = Sunday)
-    // Our days: monday(0), tuesday(1), etc.
-    // JS days: sunday(0), monday(1), etc.
-    const selectedJsDay = selectedDayIndex + 1; // +1 because monday is 1 in JS
-
-    // Calculate the difference in days
-    let diff = selectedJsDay - dayOfWeek;
-
-    // Adjust if we need to go to next week
-    if (diff < 0) diff += 7;
-    // If today is the selected day, don't add any days
-    if (selectedJsDay === dayOfWeek) diff = 0;
-
-    // Get the date by adding the difference
-    const date = new Date(today);
-    date.setDate(today.getDate() + diff);
-
-    // Format the date (e.g., "Aug 21, 2025")
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   // parse a time string like "8:00 AM" to get hours and minutes
   const parseTime = (timeString) => {
@@ -696,10 +650,6 @@ export default function ScheduleCalendar({
 
   // calculate the position of a schedule in the calendar
   const calculateSchedulePosition = (schedule) => {
-    // calculate position and height based on start and end times
-    const start = parseTime(schedule.startTime);
-    const end = parseTime(schedule.endTime);
-
     // find the closest time slot index for start and end time
     const startIndex = timeOptions.findIndex(
       (time) => time === schedule.startTime
