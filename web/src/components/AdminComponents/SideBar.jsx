@@ -188,19 +188,22 @@ const items = {
           icon: UsersRound,
           items: [
             {
-              title: "Academic Heads",
-              url: "/admin/academic-heads",
-              // icon: UsersRound,
-            },
-            {
-              title: "Program Heads",
-              url: "/admin/program-heads",
-              // icon: UsersRound,
-            },
-            {
-              title: "Teachers",
-              url: "/admin/teachers",
-              // icon: UsersRound,
+              title: "Staff",
+              url: "/admin/staff",
+              items: [
+                {
+                  title: "Academic Heads",
+                  url: "/admin/academic-heads",
+                },
+                {
+                  title: "Program Heads",
+                  url: "/admin/program-heads",
+                },
+                {
+                  title: "Teachers",
+                  url: "/admin/teachers",
+                },
+              ],
             },
             {
               title: "Students",
@@ -209,6 +212,10 @@ const items = {
             },
           ],
         },
+         {
+                  title: "Academic Heads",
+                  url: "/admin/academic-heads",
+                },
         {
           title: "Archives",
           url: "/admin/archives",
