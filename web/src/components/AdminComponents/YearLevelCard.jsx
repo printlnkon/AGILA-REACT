@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -24,7 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit, MoreHorizontal, Trash2, LoaderCircle } from "lucide-react";
+import {
+  Edit,
+  MoreHorizontal,
+  Trash2,
+  LoaderCircle,
+  Book,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -46,6 +53,7 @@ export default function YearLevelCard({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editedName, setEditedName] = useState(yearLevel.yearLevelName);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sectionCount, setSectionCount] = useState(yearLevel.sections?.length || 0);
 
   const handleEdit = async () => {
     setIsSubmitting(true);
@@ -61,66 +69,85 @@ export default function YearLevelCard({
     setShowDeleteDialog(false);
   };
 
+  const handleSectionsLoaded = (count) => {
+    setSectionCount(count);
+  }
+  
   return (
     <>
-      <Card className="transition-all hover:shadow-md flex flex-col">
-        {/* card header */}
+      <Card className="transition-all hover:shadow-lg overflow-hidden">
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <CardTitle className="text-xl">{yearLevel.yearLevelName}</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-md bg-primary/10">
+                <Book className="h-5 w-5 text-primary" />
+              </div>
+              <CardTitle className="text-xl font-semibold">
+                {yearLevel.yearLevelName}
+              </CardTitle>
+            </div>
 
-            <TooltipProvider>
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8 p-0 cursor-pointer"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">View More Actions</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => setShowEditDialog(true)}
-                    className="text-primary cursor-pointer"
-                  >
-                    <Edit className="mr-2 h-4 w-4 text-primary" />
-                    <span>Edit</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive cursor-pointer"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                    <span>Delete</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TooltipProvider>
+            <div className="flex items-center gap-2">
+              <Badge className="flex items-center gap-1">
+                <span>
+                  {sectionCount} {sectionCount === 1 ? "Section" : "Sections"}
+                </span>
+              </Badge>
+
+              <TooltipProvider>
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-8 w-8 p-0 cursor-pointer rounded-full hover:bg-primary/10"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      View More Actions
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setShowEditDialog(true)}
+                      className="text-primary cursor-pointer"
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-primary" />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipProvider>
+            </div>
           </div>
         </CardHeader>
 
-        <Card className="flex flex-col w-full mx-auto max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-3xl">
-          <CardContent className="flex-grow">
-            {/* render the list of sections */}
-            <SectionList
-              yearLevel={yearLevel}
-              course={course}
-              session={session}
-            />
-          </CardContent>
-        </Card>
+        <CardContent className="m-4">
+          {/* render the list of sections */}
+          <SectionList
+            yearLevel={yearLevel}
+            course={course}
+            session={session}
+            onSectionsLoaded={handleSectionsLoaded}
+          />
+        </CardContent>
       </Card>
 
       {/* edit year level dialog*/}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Year Level</DialogTitle>
             <DialogDescription>
@@ -146,7 +173,7 @@ export default function YearLevelCard({
               </SelectContent>
             </Select>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               variant="ghost"
               onClick={() => setShowEditDialog(false)}
@@ -160,9 +187,9 @@ export default function YearLevelCard({
               disabled={isSubmitting}
               className="cursor-pointer"
             >
-              {isSubmitting && (
+              {isSubmitting ? (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-              )}{" "}
+              ) : null}
               Save Changes
             </Button>
           </DialogFooter>
@@ -173,11 +200,14 @@ export default function YearLevelCard({
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle className="text-xl flex items-center gap-2 text-destructive">
+              Confirm Deletion
+            </DialogTitle>
             <DialogDescription>
               Are you sure you want to delete "
-              <strong>{yearLevel.yearLevelName}</strong>"? This action cannot be
-              undone.
+              <span className="font-semibold">{yearLevel.yearLevelName}</span>"?
+              This action cannot be undone and will remove all associated
+              sections.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

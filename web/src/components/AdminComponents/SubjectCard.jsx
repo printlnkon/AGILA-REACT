@@ -302,7 +302,7 @@ export default function SubjectCard({
   return (
     <>
       <Card className="w-full transition-all hover:shadow-md">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-bold">
               {/* subj name */}

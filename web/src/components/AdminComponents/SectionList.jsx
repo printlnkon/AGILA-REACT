@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { db } from "@/api/firebase";
-import { Edit, Trash2, MoreVertical, LoaderCircle, Check } from "lucide-react";
+import { Edit, Trash2, MoreVertical, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   collection,
   onSnapshot,
@@ -37,7 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import AddSectionModal from "@/components/AdminComponents/AddSectionModal";
 
-export default function SectionList({ yearLevel, course, session }) {
+export default function SectionList({ yearLevel, course, session, onSectionsLoaded }) {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -72,6 +71,11 @@ export default function SectionList({ yearLevel, course, session }) {
           )
         );
         setLoading(false);
+
+        // call the onSectionsLoaded callback
+        if (onSectionsLoaded) {
+          onSectionsLoaded(sectionsList.length);
+        }
       },
       (error) => {
         console.error("Error fetching sections:", error);
@@ -120,9 +124,6 @@ export default function SectionList({ yearLevel, course, session }) {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <h4 className="font-semibold text-lg">Sections</h4>
-          <Badge className="rounded-md">
-            Total Sections: {sections.length}
-          </Badge>
         </div>
 
         {sections.length === 0 && !loading && (
