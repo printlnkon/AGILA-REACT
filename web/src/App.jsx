@@ -31,6 +31,7 @@ import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
 import ViewClassList from "@/components/AdminComponents/ViewClassList";
+import Staff from "@/components/AdminComponents/Staff";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
@@ -68,6 +69,7 @@ const routeTitles = {
   "/admin/schedule": "AGILA | Admin - Schedule",
   "/admin/room": "AGILA | Admin - Room",
   "/admin/accounts": "AGILA | Admin - Accounts",
+  "/admin/staff": "AGILA | Admin - Staff",
   "/admin/academic-heads": "AGILA | Admin - Academic Heads",
   "/admin/program-heads": "AGILA | Admin - Program Heads",
   "/admin/teachers": "AGILA | Admin - Teachers",
@@ -120,6 +122,7 @@ function AppContent() {
         <Route path="schedule" element={<Schedule />} />
         <Route path="room" element={<Room />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="staff" element={<Staff />} />
         <Route path="academic-heads" element={<AcademicHeads />} />
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />

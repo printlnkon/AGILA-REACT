@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "@/api/firebase";
+import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   collection,
   getDocs,
@@ -7,15 +16,9 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
 } from "firebase/firestore";
-import { toast } from "sonner";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -26,17 +29,18 @@ import {
 } from "@/components/ui/dialog";
 import {
   flexRender,
-  useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  useReactTable,
 } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
   Columns2,
+  Eye,
   Copy,
   Search,
   X,
@@ -85,42 +89,44 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
 
 // Action handlers
-const handleCopyStudentNumber = (studentNumber) => {
-  if (!studentNumber) {
-    toast.error("Student Number not found");
+const handleCopyEmployeeNumber = (employeeNumber) => {
+  if (!employeeNumber) {
+    toast.error("Employee Number not found");
     return;
   }
   navigator.clipboard
-    .writeText(studentNumber)
+    .writeText(employeeNumber)
     .then(() => {
-      toast.success("Student Number copied to clipboard");
+      toast.success("Employee Number copied to clipboard");
     })
     .catch(() => {
-      toast.error("Failed to copy Student Number");
+      toast.error("Failed to copy Employee Number");
     });
 };
 
-// table global filter for search
 const searchGlobalFilter = (row, columnId, filterValue) => {
-  const studentNumber = row.original.studentNumber?.toLowerCase() || "";
+  const employeeNumber = row.original.employeeNumber?.toLowerCase() || "";
   const email = row.original.email?.toLowerCase() || "";
   const firstName = row.original.firstName?.toLowerCase() || "";
   const lastName = row.original.lastName?.toLowerCase() || "";
   const fullName = `${firstName} ${lastName}`.trim();
+  const role = row.original.role?.toLowerCase() || "";
+  const department = row.original.departmentName?.toLowerCase() || "";
 
   const search = filterValue.toLowerCase();
 
   return (
-    studentNumber.includes(search) ||
+    employeeNumber.includes(search) ||
     email.includes(search) ||
-    fullName.includes(search)
+    fullName.includes(search) ||
+    role.includes(search) ||
+    department.includes(search)
   );
 };
 
-const createColumns = (handleArchiveUser) => [
+const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   {
     id: "select",
     header: ({ table }) => (
@@ -145,57 +151,34 @@ const createColumns = (handleArchiveUser) => [
     enableSorting: false,
     enableHiding: false,
   },
-  // Combined column for mobile view
-  {
-    id: "details",
-    header: ({ column }) => {
-      return <div className="mr-2 md:hidden">Details</div>;
-    },
-    cell: ({ row }) => {
-      const studentNumber =
-        row.original.studentNumber || row.original.employeeNumber || "N/A";
-      const email = row.original.email || "N/A";
-      const firstName = row.original.firstName || "";
-      const lastName = row.original.lastName || "";
-      const fullName = `${firstName} ${lastName}`.trim();
 
-      return (
-        <div className="flex flex-col md:hidden">
-          <span className="font-bold capitalize">{fullName}</span>
-          <span className="text-xs text-muted-foreground">{studentNumber}</span>
-          <span className="text-xs text-muted-foreground">{email}</span>
-        </div>
-      );
-    },
-    // Only show this column on screens smaller than md
-    className: "block md:hidden",
-    enableHiding: true,
-  },
-    // student no. column
+  // employee no. column
   {
-    id: "studentNumber",
-    accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
-  },
-  // employee id
-  {
-    id: "employeeNumber",
+    id: "Employee No.",
     accessorKey: "employeeNumber",
-    header: "Employee I.D",
-    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
+    header: "Employee No.",
+    cell: ({ row }) => {
+      const employeeNo = row.original.employeeNumber;
+      return <div className="capitalize">{employeeNo || "N/A"}</div>;
+    },
   },
-   // role column
+  // role column
   {
     accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Role
+          <ArrowUpDown />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("role") || "N/A"}</div>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
     },
   },
   // photo column
@@ -210,16 +193,16 @@ const createColumns = (handleArchiveUser) => [
       const initials = (firstName.charAt(0) || "") + (lastName.charAt(0) || "");
       return (
         <Avatar className="w-10 h-10">
-          <AvatarImage src={photoURL || initials} alt="Student Photo" />
+          <AvatarImage src={photoURL || initials} alt="Staff Photo" />
           <AvatarFallback>{initials.toUpperCase() || "N/A"}</AvatarFallback>
         </Avatar>
       );
     },
   },
+
   // name column
   {
     id: "name",
-    accessorKey: "name",
     accessorFn: (row) => `${row.firstName || ""} ${row.lastName || ""}`.trim(),
     header: ({ column }) => {
       return (
@@ -240,6 +223,7 @@ const createColumns = (handleArchiveUser) => [
       return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
     },
   },
+
   // email column
   {
     accessorKey: "email",
@@ -257,54 +241,78 @@ const createColumns = (handleArchiveUser) => [
     cell: ({ row }) => (
       <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
     ),
-    className: "hidden md:table-cell",
   },
+
+  // department column
+  {
+    id: "department",
+    accessorKey: "departmentName",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Department
+          <ArrowUpDown />
+        </Button>
+      );
+    },
+    cell: ({ row }) => (
+      <div className="ml-3">{row.original.departmentName || "N/A"}</div>
+    ),
+  },
+
   // date created
-  {
-    id: "Date Created",
-    accessorKey: "createdAt",
-    header: "Date Created",
-    cell: ({ row }) => {
-      const timestamp = row.original.createdAt;
-      if (!timestamp) return <div>-</div>;
-      try {
-        // convert timestamp to date, handles both Firestore Timestamps and date strings
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        // check if the created date is valid before formatting
-        if (isNaN(date.getTime())) {
-          return <div>Invalid Date</div>;
-        }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
-      } catch (error) {
-        return <div>Invalid Date</div>;
-      }
-    },
-  },
+  //   {
+  //     id: "Date Created",
+  //     accessorKey: "createdAt",
+  //     header: "Date Created",
+  //     cell: ({ row }) => {
+  //       const timestamp = row.original.createdAt;
+  //       if (!timestamp) return <div>-</div>;
+
+  //       try {
+  //         // convert timestamp to date, handles both Firestore Timestamps and date strings
+  //         const date = timestamp.toDate
+  //           ? timestamp.toDate()
+  //           : new Date(timestamp);
+
+  //         // check if the created date is valid before formatting
+  //         if (isNaN(date.getTime())) {
+  //           return <div>Invalid Date</div>;
+  //         }
+
+  //         return <div>{format(date, "MMMM do, yyyy")}</div>;
+  //       } catch (error) {
+  //         return <div>Invalid Date</div>;
+  //       }
+  //     },
+  //   },
   // last updated
-  {
-    id: "Last Updated",
-    accessorKey: "updatedAt",
-    header: "Last Updated",
-    cell: ({ row }) => {
-      const timestamp = row.original.updatedAt;
-      if (!timestamp) return <div>-</div>;
-      try {
-        // convert timestamp to date
-        const date = timestamp.toDate
-          ? timestamp.toDate()
-          : new Date(timestamp);
-        // Check if the created date is valid before formatting
-        if (isNaN(date.getTime())) {
-          return <div>Invalid Date</div>;
-        }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
-      } catch (error) {
-        return <div>Invalid Date</div>;
-      }
-    },
-  },
+  //   {
+  //     id: "Last Updated",
+  //     accessorKey: "updatedAt",
+  //     header: "Last Updated",
+  //     cell: ({ row }) => {
+  //       const timestamp = row.original.updatedAt;
+  //       if (!timestamp) return <div>-</div>;
+  //       try {
+  //         // convert timestamp to date
+  //         const date = timestamp.toDate
+  //           ? timestamp.toDate()
+  //           : new Date(timestamp);
+  //         // Check if the created date is valid before formatting
+  //         if (isNaN(date.getTime())) {
+  //           return <div>Invalid Date</div>;
+  //         }
+  //         return <div>{format(date, "MMMM do, yyyy")}</div>;
+  //       } catch (error) {
+  //         return <div>Invalid Date</div>;
+  //       }
+  //     },
+  //   },
+
   // status column
   {
     accessorKey: "status",
@@ -324,6 +332,7 @@ const createColumns = (handleArchiveUser) => [
       );
     },
   },
+
   // actions column
   {
     id: "actions",
@@ -353,13 +362,20 @@ const createColumns = (handleArchiveUser) => [
               </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => handleCopyStudentNumber(user.studentNumber)}
+                  onClick={() => handleCopyEmployeeNumber(user.employeeNumber)}
                   className="cursor-pointer"
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   Copy ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleViewStaffProfile(user)}
+                  className="text-green-600 hover:text-green-700 focus:text-green-700 hover:bg-green-50 focus:bg-green-50 cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4 text-green-600" />
+                  View Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setShowArchiveDialog(true)}
                   className="text-amber-600 hover:text-amber-700 focus:text-amber-700 hover:bg-amber-50 focus:bg-amber-50 cursor-pointer"
@@ -412,77 +428,128 @@ const createColumns = (handleArchiveUser) => [
   },
 ];
 
-export const pagination = {};
-
-export default function AccountsTable() {
-  const [users, setUsers] = useState([]);
+export default function StaffTable() {
+  const [staff, setStaff] = useState([]);
   const [sorting, setSorting] = useState([]);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
-  const [columnVisibility, setColumnVisibility] = useState({
-    studentNumber: false,
-    employeeNumber: false,
-  });
+  const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [roleFilter, setRoleFilter] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const fetchUsers = async () => {
+  // navigate to staff profile
+  const navigate = useNavigate();
+
+  // handle viewing staff profile
+  const handleViewStaffProfile = (user) => {
+    if (!user) {
+      toast.error("User data not found");
+      return;
+    }
+    switch (user.role) {
+      case "Academic Head":
+        navigate(`/admin/academic-heads/profile`, {
+          state: { userId: user.id },
+        });
+        break;
+      case "Program Head":
+        navigate(`/admin/program-heads/profile`, {
+          state: { userId: user.id },
+        });
+        break;
+      case "Teacher":
+        navigate(`/admin/teachers/profile`, { state: { userId: user.id } });
+        break;
+      default:
+        toast.error(`Cannot view profile for unknown role: ${user.role}`);
+        return;
+    }
+  };
+
+  const handleUserAdded = () => {
+    setRefreshTrigger((prev) => prev + 1);
+    fetchStaff();
+  };
+
+  const fetchStaff = async () => {
     setLoading(true);
     setError(null);
     try {
-      const allUsers = [];
-      const roles = ["student", "teacher", "program_head", "academic_head"];
+      // Arrays to hold staff from different collections
+      let allStaff = [];
 
-      for (const role of roles) {
-        try {
-          const querySnapshot = await getDocs(
-            collection(db, `users/${role}/accounts`)
-          );
+      // Fetch Academic Heads
+      const academicHeadRef = collection(db, "users/academic_head/accounts");
+      const academicHeadSnapshot = await getDocs(academicHeadRef);
+      const academicHeadData = academicHeadSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          role: "Academic Head",
+          status: data.status || "active",
+          email: data.email || "",
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          ...data,
+        };
+      });
+      allStaff = [...allStaff, ...academicHeadData];
 
-          querySnapshot.forEach((doc) => {
-            const userData = doc.data();
-            // Validate required fields
-            if (!userData.email) {
-              console.warn(
-                `User ${doc.id} in ${role} collection missing email`
-              );
-            }
+      // Fetch Program Heads
+      const programHeadRef = collection(db, "users/program_head/accounts");
+      const programHeadSnapshot = await getDocs(programHeadRef);
+      const programHeadData = programHeadSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          role: "Program Head",
+          status: data.status || "active",
+          email: data.email || "",
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          ...data,
+        };
+      });
+      allStaff = [...allStaff, ...programHeadData];
 
-            allUsers.push({
-              id: doc.id,
-              role: userData.role || "unknown",
-              status: userData.status || "active",
-              email: userData.email || "",
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              ...userData,
-            });
-          });
-        } catch (roleError) {
-          console.error(`Error fetching ${role} users:`, roleError);
-        }
+      // Fetch Teachers
+      const teacherRef = collection(db, "users/teacher/accounts");
+      const teacherSnapshot = await getDocs(teacherRef);
+      const teacherData = teacherSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          role: "Teacher",
+          status: data.status || "active",
+          email: data.email || "",
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          ...data,
+        };
+      });
+      allStaff = [...allStaff, ...teacherData];
+
+      if (allStaff.length === 0) {
+        setError("No staff found.");
       }
 
-      if (allUsers.length === 0) {
-        setError("No users found in any collection.");
-      } else {
-        setUsers(allUsers);
-      }
+      setStaff(allStaff);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching staff:", error);
       setError(
-        "Failed to load users. Please check your connection and try again."
+        "Failed to load staff. Please check your connection and try again."
       );
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchStaff();
+  }, [refreshTrigger]);
 
   const handleArchiveUser = async (user) => {
     if (!user || !user.id || !user.role) {
@@ -492,10 +559,26 @@ export default function AccountsTable() {
     }
 
     try {
-      // matches the collection path in firestore
-      const rolePath = user.role.toLowerCase().replace(" ", "_");
+      // matches the collection path in firestore based on role
+      let rolePath;
+      switch (user.role) {
+        case "Academic Head":
+          rolePath = "academic_head";
+          break;
+        case "Program Head":
+          rolePath = "program_head";
+          break;
+        case "Teacher":
+          rolePath = "teacher";
+          break;
+        default:
+          toast.error(`Unknown role: ${user.role}`);
+          return false;
+      }
+
       // reference to the user document
       const userPath = `users/${rolePath}/accounts`;
+      console.log("Looking for user document at path:", userPath);
 
       const userDocRef = doc(db, userPath, user.id);
       const userSnap = await getDoc(userDocRef);
@@ -527,10 +610,7 @@ export default function AccountsTable() {
         `User ${user.firstName} ${user.lastName} archived successfully`
       );
 
-      setUsers((currentUsers) => currentUsers.filter((u) => u.id !== user.id));
-
-      // refresh the users list
-      await fetchUsers();
+      setStaff((currentStaff) => currentStaff.filter((s) => s.id !== user.id));
       return true;
     } catch (error) {
       console.error("Error archiving user:", error);
@@ -583,16 +663,28 @@ export default function AccountsTable() {
 
     // force re-fetch users to update the table
     if (successCount > 0) {
-      const remainingUsers = users.filter(
+      const remainingStaff = staff.filter(
         (user) => !selectedRows.some((row) => row.original.id === user.id)
       );
-      setUsers(remainingUsers);
+      setStaff(remainingStaff);
     }
   };
 
-  const columns = createColumns(handleArchiveUser, handleBatchArchive);
+  const handleRoleFilterChange = (selectedRoles) => {
+    if (selectedRoles.length === 0) {
+      // If no roles selected, clear the filter
+      table.getColumn("role")?.setFilterValue(undefined);
+      setRoleFilter([]);
+    } else {
+      // Set the filter with selected roles
+      table.getColumn("role")?.setFilterValue(selectedRoles);
+      setRoleFilter(selectedRoles);
+    }
+  };
+
+  const columns = createColumns(handleArchiveUser, handleViewStaffProfile);
   const table = useReactTable({
-    data: users,
+    data: staff,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -611,12 +703,6 @@ export default function AccountsTable() {
       rowSelection,
       globalFilter,
     },
-    initialState: {
-      columnVisibility: {
-        studentNumber: false,
-        employeeNumber: false,
-      },
-    },
   });
 
   if (loading) {
@@ -629,13 +715,14 @@ export default function AccountsTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
-          {/* skeleton for export button */}
+          {/* skeleton for add staff button */}
           <Skeleton className="h-9 w-28" />
 
           {/* search + filters */}
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
             {/* skeleton for search box */}
             <Skeleton className="relative w-full sm:max-w-xs h-9" />
+
             {/* skeleton for filter by role */}
             <Skeleton className="h-9 w-full sm:w-36" />
             {/* skeleton for filter columns */}
@@ -652,18 +739,19 @@ export default function AccountsTable() {
                 {/* skeletons for select */}
                 <Skeleton className="h-5 w-5 rounded-sm" />
                 {/* skeleton for photo */}
-                <Skeleton className="h-4 w-10" />
                 <Skeleton className="h-4" style={{ width: "15%" }} />
+                <Skeleton className="h-4 w-10" />
 
-                {/* 6 flexible-width skeletons */}
-                {Array(6)
+                {/* remaining column skeletons */}
+                {Array(7)
                   .fill(0)
                   .map((_, colIndex) => {
                     const remainingWidths = [
                       "17%", // Name
                       "20%", // Email
+                      "10%", // Role
+                      "10%", // Department
                       "10%", // Date Created
-                      "10%", // Last Updated
                       "5%", // Status
                       "5%", // Actions
                     ];
@@ -689,18 +777,19 @@ export default function AccountsTable() {
                     {/* skeletons for select */}
                     <Skeleton className="h-5 w-5 rounded-md" />
                     {/* skeleton for photo */}
-                    <Skeleton className="h-10 w-10 rounded-full" />
                     <Skeleton className="h-4" style={{ width: "15%" }} />
+                    <Skeleton className="h-10 w-10 rounded-full" />
 
-                    {/* 6 flexible-width skeletons */}
-                    {Array(6)
+                    {/* remaining column skeletons */}
+                    {Array(7)
                       .fill(0)
                       .map((_, colIndex) => {
                         const remainingWidths = [
                           "17%", // Name
                           "20%", // Email
+                          "10%", // Role
+                          "10%", // Department
                           "10%", // Date Created
-                          "10%", // Last Updated
                           "5%", // Status
                           "5%", // Actions
                         ];
@@ -750,12 +839,13 @@ export default function AccountsTable() {
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-2xl font-bold">Manage Accounts</h1>
+          <h1 className="text-2xl sm:text-2xl font-bold">Manage Staff</h1>
           <p className="text-sm text-muted-foreground">
-            Add, edit, or archive accounts available in the system.
+            Add, edit, or archive staff available in the system.
           </p>
         </div>
       </div>
+
       <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
@@ -781,19 +871,16 @@ export default function AccountsTable() {
           </div>
         )}
 
-        {/* export format */}
-        <ExportExcelFormat />
-
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
           {/* search */}
           <div className="relative w-full sm:max-w-xs">
             {/* search icon */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
             <Input
-              placeholder="Search users..."
+              placeholder="Search staff..."
               value={globalFilter ?? ""}
               onChange={(event) => setGlobalFilter(event.target.value)}
-              className="pl-10 w-full"
+              className="pl-10 max-w-sm"
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-2">
               {/* clear button */}
@@ -811,38 +898,56 @@ export default function AccountsTable() {
           {/* filter by role */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
+              <Button variant="outline" className="cursor-pointer">
                 <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuCheckboxItem
-                checked={
-                  table.getColumn("role")?.getFilterValue() === undefined
-                }
-                onCheckedChange={() => {
-                  table.getColumn("role")?.setFilterValue(undefined);
+                checked={roleFilter.includes("Academic Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Academic Head"]
+                    : roleFilter.filter((r) => r !== "Academic Head");
+                  handleRoleFilterChange(newFilter);
                 }}
               >
-                All Roles
+                Academic Head
               </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              {["academic head", "program head", "teacher", "student"].map(
-                (role) => (
-                  <DropdownMenuCheckboxItem
-                    key={role}
-                    checked={table.getColumn("role")?.getFilterValue() === role}
-                    onCheckedChange={(checked) => {
-                      table
-                        .getColumn("role")
-                        ?.setFilterValue(checked ? role : undefined);
-                    }}
-                    className="capitalize"
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Program Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Program Head"]
+                    : roleFilter.filter((r) => r !== "Program Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Program Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Teacher")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Teacher"]
+                    : roleFilter.filter((r) => r !== "Teacher");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Teacher
+              </DropdownMenuCheckboxItem>
+              {roleFilter.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-red-500 hover:text-red-600 cursor-pointer"
+                    onClick={() => handleRoleFilterChange([])}
                   >
-                    {role.replace("_", " ")}
-                  </DropdownMenuCheckboxItem>
-                )
+                    Clear Filters
+                  </Button>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -850,23 +955,15 @@ export default function AccountsTable() {
           {/* filter columns */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Columns2 className="mr-2 h-4 w-4" /> Filter Columns{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button variant="outline" className="cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {table
                 .getAllColumns()
-                .filter(
-                  (column) => column.getCanHide() && column.id !== "details"
-                )
+                .filter((column) => column.getCanHide())
                 .map((column) => {
-                  const label =
-                    typeof column.columnDef.header === "string"
-                      ? column.columnDef.header
-                      : column.id;
-
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
@@ -876,7 +973,7 @@ export default function AccountsTable() {
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {label}
+                      {column.id}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
@@ -930,13 +1027,14 @@ export default function AccountsTable() {
                   className="h-48 text-center"
                 >
                   <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="rounded-full ">
-                      <UsersRound className="h-12 w-12 " />
+                    <div className="rounded-full">
+                      <UsersRound className="h-12 w-12" />
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-medium">No accounts found.</p>
+                      <p className="text-lg font-medium">No staff found.</p>
                       <p className="text-muted-foreground text-sm mt-2">
-                        Try adjusting your search or filters to find accounts.
+                        {error ||
+                          "Try adjusting your search or filters to find staff."}
                       </p>
                     </div>
                   </div>
@@ -955,7 +1053,7 @@ export default function AccountsTable() {
         </div>
 
         {/* rows per page */}
-        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4 w-full sm:w-auto">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">
               Rows per page
@@ -984,6 +1082,7 @@ export default function AccountsTable() {
               </SelectContent>
             </Select>
           </div>
+
           {/* pagination */}
           <Pagination className="flex items-center">
             <PaginationContent className="flex flex-wrap justify-center gap-1">
@@ -994,7 +1093,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanPreviousPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0"
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
@@ -1006,7 +1105,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanPreviousPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0"
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
@@ -1016,13 +1115,11 @@ export default function AccountsTable() {
                   {/* compact pagination on smaller screens */}
                   <div className="hidden xs:flex items-center">
                     {/* first page */}
-                    <PaginationItem className="hidden sm:block">
-                      {" "}
-                      {/* Hide on extra small mobile */}
+                    <PaginationItem>
                       <PaginationLink
                         onClick={() => table.setPageIndex(0)}
                         isActive={table.getState().pagination.pageIndex === 0}
-                        className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                        className="cursor-pointer"
                       >
                         1
                       </PaginationLink>
@@ -1030,9 +1127,7 @@ export default function AccountsTable() {
 
                     {/* show ellipsis if currentPage > 3 */}
                     {table.getState().pagination.pageIndex > 2 && (
-                      <PaginationItem className="hidden sm:block">
-                        {" "}
-                        {/* Hide on extra small mobile */}
+                      <PaginationItem>
                         <PaginationEllipsis />
                       </PaginationItem>
                     )}
@@ -1046,15 +1141,13 @@ export default function AccountsTable() {
                         Math.abs(i - table.getState().pagination.pageIndex) <= 1
                       ) {
                         return (
-                          <PaginationItem key={i} className="hidden sm:block">
-                            {" "}
-                            {/* Hide on extra small mobile */}
+                          <PaginationItem key={i}>
                             <PaginationLink
                               onClick={() => table.setPageIndex(i)}
                               isActive={
                                 table.getState().pagination.pageIndex === i
                               }
-                              className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                              className="cursor-pointer"
                             >
                               {i + 1}
                             </PaginationLink>
@@ -1067,18 +1160,14 @@ export default function AccountsTable() {
                     {/* show ellipsis if currentPage < lastPage - 2 */}
                     {table.getState().pagination.pageIndex <
                       table.getPageCount() - 3 && (
-                      <PaginationItem className="hidden sm:block">
-                        {" "}
-                        {/* Hide on extra small mobile */}
+                      <PaginationItem>
                         <PaginationEllipsis />
                       </PaginationItem>
                     )}
 
                     {/* last page */}
                     {table.getPageCount() > 1 && (
-                      <PaginationItem className="hidden sm:block">
-                        {" "}
-                        {/* Hide on extra small mobile */}
+                      <PaginationItem>
                         <PaginationLink
                           onClick={() =>
                             table.setPageIndex(table.getPageCount() - 1)
@@ -1087,7 +1176,7 @@ export default function AccountsTable() {
                             table.getState().pagination.pageIndex ===
                             table.getPageCount() - 1
                           }
-                          className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                          className="cursor-pointer"
                         >
                           {table.getPageCount()}
                         </PaginationLink>
@@ -1095,9 +1184,9 @@ export default function AccountsTable() {
                     )}
                   </div>
 
-                  {/* page indicator for all screen sizes */}
+                  {/* page indicator */}
                   <div className="flex items-center">
-                    <Label className="text-sm font-medium mx-1 whitespace-nowrap">
+                    <Label className="text-sm font-medium mx-1">
                       Page {table.getState().pagination.pageIndex + 1} of{" "}
                       {table.getPageCount()}
                     </Label>
@@ -1112,7 +1201,7 @@ export default function AccountsTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
@@ -1123,40 +1212,32 @@ export default function AccountsTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                      : "cursor-pointer"
                   }
                 />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-          
+
           {/* Batch Archive Dialog */}
           <Dialog
             open={showBatchArchiveDialog}
             onOpenChange={setShowBatchArchiveDialog}
           >
-            <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-md">
-              {" "}
-              {/* Adjusted max-width for responsiveness */}
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Confirm Batch Archive</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to archive{" "}
-                  <strong>
-                    {table.getFilteredSelectedRowModel().rows.length} selected
-                    users?
-                  </strong>{" "}
-                  This will set their account status to{" "}
-                  <strong>inactive</strong>.
+                  {table.getFilteredSelectedRowModel().rows.length} selected
+                  users? This will set their account status to inactive.
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                {" "}
-                {/* Responsive button layout */}
+              <DialogFooter>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
-                  className="w-full sm:w-auto cursor-pointer"
+                  className="cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -1166,7 +1247,7 @@ export default function AccountsTable() {
                     handleBatchArchive();
                     setShowBatchArchiveDialog(false);
                   }}
-                  className="w-full sm:w-auto bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
+                  className="bg-amber-600 text-white hover:bg-amber-700 cursor-pointer"
                 >
                   <Archive /> Archive Users
                 </Button>
