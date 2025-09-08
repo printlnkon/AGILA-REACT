@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Edit, Trash2, X, LoaderCircle, MoreHorizontal } from "lucide-react";
 import {
   Card,
@@ -122,45 +123,38 @@ const updateScheduleReferences = async (
   }
 };
 
-const handleScheduleReferencesForDeletion = async (academicYearId, semesterId, subjectId) => {
+const handleScheduleReferencesForDeletion = async (
+  academicYearId,
+  semesterId,
+  subjectId
+) => {
   try {
-    // Path to the schedules collection
     const schedulesPath = `academic_years/${academicYearId}/semesters/${semesterId}/schedules`;
-    
+
     // Query all schedule entries that reference this subject
     const scheduleQuery = query(
       collection(db, schedulesPath),
       where("subjectId", "==", subjectId)
     );
-    
+
     const scheduleSnapshot = await getDocs(scheduleQuery);
-    
-    // Option 1: Update schedule entries to mark subject as deleted
-    const updatePromises = scheduleSnapshot.docs.map(scheduleDoc => {
+
+    const updatePromises = scheduleSnapshot.docs.map((scheduleDoc) => {
       return updateDoc(doc(db, schedulesPath, scheduleDoc.id), {
         subjectId: "deleted",
         subjectCode: "[DELETED]",
         subjectName: "Deleted Subject",
-        isSubjectDeleted: true
+        isSubjectDeleted: true,
       });
     });
-    
+
     // Execute all updates in parallel
     await Promise.all(updatePromises);
-    
-    // Option 2: If you prefer to delete the schedule entries instead,
-    // uncomment this code and comment out the above updatePromises section
-    /*
-    const deletePromises = scheduleSnapshot.docs.map(scheduleDoc => {
-      return deleteDoc(doc(db, schedulesPath, scheduleDoc.id));
-    });
-    
-    // Execute all deletions in parallel
-    await Promise.all(deletePromises);
-    */
-    
+
     if (updatePromises.length > 0) {
-      console.log(`Updated ${updatePromises.length} schedule entries for deleted subject`);
+      console.log(
+        `Updated ${updatePromises.length} schedule entries for deleted subject`
+      );
     }
   } catch (error) {
     console.error("Error handling schedule references for deletion:", error);
@@ -178,6 +172,7 @@ export default function SubjectCard({
   const [subjectFormData, setSubjectFormData] = useState({
     ...subject,
     units: subject.units.toString(),
+    withLaboratory: subject.withLaboratory || false,
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -188,6 +183,7 @@ export default function SubjectCard({
       setSubjectFormData({
         ...subject,
         units: subject.units.toString(),
+        withLaboratory: subject.withLaboratory || false,
       });
       setFormErrors({});
     }
@@ -217,7 +213,7 @@ export default function SubjectCard({
     }
   };
 
-  // handle edit subject form submission
+  // edit subject form submission
   const handleEditSubject = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -248,6 +244,7 @@ export default function SubjectCard({
         subjectName: subjectFormData.subjectName,
         description: subjectFormData.description,
         units: parseFloat(subjectFormData.units),
+        withLaboratory: subjectFormData.withLaboratory,
       };
 
       const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
@@ -279,7 +276,7 @@ export default function SubjectCard({
     }
   };
 
-  // Handle delete subject confirmation
+  // delete subject confirmation
   const handleDeleteSubject = async () => {
     try {
       const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
@@ -309,7 +306,7 @@ export default function SubjectCard({
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-bold">
               {/* subj name */}
-              {subject.subjectName}
+              {subject.subjectCode} - {subject.subjectName}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Badge className="font-medium">Units: {subject.units}</Badge>
@@ -353,9 +350,11 @@ export default function SubjectCard({
           </div>
           <CardDescription className="flex justify-between items-center">
             <span>
-              {subject.subjectCode}
+              {subject.withLaboratory ? (
+                <Badge variant="secondary">W/ LAB</Badge>
+              ) : null}
               <br />
-              {subject.description}
+              <div className="mt-2">{subject.description}</div>
             </span>
           </CardDescription>
         </CardHeader>
@@ -426,6 +425,20 @@ export default function SubjectCard({
                   </SelectContent>
                 </Select>
                 <FormError message={formErrors.units} />
+              </div>
+              {/* w/ laboratory checkbox */}
+              <div className="space-y-1 flex items-center gap-2 mt-2">
+                <Label htmlFor="withLaboratory">W/ Laboratory</Label>
+                <Checkbox
+                  id="withLaboratory"
+                  checked={subjectFormData.withLaboratory}
+                  onCheckedChange={(checked) => {
+                    setSubjectFormData((prev) => ({
+                      ...prev,
+                      withLaboratory: checked,
+                    }));
+                  }}
+                />
               </div>
             </div>
 
