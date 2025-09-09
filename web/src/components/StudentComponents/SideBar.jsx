@@ -3,6 +3,8 @@ import { Separator } from "@/components/ui/separator";
 import { SearchForm } from "@/components/ui/search-form";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFirestore, doc, onSnapshot } from "firebase/firestore";
+import Profile from "@/components/StudentComponents/Profile";
 import {
   LayoutDashboard,
   Settings,
@@ -68,13 +70,8 @@ const items = {
           icon: User2,
         },
         {
-          title: "Lorem Ipsum",
-          url: "#",
-          icon: Building,
-        },
-        {
-          title: "Class Schedule",
-          url: "#",
+          title: "Request",
+          url: "/student/request",
           icon: Calendar,
         },
       ],
@@ -84,6 +81,23 @@ const items = {
 
 export default function SideBar() {
   const { currentUser, logout } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const db = getFirestore();
+    const unsub = onSnapshot(
+      doc(db, "users", "student", "accounts", currentUser.uid),
+      (docSnap) => {
+        if (docSnap.exists()) {
+
+          setProfileData(docSnap.data());
+        }
+      }
+    );
+    return () => unsub();
+  }, [currentUser]);
 
   // sidebar
   const { isMobile, state } = useSidebar();
@@ -162,8 +176,8 @@ export default function SideBar() {
 
   // get the firstName and lastName
   const userInitials = getInitials(
-    currentUser?.firstName,
-    currentUser?.lastName
+    profileData?.firstName || currentUser?.firstName,
+    profileData?.lastName || currentUser?.lastName
   );
 
   // function to handle logout
@@ -267,7 +281,7 @@ export default function SideBar() {
                         >
                           <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage
-                              src={userInitials}
+                              src={profileData?.profileImage || undefined} 
                               alt={userInitials}
                             />
                             <AvatarFallback className="rounded-lg">
@@ -299,7 +313,10 @@ export default function SideBar() {
                   <DropdownMenuLabel className="p-0 font-normal">
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
-                        <AvatarImage src={userInitials} alt={userInitials} />
+                        <AvatarImage
+                          src={profileData?.profileImage || undefined}   
+                          alt={userInitials}
+                        />
                         <AvatarFallback className="rounded-lg">
                           {userInitials}
                         </AvatarFallback>
@@ -317,6 +334,13 @@ export default function SideBar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => navigate("/student/profile")}
+                    >
+                      <User2 />
+                      Profile
+                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer">
                       <Settings />
                       Settings

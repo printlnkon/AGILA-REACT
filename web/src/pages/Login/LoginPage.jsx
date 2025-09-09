@@ -40,10 +40,10 @@ export default function LoginPage() {
           navigate("/teacher");
           break;
         case "program_head":
-          navigate("/program_head");
+          navigate("/program-head");
           break;
         case "academic_head":
-          navigate("/academic_head");
+          navigate("/academic-head");
           break;
         default:
           navigate("/");

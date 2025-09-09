@@ -4,6 +4,8 @@ import {
   addDoc,
   getDocs,
   doc,
+  query,
+  where,
   updateDoc,
 } from "firebase/firestore";
 import { useState, useEffect, useReducer } from "react";
@@ -777,6 +779,8 @@ export default function AddScheduleModal({
         db,
         `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/subjects`
       );
+
+      const q = query(subjectsRef, where("status", "==", "Approved"));
 
       const subjectsSnapshot = await getDocs(subjectsRef);
 
