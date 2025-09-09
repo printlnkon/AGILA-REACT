@@ -159,38 +159,6 @@ const monthNames = [
   "December",
 ];
 
-// validate time range before submitting
-const validateTimeRange = (
-  startHour,
-  startMinute,
-  startPeriod,
-  endHour,
-  endMinute,
-  endPeriod
-) => {
-  // Convert to 24-hour format for comparison
-  let start24Hour = parseInt(startHour);
-  if (startPeriod === "PM" && start24Hour !== 12) start24Hour += 12;
-  if (startPeriod === "AM" && start24Hour === 12) start24Hour = 0;
-
-  let end24Hour = parseInt(endHour);
-  if (endPeriod === "PM" && end24Hour !== 12) end24Hour += 12;
-  if (endPeriod === "AM" && end24Hour === 12) end24Hour = 0;
-
-  // Compare times
-  if (end24Hour < start24Hour) {
-    return "End time must be after start time";
-  }
-  if (
-    end24Hour === start24Hour &&
-    parseInt(endMinute) <= parseInt(startMinute)
-  ) {
-    return "End time must be after start time";
-  }
-
-  return null;
-};
-
 // Validation schema for schedule form
 const scheduleFormSchema = z.object({
   subjectName: z.string().min(1, "Subject name is required"),
@@ -204,24 +172,6 @@ const scheduleFormSchema = z.object({
   endPeriod: z.string().min(1, "End period is required"),
   days: z.array(z.string()).min(1, "At least one day must be selected"),
 });
-
-const COLOR_OPTIONS = [
-  { value: "blue", label: "Blue", bg: "bg-blue-500", text: "text-white" },
-  { value: "green", label: "Green", bg: "bg-green-500", text: "text-white" },
-  { value: "red", label: "Red", bg: "bg-red-500", text: "text-white" },
-  { value: "purple", label: "Purple", bg: "bg-purple-500", text: "text-white" },
-  { value: "orange", label: "Orange", bg: "bg-orange-500", text: "text-white" },
-  { value: "pink", label: "Pink", bg: "bg-pink-500", text: "text-white" },
-  { value: "cyan", label: "Cyan", bg: "bg-cyan-500", text: "text-white" },
-  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-black" },
-  { value: "lime", label: "Lime", bg: "bg-lime-500", text: "text-black" },
-  { value: "teal", label: "Teal", bg: "bg-teal-500", text: "text-white" },
-];
-const START_HOUR_OPTIONS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-const END_HOUR_OPTIONS = [12, ...Array.from({ length: 11 }, (_, i) => i + 1)];
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) =>
-  i.toString().padStart(2, "0")
-);
 
 export default function ScheduleCalendar({
   activeSession,
@@ -240,7 +190,6 @@ export default function ScheduleCalendar({
   onEditSchedule,
   onDeleteSchedule,
 }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
@@ -256,6 +205,25 @@ export default function ScheduleCalendar({
   const [instructors, setInstructors] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
+
+  // fetch rooms when calendar is ready to be displayed
+  useEffect(() => {
+    if (canAddSchedule) {
+      fetchRooms();
+    }
+  }, [canAddSchedule]);
+
+  // ordinal suffix of a number
+  const getFloorWithOrdinal = (floor) => {
+    if (!floor) return "";
+    const n = parseInt(floor, 10);
+    if (isNaN(n)) return "";
+
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    const suffix = s[(v - 20) % 10] || s[v] || s[0];
+    return `${n}${suffix} Floor`;
+  };
 
   // fetch data when edit modal opens
   useEffect(() => {
@@ -509,7 +477,7 @@ export default function ScheduleCalendar({
       const endPeriod = endTimeParts[1];
 
       // Now reset the form with all the data available
-       form.reset({
+      form.reset({
         subjectId: selectedSubject?.id || selectedSchedule.subjectId,
         subjectName: selectedSubject
           ? selectedSubject.name
@@ -604,12 +572,12 @@ export default function ScheduleCalendar({
       amber: {
         bg: "bg-amber-500",
         hoverBg: "hover:bg-amber-600",
-        text: "text-black",
+        text: "text-white",
       },
       lime: {
         bg: "bg-lime-500",
         hoverBg: "hover:bg-lime-600",
-        text: "text-black",
+        text: "text-white",
       },
       teal: {
         bg: "bg-teal-500",
@@ -631,7 +599,6 @@ export default function ScheduleCalendar({
   const formatScheduleTime = (schedule) => {
     return `${schedule.startTime} - ${schedule.endTime}`;
   };
-
 
   // parse a time string like "8:00 AM" to get hours and minutes
   const parseTime = (timeString) => {
@@ -684,7 +651,11 @@ export default function ScheduleCalendar({
     }
 
     // format the result
-    return hours + (minutes > 0 ? ` hr ${minutes} min` : ` hr`);
+    return (
+      hours +
+      (hours > 1 ? " hrs" : " hr") +
+      (minutes > 0 ? ` ${minutes} min` : "")
+    );
   };
 
   // render a schedule item in the calendar
@@ -710,31 +681,29 @@ export default function ScheduleCalendar({
         }}
       >
         {/* section name with schedule type */}
-        <div className="text-[12px] font-medium opacity-80 mb-0.5 truncate">
+        <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
           {sectionName || "Section"} • {getScheduleTypeName(schedule)}
         </div>
 
         {/* subject code with subject name */}
-        <div className="font-semibold text-sm leading-tight truncate">
-          {schedule.subjectCode && `${schedule.subjectCode} - `}
-          {schedule.subjectName}
+        <div className="font-semibold text-xs leading-tight truncate">
+          {schedule.subjectCode} - {schedule.subjectName}
         </div>
 
         {/* room information */}
-        <div className="text-[12px] mt-0.5 truncate">{schedule.roomName}</div>
+        <div className="text-xs mt-0.5 truncate">{schedule.roomName}</div>
 
         {/* time information and total hours */}
         {height >= 75 && (
-          <div className="flex justify-center items-center gap-1 mt-1 text-[12px]">
+          <div className="flex justify-center items-center gap-1 mt-1 text-xs">
             <Clock className="h-2.5 w-2.5" />
-            <span className="truncate">{schedule.startTime} - {schedule.endTime}</span>
-            <span className="truncate">({totalHours} hrs)</span>
+            <span className="truncate">{totalHours}</span>
           </div>
         )}
 
         {/* instructor name - only show if we have enough space */}
         {height >= 100 && (
-          <div className="truncate text-[12px] mt-1 italic">
+          <div className="truncate text-xs mt-1 italic">
             {schedule.instructorName}
           </div>
         )}
@@ -1383,7 +1352,7 @@ export default function ScheduleCalendar({
 
                       {/* Show indicator for more schedules */}
                       {daySchedules.length > 3 && (
-                        <div className="text-[10px] text-center text-muted-foreground font-medium pt-0.5">
+                        <div className="text-xs text-center text-muted-foreground font-medium pt-0.5">
                           +{daySchedules.length - 3} more
                         </div>
                       )}
@@ -1571,121 +1540,136 @@ export default function ScheduleCalendar({
           </SheetHeader>
 
           {/* schedule details */}
-          {selectedSchedule && (
-            <div className="space-y-6 py-6 p-4">
-              <div className="border-b pb-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <Badge variant="secondary" className="mb-2">
-                      {getScheduleTypeName(selectedSchedule)}
-                    </Badge>
-                    <h3 className="font-semibold text-2xl mb-1">
-                      {selectedSchedule.subjectCode} |{" "}
-                      {selectedSchedule.subjectName}
-                    </h3>
-                  </div>
-                  <div
-                    className={`w-4 h-4 rounded-full ${
-                      getScheduleColorClasses(selectedSchedule).bg
-                    }`}
-                  ></div>
-                </div>
-                <div className="flex items-center gap-2 text-sm mt-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    {formatScheduleTime(selectedSchedule)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    ({calculateTotalHours(selectedSchedule)} total)
-                  </span>
-                </div>
-              </div>
+          {selectedSchedule &&
+            (() => {
+              const roomDetails = rooms.find(
+                (r) =>
+                  r.id === selectedSchedule.roomId ||
+                  r.name === selectedSchedule.roomName
+              );
 
-              <div className="space-y-4 p-4">
-                <div className="flex items-start gap-3">
-                  <Building2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Room
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <p className="font-medium">{selectedSchedule.roomName}</p>
+              return (
+                <div className="space-y-6 py-6 p-4">
+                  <div className="border-b pb-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge variant="secondary" className="mb-2">
+                          {getScheduleTypeName(selectedSchedule)}
+                        </Badge>
+                        <h3 className="font-semibold text-2xl mb-1">
+                          {selectedSchedule.subjectCode} |{" "}
+                          {selectedSchedule.subjectName}
+                        </h3>
+                      </div>
+                      <div
+                        className={`w-4 h-4 rounded-full ${
+                          getScheduleColorClasses(selectedSchedule).bg
+                        }`}
+                      ></div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm mt-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">
+                        {formatScheduleTime(selectedSchedule)}
+                      </span>
+                      <span className="text-muted-foreground">
+                        ({calculateTotalHours(selectedSchedule)})
+                      </span>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <User className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Instructor
-                    </p>
-                    <p className="font-medium">
-                      {selectedSchedule.instructorName}
-                    </p>
-                  </div>
-                </div>
+                  <div className="space-y-4 p-4">
+                    <div className="flex items-start gap-3">
+                      <Building2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Room
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium">
+                            {selectedSchedule.roomName}{" "}
+                            {roomDetails?.floor &&
+                              ` - ${getFloorWithOrdinal(roomDetails.floor)}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="flex items-start gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Day
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedSchedule.days &&
-                        selectedSchedule.days.map((day) => (
-                          <Badge
-                            key={day}
-                            variant="secondary"
-                            className="capitalize"
-                          >
-                            {day}
-                          </Badge>
-                        ))}
+                    <div className="flex items-start gap-3">
+                      <User className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Instructor
+                        </p>
+                        <p className="font-medium">
+                          {selectedSchedule.instructorName}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
 
-              <Separator />
-
-              <div className="space-y-4 p-4">
-                {/* grouped academic details */}
-                <div className="flex items-start gap-3">
-                  <BookOpen className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-3 w-full">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Department
-                      </p>
-                      <p className="font-medium truncate">{departmentName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Course
-                      </p>
-                      <p className="font-medium truncate">
-                        {generateCourseAbbreviation(courseName)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Year Level
-                      </p>
-                      <p className="font-medium">{yearLevelValue}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Section
-                      </p>
-                      <p className="font-medium">{sectionName}</p>
+                    <div className="flex items-start gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Day
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {selectedSchedule.days &&
+                            selectedSchedule.days.map((day) => (
+                              <Badge
+                                key={day}
+                                variant="secondary"
+                                className="capitalize"
+                              >
+                                {day}
+                              </Badge>
+                            ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  <Separator />
+
+                  <div className="space-y-4 p-4">
+                    {/* grouped academic details */}
+                    <div className="flex items-start gap-3">
+                      <BookOpen className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-3 w-full">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Department
+                          </p>
+                          <p className="font-medium truncate">
+                            {departmentName}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Course
+                          </p>
+                          <p className="font-medium truncate">
+                            {generateCourseAbbreviation(courseName)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Year Level
+                          </p>
+                          <p className="font-medium">{yearLevelValue}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Section
+                          </p>
+                          <p className="font-medium">{sectionName}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              );
+            })()}
 
           <SheetFooter className="pt-2 flex-shrink-0">
             <Button

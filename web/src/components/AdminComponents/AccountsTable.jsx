@@ -844,6 +844,19 @@ export default function AccountsTable() {
                   </DropdownMenuCheckboxItem>
                 )
               )}
+              {/* Clear filters button */}
+              {table.getColumn("role")?.getFilterValue() !== undefined && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    onClick={() => table.getColumn("role")?.setFilterValue(undefined)}
+                  >
+                    Clear Filter
+                  </Button>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

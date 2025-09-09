@@ -69,7 +69,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
               <div
                 key={index}
                 className={cn(
-                  "h-[55px] px-2 text-xs flex items-center justify-center text-muted-foreground",
+                  "h-[90px] px-2 text-xs flex items-center justify-center text-muted-foreground",
                   index !== 0 && "border-t"
                 )}
               >
@@ -97,7 +97,7 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
                 {TIME_SLOTS.map((_, index) => (
                   <div
                     key={index}
-                    className={cn("h-[55px]", index !== 0 && "border-t")}
+                    className={cn("h-[90px]", index !== 0 && "border-t")}
                   />
                 ))}
 
@@ -122,44 +122,35 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
                         height: `${Math.max(height, 60)}px`,
                         zIndex: 1,
                       }}
-                      onClick={() =>
-                        handleScheduleClick && handleScheduleClick(schedule)
-                      }
                     >
                       {/* section name with schedule type */}
-                      <div className="text-[12px] font-medium opacity-80 mb-0.5 truncate">
+                      <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
                         {schedule.sectionName || "Section"} •{" "}
                         {getScheduleTypeName(schedule)}
                       </div>
 
                       {/* subject code with subject name */}
-                      <div className="font-semibold text-sm leading-tight truncate">
-                        {schedule.subjectCode && `${schedule.subjectCode} - `}
-                        {schedule.subjectName}
+                      <div className="font-semibold text-xs leading-tight truncate">
+                        {schedule.subjectCode} - {schedule.subjectName}
                       </div>
 
                       {/* room information */}
-                      <div className="text-[12px] mt-0.5 truncate">
+                      <div className="text-xs mt-0.5 truncate">
                         {schedule.roomName || room?.roomNo}
                       </div>
 
                       {/* time information and total hours */}
                       {height >= 75 && (
-                        <div className="flex justify-center items-center gap-1 mt-1 text-[12px]">
+                        <div className="flex justify-center items-center gap-1 mt-1 text-xs">
                           <Clock className="h-2.5 w-2.5" />
-                          <span className="truncate">
-                            {schedule.startTime} - {schedule.endTime}
-                          </span>
-                          <span className="truncate">({totalHours} hrs)</span>
+                          <span className="truncate">{totalHours}</span>
                         </div>
                       )}
 
                       {/* instructor name - only show if we have enough space */}
-                      {height >= 100 && (
-                        <div className="truncate text-[12px] mt-1 italic">
-                          {schedule.instructorName}
-                        </div>
-                      )}
+                      <div className="truncate text-xs italic">
+                        {schedule.instructorName}
+                      </div>
                     </div>
                   );
                 })}
@@ -287,11 +278,11 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     const startOfDay = timeToMinutes("7:00 AM"); // First time slot
 
     // Each time slot is 60px high
-    const slotHeight = 60;
+    const slotHeight = 90;
     // Calculate position relative to the start of the day
-    const top = ((startMinutes - startOfDay) / 60) * slotHeight;
+    const top = ((startMinutes - startOfDay) / 55) * slotHeight;
     // Calculate height based on duration
-    const height = ((endMinutes - startMinutes) / 60) * slotHeight;
+    const height = ((endMinutes - startMinutes) / 55) * slotHeight;
 
     return {
       top: top,
@@ -315,9 +306,14 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
     const diffMinutes = endMinutes - startMinutes;
-    const hours = (diffMinutes / 60).toFixed(1);
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60; // Calculate remaining minutes
 
-    return hours.endsWith(".0") ? hours.slice(0, -2) : hours;
+    return (
+      hours +
+      (hours > 1 ? " hrs" : " hr") +
+      (minutes > 0 ? ` ${minutes} min` : "")
+    );
   };
 
   // use callBack - implement later
