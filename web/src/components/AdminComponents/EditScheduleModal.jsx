@@ -5,9 +5,17 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/api/firebase";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoaderCircle } from "lucide-react";
+import {
+  LoaderCircle,
+  Building,
+  User,
+  Users,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +76,24 @@ const END_HOUR_OPTIONS = [12, ...Array.from({ length: 11 }, (_, i) => i + 1)];
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) =>
   i.toString().padStart(2, "0")
 );
+
+const conflictDetails = {
+  room: {
+    Icon: Building,
+    title: "Room Conflicts",
+    className: "text-blue-600",
+  },
+  instructor: {
+    Icon: User,
+    title: "Instructor Conflicts",
+    className: "text-purple-600",
+  },
+  section: {
+    Icon: Users,
+    title: "Section Schedule Conflicts",
+    className: "text-amber-700",
+  },
+};
 
 // Validate time range before submitting
 const validateTimeRange = (
@@ -131,6 +157,8 @@ export default function EditScheduleModal({
   const [subjects, setSubjects] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [conflicts, setConflicts] = useState([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   // Initialize form for editing schedules
   const form = useForm({
@@ -347,10 +375,19 @@ export default function EditScheduleModal({
     }
   }, [open, schedule, subjects, rooms, instructors]);
 
-  // Check for schedule conflicts
+  // reset conflicts when modal closes
+  useEffect(() => {
+    // When the modal closes, reset conflicts
+    if (!open) {
+      setConflicts([]);
+      setShowConflictDialog(false);
+    }
+  }, [open]);
+
+  // function to allow instructors to teach multiple subjects at different times on the same day
   const checkForConflicts = (updatedSchedule) => {
     if (!existingSchedules || existingSchedules.length === 0) {
-      return null;
+      return [];
     }
 
     // Calculate start and end times in minutes for the edited schedule
@@ -360,16 +397,18 @@ export default function EditScheduleModal({
     // Days of the edited schedule
     const editDays = updatedSchedule.days;
 
+    const detectedConflicts = [];
+
     // Check against existing schedules (excluding the one being edited)
-    const conflicts = existingSchedules.filter((existingSchedule) => {
+    existingSchedules.forEach((existingSchedule) => {
       // Skip if it's the same schedule being edited
-      if (existingSchedule.id === schedule.id) return false;
+      if (existingSchedule.id === schedule.id) return;
 
       // Check if there's any overlap in days
       const hasOverlappingDays = existingSchedule.days.some((day) =>
         editDays.includes(day)
       );
-      if (!hasOverlappingDays) return false;
+      if (!hasOverlappingDays) return;
 
       // Calculate start and end times in minutes for existing schedule
       const existingStartMinutes = convertTimeToMinutes(
@@ -377,7 +416,7 @@ export default function EditScheduleModal({
       );
       const existingEndMinutes = convertTimeToMinutes(existingSchedule.endTime);
 
-      // Check for time overlap
+      // Check for time overlap - only when time ranges actually overlap
       const hasTimeOverlap =
         (editStartMinutes >= existingStartMinutes &&
           editStartMinutes < existingEndMinutes) || // Edit start time within existing
@@ -386,33 +425,56 @@ export default function EditScheduleModal({
         (editStartMinutes <= existingStartMinutes &&
           editEndMinutes >= existingEndMinutes); // Edit spans entire existing
 
-      // Check for room conflict
-      const roomConflict =
-        updatedSchedule.roomName === existingSchedule.roomName &&
-        hasTimeOverlap;
+      // Only consider conflicts when there's both day AND time overlap
+      if (hasTimeOverlap) {
+        // Check for room conflict
+        if (updatedSchedule.roomName === existingSchedule.roomName) {
+          detectedConflicts.push({
+            id: `${existingSchedule.id}-room`,
+            subject: existingSchedule.subjectName,
+            type: "room",
+            conflict: `${existingSchedule.roomName} is already booked for ${
+              existingSchedule.subjectCode || existingSchedule.subjectName
+            } (${existingSchedule.startTime} - ${existingSchedule.endTime})`,
+          });
+        }
 
-      // Check for instructor conflict
-      const instructorConflict =
-        updatedSchedule.instructorName === existingSchedule.instructorName &&
-        hasTimeOverlap;
+        // Check for instructor conflict - only if time AND day overlap
+        if (
+          updatedSchedule.instructorName === existingSchedule.instructorName
+        ) {
+          detectedConflicts.push({
+            id: `${existingSchedule.id}-instructor`,
+            subject: existingSchedule.subjectName,
+            type: "instructor",
+            conflict: `Instructor ${
+              existingSchedule.instructorName
+            } is already teaching ${
+              existingSchedule.subjectCode || existingSchedule.subjectName
+            } (${existingSchedule.startTime} - ${existingSchedule.endTime})`,
+          });
+        }
 
-      return roomConflict || instructorConflict;
+        // Student schedule conflict (same section)
+        detectedConflicts.push({
+          id: `${existingSchedule.id}-section`,
+          subject: existingSchedule.subjectName,
+          type: "section",
+          conflict: `This section already has ${
+            existingSchedule.subjectCode || existingSchedule.subjectName
+          } scheduled at this time`,
+        });
+      }
     });
 
-    if (conflicts.length > 0) {
-      return {
-        hasConflict: true,
-        conflictingSchedules: conflicts,
-        roomConflicts: conflicts.filter(
-          (c) => c.roomName === updatedSchedule.roomName
-        ),
-        instructorConflicts: conflicts.filter(
-          (c) => c.instructorName === updatedSchedule.instructorName
-        ),
-      };
-    }
+    // Remove any duplicate conflicts
+    const uniqueConflicts = Array.from(
+      new Map(
+        detectedConflicts.map((conflict) => [conflict.id, conflict])
+      ).values()
+    );
 
-    return null;
+    return uniqueConflicts;
   };
 
   // Handle form submission for editing schedules
@@ -475,43 +537,150 @@ export default function EditScheduleModal({
           return;
         }
 
-        // Check for schedule conflicts
-        const conflicts = checkForConflicts(updatedSchedule);
-        if (conflicts) {
-          let errorMessage = "Schedule conflict detected:";
-
-          if (conflicts.roomConflicts.length > 0) {
-            errorMessage += `\n• Room ${updatedSchedule.roomName} is already booked during this time`;
-          }
-
-          if (conflicts.instructorConflicts.length > 0) {
-            errorMessage += `\n• Instructor ${updatedSchedule.instructorName} is already scheduled during this time`;
-          }
-
-          toast.error(errorMessage);
+        // Check if conflicts already exist from the real-time check
+        if (conflicts.length > 0) {
+          setShowConflictDialog(true);
           setIsSubmitting(false);
           return;
         }
 
-        // Call parent component's edit handler
-        await onEditSchedule(updatedSchedule);
-
-        // Show success message
-        toast.success("Schedule has been updated");
-
-        // Close the edit modal
-        onClose();
+        // If no conflicts, proceed with update
+        await handleConfirmedUpdate(updatedSchedule);
       } catch (error) {
         console.error("Error submitting form:", error);
         toast.error("Failed to update schedule");
-      } finally {
         setIsSubmitting(false);
       }
     }
   };
 
+  const handleConfirmedConflictSubmit = () => {
+    // Get the current form values
+    const data = form.getValues();
+
+    // Format the times
+    const startTime = `${data.startHour}:${data.startMinute} ${data.startPeriod}`;
+    const endTime = `${data.endHour}:${data.endMinute} ${data.endPeriod}`;
+
+    // Find the selected items
+    const selectedSubject = subjects.find(
+      (subject) => subject.name === data.subjectName
+    );
+    const selectedRoom = rooms.find((room) => room.name === data.roomName);
+    const selectedInstructor = instructors.find(
+      (instructor) => instructor.name === data.instructorName
+    );
+
+    // Create updated schedule
+    const updatedSchedule = {
+      ...schedule,
+      subjectName: data.subjectName,
+      subjectId: selectedSubject?.id || schedule.subjectId,
+      subjectCode:
+        selectedSubject?.code ||
+        selectedSubject?.subjectCode ||
+        schedule.subjectCode,
+      roomName: data.roomName,
+      roomId: selectedRoom?.id || schedule.roomId,
+      instructorId: selectedInstructor?.id || schedule.instructorId,
+      instructorName: data.instructorName,
+      startTime,
+      endTime,
+      days: data.days,
+      color: data.color || "blue",
+      scheduleType: data.scheduleType || "lecture",
+      isLabComponent: data.scheduleType === "laboratory",
+    };
+
+    handleConfirmedUpdate(updatedSchedule);
+  };
+
+  // Handle confirmed update after conflict check
+  const handleConfirmedUpdate = async (updatedSchedule) => {
+    try {
+      // Call parent component's edit handler
+      await onEditSchedule(updatedSchedule);
+
+      // Show success message
+      toast.success("Schedule has been updated");
+
+      // Close the edit modal
+      onClose();
+    } catch (error) {
+      console.error("Error updating schedule:", error);
+      toast.error("Failed to update schedule");
+    } finally {
+      setIsSubmitting(false);
+      setShowConflictDialog(false);
+    }
+  };
+
+  // Watch individual fields to create stable dependencies for the useEffect hook.
+  const watchedDays = form.watch("days");
+  const watchedStartHour = form.watch("startHour");
+  const watchedStartMinute = form.watch("startMinute");
+  const watchedStartPeriod = form.watch("startPeriod");
+  const watchedEndHour = form.watch("endHour");
+  const watchedEndMinute = form.watch("endMinute");
+  const watchedEndPeriod = form.watch("endPeriod");
+  const watchedRoomName = form.watch("roomName");
+  const watchedInstructorName = form.watch("instructorName");
+
+  // useEffect for real-time conflict checking when days or time change.
+  useEffect(() => {
+    // Only run if a schedule is loaded and the necessary fields are populated.
+    if (
+      schedule &&
+      watchedDays?.length > 0 &&
+      watchedStartHour &&
+      watchedStartMinute &&
+      watchedStartPeriod &&
+      watchedEndHour &&
+      watchedEndMinute &&
+      watchedEndPeriod &&
+      watchedRoomName &&
+      watchedInstructorName
+    ) {
+      const startTime = `${watchedStartHour}:${watchedStartMinute} ${watchedStartPeriod}`;
+      const endTime = `${watchedEndHour}:${watchedEndMinute} ${watchedEndPeriod}`;
+
+      // Construct a temporary updated schedule object for checking.
+      const tempUpdatedSchedule = {
+        ...schedule,
+        roomName: watchedRoomName,
+        instructorName: watchedInstructorName,
+        startTime,
+        endTime,
+        days: watchedDays,
+      };
+
+      const detectedConflicts = checkForConflicts(tempUpdatedSchedule);
+      setConflicts(detectedConflicts);
+    }
+  }, [
+    watchedDays,
+    watchedStartHour,
+    watchedStartMinute,
+    watchedStartPeriod,
+    watchedEndHour,
+    watchedEndMinute,
+    watchedEndPeriod,
+    watchedRoomName,
+    watchedInstructorName,
+    schedule,
+    existingSchedules,
+  ]);
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setConflicts([]);
+          setShowConflictDialog(false);
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 sm:p-6 overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl">Edit Class Schedule</DialogTitle>
@@ -564,57 +733,56 @@ export default function EditScheduleModal({
             />
           </div>
 
-            <div className="space-y-2">
-              {/* Subject field */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">
-                  Subject <span className="text-destructive">*</span>
-                </label>
-                {form.formState.errors.subjectName && (
-                  <p className="text-xs text-destructive">
-                    {form.formState.errors.subjectName.message}
-                  </p>
-                )}
-              </div>
-              <Controller
-                control={form.control}
-                name="subjectName"
-                render={({ field }) => (
-                  <Select
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
-                    disabled={loadingOptions}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subjects.length > 0 ? (
-                        subjects.map((subject) => (
-                          <SelectItem
-                            key={`subject-${subject.id || "unknown"}`}
-                            value={
-                              subject.name ||
-                              `Subject ${subject.id || "unknown"}`
-                            }
-                          >
-                            {subject.code
-                              ? `${subject.code} - ${
-                                  subject.name || "Unknown Subject"
-                                }`
-                              : subject.name || "Unknown Subject"}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="p-2 text-center text-muted-foreground">
-                          No subjects available
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+          <div className="space-y-2">
+            {/* Subject field */}
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                Subject <span className="text-destructive">*</span>
+              </label>
+              {form.formState.errors.subjectName && (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.subjectName.message}
+                </p>
+              )}
             </div>
+            <Controller
+              control={form.control}
+              name="subjectName"
+              render={({ field }) => (
+                <Select
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                  disabled={loadingOptions}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.length > 0 ? (
+                      subjects.map((subject) => (
+                        <SelectItem
+                          key={`subject-${subject.id || "unknown"}`}
+                          value={
+                            subject.name || `Subject ${subject.id || "unknown"}`
+                          }
+                        >
+                          {subject.code
+                            ? `${subject.code} - ${
+                                subject.name || "Unknown Subject"
+                              }`
+                            : subject.name || "Unknown Subject"}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-muted-foreground">
+                        No subjects available
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
 
           {/* Time Selection */}
           <div className="space-y-2">
@@ -668,7 +836,9 @@ export default function EditScheduleModal({
                                 key={`start-hr-${hour}`}
                                 value={hour.toString()}
                                 disabled={
-                                  form.watch("startPeriod") === "PM" && hour > 8
+                                  form.watch("startPeriod") === "PM" &&
+                                  hour > 8 &&
+                                  hour < 12
                                 }
                               >
                                 {hour}
@@ -717,7 +887,7 @@ export default function EditScheduleModal({
                             // Adjust hour and minute when switching to PM
                             if (value === "PM") {
                               const hourNum = parseInt(form.watch("startHour"));
-                              if (hourNum > 8) {
+                              if (hourNum > 8 && hourNum !== 12) {
                                 form.setValue("startHour", "8");
                                 if (form.watch("startMinute") > "30") {
                                   form.setValue("startMinute", "30");
@@ -794,7 +964,9 @@ export default function EditScheduleModal({
                                 key={`end-hr-${hour}`}
                                 value={hour.toString()}
                                 disabled={
-                                  form.watch("endPeriod") === "PM" && hour > 8
+                                  form.watch("endPeriod") === "PM" &&
+                                  hour > 8 &&
+                                  hour < 12
                                 }
                               >
                                 {hour}
@@ -843,7 +1015,7 @@ export default function EditScheduleModal({
                             // Adjust hour and minute when switching to PM
                             if (value === "PM") {
                               const hourNum = parseInt(form.watch("endHour"));
-                              if (hourNum > 8) {
+                              if (hourNum > 8 && hourNum !== 12) {
                                 form.setValue("endHour", "8");
                                 if (form.watch("endMinute") > "30") {
                                   form.setValue("endMinute", "30");
@@ -883,14 +1055,14 @@ export default function EditScheduleModal({
 
           {/* Days Selection */}
           <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Day <span className="text-destructive">*</span>
-              </label>
-              {form.formState.errors.days && (
-                <p className="text-xs text-destructive">
-                  {form.formState.errors.days.message}
-                </p>
-              )}
+            <label className="text-sm font-medium">
+              Day <span className="text-destructive">*</span>
+            </label>
+            {form.formState.errors.days && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.days.message}
+              </p>
+            )}
             <div className="grid grid-cols-3 sm:grid-cols-7 gap-x-2 gap-y-3">
               {Object.entries(days).map(([value, label]) => (
                 <Controller
@@ -970,55 +1142,54 @@ export default function EditScheduleModal({
               />
             </div>
 
-          {/* Instructor field */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                Instructor <span className="text-destructive">*</span>
-              </label>
-              {form.formState.errors.instructorName && (
-                <p className="text-xs text-destructive">
-                  {form.formState.errors.instructorName.message}
-                </p>
-              )}
+            {/* Instructor field */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  Instructor <span className="text-destructive">*</span>
+                </label>
+                {form.formState.errors.instructorName && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.instructorName.message}
+                  </p>
+                )}
+              </div>
+              <Controller
+                control={form.control}
+                name="instructorName"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={loadingOptions}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select instructor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructors.length > 0 ? (
+                        instructors.map((instructor) => (
+                          <SelectItem
+                            key={`instructor-${instructor.id || "unknown"}`}
+                            value={
+                              instructor.name ||
+                              `Instructor ${instructor.id || "unknown"}`
+                            }
+                          >
+                            {instructor.name || "Unknown Instructor"}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-center text-muted-foreground">
+                          No instructors available
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-            <Controller
-              control={form.control}
-              name="instructorName"
-              render={({ field }) => (
-                <Select
-                  value={field.value || ""}
-                  onValueChange={field.onChange}
-                  disabled={loadingOptions}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select instructor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {instructors.length > 0 ? (
-                      instructors.map((instructor) => (
-                        <SelectItem
-                          key={`instructor-${instructor.id || "unknown"}`}
-                          value={
-                            instructor.name ||
-                            `Instructor ${instructor.id || "unknown"}`
-                          }
-                        >
-                          {instructor.name || "Unknown Instructor"}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-center text-muted-foreground">
-                        No instructors available
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
-            />
           </div>
-          </div>
-
 
           {/* Color Selection */}
           <div className="space-y-2">
@@ -1079,6 +1250,122 @@ export default function EditScheduleModal({
             />
           </div>
 
+          {/* conflicts alert */}
+          {conflicts.length > 0 && (
+            <Alert variant="destructive" className="bg-red-50 border-red-200">
+              <AlertTriangle className="h-5 w-5 mt-1 sm:mt-2" />
+              <AlertTitle className="text-sm sm:text-base">
+                Scheduling Conflicts Detected
+              </AlertTitle>
+              <AlertDescription className="text-xs sm:text-sm">
+                <p className="mb-2">
+                  This schedule conflicts with {conflicts.length} existing
+                  schedule(s).{" "}
+                  {conflicts.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="p-0 h-auto text-xs sm:text-sm underline text-blue-600 cursor-pointer"
+                      onClick={() => setShowConflictDialog(true)}
+                    >
+                      View conflict details
+                    </Button>
+                  )}
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Conflict Confirmation Dialog */}
+          <Dialog
+            open={showConflictDialog && conflicts.length > 0}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setShowConflictDialog(false);
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Schedule Conflicts Detected</DialogTitle>
+                <DialogDescription>
+                  There {conflicts.length === 1 ? "is" : "are"}{" "}
+                  {conflicts.length} scheduling{" "}
+                  {conflicts.length === 1 ? "conflict" : "conflicts"} with
+                  existing schedules. Do you want to proceed anyway?
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="max-h-[250px] overflow-y-auto mt-4 pr-2 space-y-4">
+                {Object.entries(
+                  conflicts.reduce((acc, conflict) => {
+                    if (!acc[conflict.type]) {
+                      acc[conflict.type] = [];
+                    }
+                    acc[conflict.type].push(conflict);
+                    return acc;
+                  }, {})
+                ).map(([type, group]) => {
+                  // Get the right icon and title from our helper object
+                  const details = conflictDetails[type] || {
+                    title: "Other Conflicts",
+                  };
+                  const IconComponent = details.Icon;
+
+                  return (
+                    <div key={type}>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-md">
+                        {IconComponent && (
+                          <IconComponent
+                            className={`h-5 w-5 ${details.className}`}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span>{details.title}</span>
+                      </h4>
+                      <ul className="list-none pl-4 border-l-2 ml-2.5 space-y-2.5">
+                        {group.map((conflict) => (
+                          <li
+                            key={conflict.id}
+                            className="text-sm flex items-start gap-3"
+                          >
+                            <div className="flex-shrink-0 pt-0.5">
+                              <Badge variant="outline">
+                                {conflict.subject}
+                              </Badge>
+                            </div>
+                            <span className="text-muted-foreground">
+                              {conflict.conflict}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowConflictDialog(false)}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmedConflictSubmit}
+                  className="cursor-pointer"
+                >
+                  Proceed Anyway
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Cancel and Save changes button */}
           <DialogFooter>
             <Button
               variant="ghost"

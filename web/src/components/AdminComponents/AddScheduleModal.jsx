@@ -12,7 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LoaderCircle, Plus, AlertTriangle } from "lucide-react";
+import {
+  LoaderCircle,
+  Plus,
+  AlertTriangle,
+  Building,
+  User,
+  Users,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -32,6 +39,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const conflictDetails = {
+  room: {
+    Icon: Building,
+    title: "Room Conflicts",
+    className: "text-blue-600",
+  },
+  instructor: {
+    Icon: User,
+    title: "Instructor Conflicts",
+    className: "text-purple-600",
+  },
+  section: {
+    Icon: Users,
+    title: "Section Schedule Conflicts",
+    className: "text-amber-700",
+  },
+  labRoom: {
+    Icon: Building,
+    title: "Laboratory Room Conflicts",
+    className: "text-blue-600",
+  },
+  labInstructor: {
+    Icon: User,
+    title: "Laboratory Instructor Conflicts",
+    className: "text-purple-600",
+  },
+  self: {
+    Icon: AlertTriangle,
+    title: "Internal Schedule Conflicts",
+    className: "text-red-600",
+  },
+};
+
 const COLOR_OPTIONS = [
   { value: "blue", label: "Blue", bg: "bg-blue-500", text: "text-white" },
   { value: "green", label: "Green", bg: "bg-green-500", text: "text-white" },
@@ -40,8 +80,8 @@ const COLOR_OPTIONS = [
   { value: "orange", label: "Orange", bg: "bg-orange-500", text: "text-white" },
   { value: "pink", label: "Pink", bg: "bg-pink-500", text: "text-white" },
   { value: "cyan", label: "Cyan", bg: "bg-cyan-500", text: "text-white" },
-  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-black" },
-  { value: "lime", label: "Lime", bg: "bg-lime-500", text: "text-black" },
+  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-white" },
+  { value: "lime", label: "Lime", bg: "bg-lime-500", text: "text-white" },
   { value: "teal", label: "Teal", bg: "bg-teal-500", text: "text-white" },
 ];
 
@@ -395,47 +435,10 @@ export default function AddScheduleModal({
     }
   }, [open, canAddSchedule]);
 
-  // Filter available rooms
+  // set available rooms
   useEffect(() => {
-    const {
-      roomType,
-      subject,
-      startHour,
-      startMinute,
-      startPeriod,
-      endHour,
-      endMinute,
-      endPeriod,
-      days,
-    } = formState;
-
-    if (
-      !startHour ||
-      !startMinute ||
-      !endHour ||
-      !endMinute ||
-      !Object.values(days).some((day) => day) ||
-      !subject ||
-      !roomType
-    ) {
-      setAvailableRooms([]);
-      return;
-    }
-
-    filterAvailableRooms();
-  }, [
-    formState.roomType,
-    formState.startHour,
-    formState.startMinute,
-    formState.startPeriod,
-    formState.endHour,
-    formState.endMinute,
-    formState.endPeriod,
-    formState.days,
-    formState.subject,
-    rooms,
-    existingSchedules,
-  ]);
+    setAvailableRooms(rooms);
+  }, [rooms]);
 
   // Check conflicts
   useEffect(() => {
@@ -480,78 +483,6 @@ export default function AddScheduleModal({
     existingSchedules,
   ]);
 
-  // Function to filter available rooms
-  const filterAvailableRooms = () => {
-    const {
-      roomType,
-      startHour,
-      startMinute,
-      startPeriod,
-      endHour,
-      endMinute,
-      endPeriod,
-      days,
-    } = formState;
-
-    // Filter rooms by type
-    const roomsByType = rooms.filter(
-      (room) =>
-        room.status === "available" &&
-        (!room.roomType || room.roomType === roomType)
-    );
-
-    if (roomsByType.length === 0) {
-      setAvailableRooms([]);
-      return;
-    }
-
-    // Create time strings for comparison
-    const startTime = `${startHour}:${startMinute} ${startPeriod}`;
-    const endTime = `${endHour}:${endMinute} ${endPeriod}`;
-
-    const activeDays = Object.entries(days)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([day]) => day);
-
-    // Check each room for conflicts
-    const available = roomsByType.filter((room) => {
-      const conflicts = existingSchedules.filter((schedule) => {
-        // Only consider conflicts for this room
-        if (schedule.roomId !== room.id) return false;
-
-        // Check time overlap
-        const scheduleStart = parseTime(schedule.startTime);
-        const scheduleEnd = parseTime(schedule.endTime);
-        const newStart = parseTime(startTime);
-        const newEnd = parseTime(endTime);
-
-        const timeOverlap =
-          newStart.totalMinutes <= scheduleEnd.totalMinutes &&
-          newEnd.totalMinutes >= scheduleStart.totalMinutes;
-
-        // Check day overlap
-        const dayOverlap = activeDays.some((day) =>
-          schedule.days.includes(day)
-        );
-
-        return timeOverlap && dayOverlap;
-      });
-
-      // Room is available if there are no conflicts
-      return conflicts.length === 0;
-    });
-
-    setAvailableRooms(available);
-
-    // Reset selected room if it's no longer available
-    if (
-      formState.room &&
-      !available.some((room) => room.id === formState.room)
-    ) {
-      dispatch({ type: "SET_FIELD", field: "room", value: "" });
-    }
-  };
-
   // Check for time conflicts
   const checkTimeConflict = (scheduleA, scheduleB) => {
     const startA = parseTime(scheduleA.startTime);
@@ -559,42 +490,31 @@ export default function AddScheduleModal({
     const startB = parseTime(scheduleB.startTime);
     const endB = parseTime(scheduleB.endTime);
 
-    // Schedule A starts or ends during Schedule B
-    const aOverlapsB =
-      (startA.totalMinutes < endB.totalMinutes &&
-        startA.totalMinutes >= startB.totalMinutes) ||
-      (endA.totalMinutes <= endB.totalMinutes &&
-        endA.totalMinutes > startB.totalMinutes);
+    // Schedule A starts during Schedule B (but not exactly at the end)
+    const aStartsDuringB =
+      startA.totalMinutes >= startB.totalMinutes &&
+      startA.totalMinutes < endB.totalMinutes;
 
-    // Schedule B starts or ends during Schedule A
-    const bOverlapsA =
-      (startB.totalMinutes < endA.totalMinutes &&
-        startB.totalMinutes >= startA.totalMinutes) ||
-      (endB.totalMinutes <= endA.totalMinutes &&
-        endB.totalMinutes > startA.totalMinutes);
+    // Schedule A ends during Schedule B (but not exactly at the start)
+    const aEndsDuringB =
+      endA.totalMinutes > startB.totalMinutes &&
+      endA.totalMinutes <= endB.totalMinutes;
 
-    // One schedule completely contains the other
+    // Schedule A completely contains Schedule B
     const aContainsB =
       startA.totalMinutes <= startB.totalMinutes &&
       endA.totalMinutes >= endB.totalMinutes;
+
+    // Schedule B completely contains Schedule A
     const bContainsA =
       startB.totalMinutes <= startA.totalMinutes &&
       endB.totalMinutes >= endA.totalMinutes;
 
-    // Schedules start or end at exactly the same time
-    const sameStartOrEnd =
-      startA.totalMinutes === startB.totalMinutes ||
-      startA.totalMinutes === endB.totalMinutes ||
-      endA.totalMinutes === startB.totalMinutes ||
-      endA.totalMinutes === endB.totalMinutes;
-
-    return (
-      aOverlapsB || bOverlapsA || aContainsB || bContainsA || sameStartOrEnd
-    );
+    // Return true if there's an actual time overlap (and not just adjacent times)
+    return aStartsDuringB || aEndsDuringB || aContainsB || bContainsA;
   };
 
   // Check for conflicts
-  // Fix for the checkConflicts function
   const checkConflicts = () => {
     const {
       startHour,
@@ -646,6 +566,30 @@ export default function AddScheduleModal({
       const dayOverlap = selectedDays.some((day) =>
         schedule.days.includes(day)
       );
+
+      // Only consider it a conflict if both time AND day overlap
+      const schedulesOverlap = timeOverlap && dayOverlap;
+
+      // Room conflict - requires time AND day overlap
+      if (schedulesOverlap && room === schedule.roomId) {
+        detectedConflicts.push({
+          id: `${schedule.id}-room`,
+          subject: schedule.subjectName,
+          type: "room",
+          conflict: `Room ${schedule.roomName} is already booked for ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+        });
+      }
+
+      // Instructor conflict - only if time AND day overlap
+      // This allows instructors to teach different subjects on the same day at different times
+      if (schedulesOverlap && instructor === schedule.instructorId) {
+        detectedConflicts.push({
+          id: `${schedule.id}-instructor`,
+          subject: schedule.subjectName,
+          type: "instructor",
+          conflict: `Instructor ${schedule.instructorName} is already teaching ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+        });
+      }
 
       if (timeOverlap && dayOverlap) {
         // Check each type of conflict independently
@@ -712,6 +656,29 @@ export default function AddScheduleModal({
         const labDayOverlap = selectedLabDays.some((day) =>
           schedule.days.includes(day)
         );
+
+        // Only if time AND day overlap
+        const labSchedulesOverlap = labTimeOverlap && labDayOverlap;
+
+        // Lab room conflict - only if time AND day overlap
+        if (labSchedulesOverlap && labRoom === schedule.roomId) {
+          detectedConflicts.push({
+            id: `${schedule.id}-labRoom`,
+            subject: schedule.subjectName,
+            type: "labRoom",
+            conflict: `Laboratory room ${schedule.roomName} is already booked for ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+          });
+        }
+
+        // Lab instructor conflict - only if time AND day overlap
+        if (labSchedulesOverlap && labInstructor === schedule.instructorId) {
+          detectedConflicts.push({
+            id: `${schedule.id}-labInstructor`,
+            subject: schedule.subjectName,
+            type: "labInstructor",
+            conflict: `Laboratory instructor ${schedule.instructorName} is already teaching ${schedule.subjectCode} (${schedule.startTime} - ${schedule.endTime})`,
+          });
+        }
 
         if (labTimeOverlap && labDayOverlap) {
           // Lab room conflict
@@ -876,8 +843,6 @@ export default function AddScheduleModal({
           name: roomData.roomNo,
           roomNo: roomData.roomNo,
           floor: roomData.floor,
-          status: roomData.status || "available",
-          roomType: roomData.roomType || formState.roomType || "lecture",
         };
       });
 
@@ -889,11 +854,6 @@ export default function AddScheduleModal({
       setLoading(false);
     }
   };
-  useEffect(() => {
-    if (rooms.length > 0 && open) {
-      filterAvailableRooms();
-    }
-  }, [rooms, open]);
 
   const validateForm = () => {
     const {
@@ -1030,12 +990,8 @@ export default function AddScheduleModal({
         id: newRoom.id,
         roomNo: newRoom.roomNo,
         floor: newRoom.floor,
-        status: newRoom.status || "available",
-        roomType: formState.roomType || "lecture",
       },
     ]);
-
-    setTimeout(filterAvailableRooms, 100);
 
     setTimeout(() => {
       if (availableRooms.some((room) => room.id === newRoom.id)) {
@@ -1142,8 +1098,6 @@ export default function AddScheduleModal({
       // Update room type for lecture room
       const roomRef = doc(db, "rooms", room);
       await updateDoc(roomRef, {
-        roomType: roomType,
-        status: "scheduled",
         updatedAt: new Date(),
       });
 
@@ -1191,7 +1145,6 @@ export default function AddScheduleModal({
         const labRoomRef = doc(db, "rooms", labRoom);
         await updateDoc(labRoomRef, {
           roomType: "laboratory",
-          status: "scheduled",
           updatedAt: new Date(),
         });
 
@@ -1235,7 +1188,7 @@ export default function AddScheduleModal({
         await onScheduleAdded(newSchedule);
       }
 
-      // toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
+      toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
       resetForm();
       setOpen(false);
     } catch (err) {
@@ -1285,7 +1238,6 @@ export default function AddScheduleModal({
       const roomRef = doc(db, "rooms", room);
       await updateDoc(roomRef, {
         roomType: roomType,
-        status: "scheduled",
         updatedAt: new Date(),
       });
 
@@ -1333,7 +1285,6 @@ export default function AddScheduleModal({
         const labRoomRef = doc(db, "rooms", labRoom);
         await updateDoc(labRoomRef, {
           roomType: "laboratory",
-          status: "scheduled",
           updatedAt: new Date(),
         });
 
@@ -1541,7 +1492,9 @@ export default function AddScheduleModal({
                                   key={`start-hr-${hour}`}
                                   value={hour.toString()}
                                   disabled={
-                                    formState.startPeriod === "PM" && hour > 8
+                                    formState.startPeriod === "PM" &&
+                                    hour > 8 &&
+                                    hour < 12
                                   }
                                 >
                                   {hour}
@@ -1601,7 +1554,7 @@ export default function AddScheduleModal({
                               // Adjust hour and minute when switching to PM
                               if (value === "PM") {
                                 const hourNum = parseInt(formState.startHour);
-                                if (hourNum > 8) {
+                                if (hourNum > 8 && hourNum !== 12) {
                                   dispatch({
                                     type: "SET_FIELD",
                                     field: "startHour",
@@ -1691,7 +1644,9 @@ export default function AddScheduleModal({
                                   key={`end-hr-${hour}`}
                                   value={hour.toString()}
                                   disabled={
-                                    formState.endPeriod === "PM" && hour > 8
+                                    formState.endPeriod === "PM" &&
+                                    hour > 8 &&
+                                    hour < 12
                                   }
                                 >
                                   {hour}
@@ -1751,7 +1706,7 @@ export default function AddScheduleModal({
                               // Adjust hour and minute when switching to PM
                               if (value === "PM") {
                                 const hourNum = parseInt(formState.endHour);
-                                if (hourNum > 8) {
+                                if (hourNum > 8 && hourNum !== 12) {
                                   dispatch({
                                     type: "SET_FIELD",
                                     field: "endHour",
@@ -1877,7 +1832,7 @@ export default function AddScheduleModal({
                                 placeholder={
                                   availableRooms.length
                                     ? "Select Lecture Room"
-                                    : "No available lecture rooms"
+                                    : "No rooms in system"
                                 }
                               />
                             </SelectTrigger>
@@ -1933,7 +1888,7 @@ export default function AddScheduleModal({
                                   ))
                               ) : (
                                 <SelectItem value="no-rooms" disabled>
-                                  No available rooms
+                                  No rooms in system
                                 </SelectItem>
                               )}
                             </SelectContent>
@@ -1943,18 +1898,6 @@ export default function AddScheduleModal({
                               {errors.room}
                             </p>
                           )}
-                          {availableRooms.length === 0 &&
-                            formState.roomType &&
-                            formState.subject &&
-                            Object.values(formState.days).some(
-                              (day) => day
-                            ) && (
-                              <p className="text-xs sm:text-sm text-amber-600 mt-1">
-                                No rooms available for selected time and day.
-                                Try selecting different time or day, or add a
-                                new room.
-                              </p>
-                            )}
                         </div>
 
                         {/* Instructor Selection */}
@@ -2056,7 +1999,8 @@ export default function AddScheduleModal({
                                       value={hour.toString()}
                                       disabled={
                                         formState.labStartPeriod === "PM" &&
-                                        hour > 8
+                                        hour > 8 &&
+                                        hour < 12
                                       }
                                     >
                                       {hour}
@@ -2118,7 +2062,7 @@ export default function AddScheduleModal({
                                     const hourNum = parseInt(
                                       formState.labStartHour
                                     );
-                                    if (hourNum > 8) {
+                                    if (hourNum > 8 && hourNum !== 12) {
                                       dispatch({
                                         type: "SET_FIELD",
                                         field: "labStartHour",
@@ -2210,7 +2154,8 @@ export default function AddScheduleModal({
                                       value={hour.toString()}
                                       disabled={
                                         formState.labEndPeriod === "PM" &&
-                                        hour > 8
+                                        hour > 8 &&
+                                        hour < 12
                                       }
                                     >
                                       {hour}
@@ -2272,7 +2217,7 @@ export default function AddScheduleModal({
                                     const hourNum = parseInt(
                                       formState.labEndHour
                                     );
-                                    if (hourNum > 8) {
+                                    if (hourNum > 8 && hourNum !== 12) {
                                       dispatch({
                                         type: "SET_FIELD",
                                         field: "labEndHour",
@@ -2381,7 +2326,7 @@ export default function AddScheduleModal({
                                   placeholder={
                                     availableRooms.length
                                       ? "Select Laboratory Room"
-                                      : "No available laboratory rooms"
+                                      : "No rooms in system"
                                   }
                                 />
                               </SelectTrigger>
@@ -2437,7 +2382,7 @@ export default function AddScheduleModal({
                                     ))
                                 ) : (
                                   <SelectItem value="no-rooms" disabled>
-                                    No available rooms
+                                    No rooms in system
                                   </SelectItem>
                                 )}
                               </SelectContent>
@@ -2723,7 +2668,6 @@ export default function AddScheduleModal({
                     <p className="mb-2">
                       This schedule conflicts with {conflicts.length} existing
                       schedule(s).{" "}
-                      {/* Remove the detailed listing from here since it's duplicated */}
                       {conflicts.length > 0 && (
                         <Button
                           type="button"
@@ -2741,10 +2685,14 @@ export default function AddScheduleModal({
 
               {/* Conflict Confirmation Dialog */}
               <Dialog
-                open={showConflictDialog}
-                onOpenChange={setShowConflictDialog}
+                open={showConflictDialog && conflicts.length > 0}
+                onOpenChange={(isOpen) => {
+                  if (!isOpen) {
+                    setShowConflictDialog(false);
+                  }
+                }}
               >
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[450px]">
                   <DialogHeader>
                     <DialogTitle>Schedule Conflicts Detected</DialogTitle>
                     <DialogDescription>
@@ -2755,58 +2703,53 @@ export default function AddScheduleModal({
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="max-h-[200px] overflow-y-auto mt-4">
-                    <div className="space-y-3">
-                      {/* Group conflicts by type */}
-                      {[...new Set(conflicts.map((c) => c.type))].map(
-                        (type) => (
-                          <div key={type}>
-                            <h4 className="font-semibold mb-1 capitalize">
-                              {type === "room"
-                                ? "Room Conflicts"
-                                : type === "instructor"
-                                ? "Instructor Conflicts"
-                                : type === "section"
-                                ? "Section Schedule Conflicts"
-                                : type === "labRoom"
-                                ? "Laboratory Room Conflicts"
-                                : type === "labInstructor"
-                                ? "Laboratory Instructor Conflicts"
-                                : type === "self"
-                                ? "Self Conflicts"
-                                : "Other Conflicts"}
-                            </h4>
-                            <ul className="list-disc pl-5 space-y-1">
-                              {conflicts
-                                .filter((conflict) => conflict.type === type)
-                                .map((conflict) => (
-                                  <li
-                                    key={`${conflict.type}-${conflict.id}`}
-                                    className="text-sm"
-                                  >
-                                    <Badge
-                                      variant="outline"
-                                      className={`mr-1 text-[10px] sm:text-xs ${
-                                        type === "room" || type === "labRoom"
-                                          ? "bg-blue-50 border-blue-300 text-blue-700"
-                                          : type === "instructor" ||
-                                            type === "labInstructor"
-                                          ? "bg-purple-50 border-purple-300 text-purple-700"
-                                          : type === "section"
-                                          ? "bg-amber-50 border-amber-300 text-amber-700"
-                                          : "bg-red-50 border-red-300 text-red-700"
-                                      }`}
-                                    >
-                                      {conflict.subject}
-                                    </Badge>
-                                    {conflict.conflict}
-                                  </li>
-                                ))}
-                            </ul>
-                          </div>
-                        )
-                      )}
-                    </div>
+                  <div className="max-h-[250px] overflow-y-auto mt-4 pr-2 space-y-4">
+                    {Object.entries(
+                      conflicts.reduce((acc, conflict) => {
+                        if (!acc[conflict.type]) {
+                          acc[conflict.type] = [];
+                        }
+                        acc[conflict.type].push(conflict);
+                        return acc;
+                      }, {})
+                    ).map(([type, group]) => {
+                      // Get the right icon and title from our helper object
+                      const details = conflictDetails[type] || {
+                        title: "Other Conflicts",
+                      };
+                      const IconComponent = details.Icon;
+
+                      return (
+                        <div key={type}>
+                          <h4 className="font-semibold mb-2 flex items-center gap-2 text-md">
+                            {IconComponent && (
+                              <IconComponent
+                                className={`h-5 w-5 ${details.className}`}
+                                aria-hidden="true"
+                              />
+                            )}
+                            <span>{details.title}</span>
+                          </h4>
+                          <ul className="list-none pl-4 border-l-2 ml-2.5 space-y-2.5">
+                            {group.map((conflict) => (
+                              <li
+                                key={conflict.id}
+                                className="text-sm flex items-start gap-3"
+                              >
+                                <div className="flex-shrink-0 pt-0.5">
+                                  <Badge variant="outline">
+                                    {conflict.subject}
+                                  </Badge>
+                                </div>
+                                <span className="text-muted-foreground">
+                                  {conflict.conflict}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <DialogFooter className="mt-6">
@@ -2860,7 +2803,7 @@ export default function AddScheduleModal({
                     {loading ? (
                       <>
                         <LoaderCircle className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                        Adding...
+                        Adding schedule...
                       </>
                     ) : (
                       "Add"

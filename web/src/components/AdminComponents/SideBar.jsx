@@ -91,73 +91,21 @@ const items = {
           title: "School Year & Semester",
           url: "/admin/academic-year-semester",
           icon: BookOpen,
-          // items: [
-          //   {
-          //     title: "View Academic Years",
-          //     url: "/admin/academic-year",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
-        // {
-        //   title: "Semester",
-        //   url: "/admin/semester",
-        //   icon: Calendar,
-        //   items: [
-        //     {
-        //       title: "View Semesters",
-        //       url: "/admin/semester",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
         {
           title: "Department & Course",
           url: "/admin/department-course",
           icon: Building2,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
-        // {
-        //   title: "Course",
-        //   url: "/admin/course",
-        //   icon:  LayoutList,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
         {
           title: "Year Level & Section",
           url: "/admin/year-level-section",
           icon: Layers,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
         {
           title: "Subject",
           url: "/admin/subject",
           icon: BookText,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
         {
           title: "Schedule",
@@ -171,11 +119,6 @@ const items = {
             },
           ],
         },
-        // {
-        //   title: "Schedules",
-        //   url: "/admin/schedules",
-        //   icon: Calendar,
-        // },
       ],
     },
     {
@@ -212,21 +155,10 @@ const items = {
             },
           ],
         },
-         {
-                  title: "Academic Heads",
-                  url: "/admin/academic-heads",
-                },
         {
           title: "Archives",
           url: "/admin/archives",
           icon: Archive,
-          // items: [
-          //   {
-          //     title: "View Archive Users",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
       ],
     },
