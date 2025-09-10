@@ -120,9 +120,18 @@ export default function AddSubjectModal({
       const subjectPath = `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.selectedDeptId}/courses/${session.selectedCourseId}/year_levels/${session.selectedYearLevelId}/subjects`;
       const newSubjectData = {
         ...subjectFormData,
+        status: "Pending",
         units: parseFloat(subjectFormData.units),
         withLaboratory: subjectFormData.withLaboratory || false,
         createdAt: serverTimestamp(),
+        academicYearId: session.id,
+        semesterId: session.semesterId,
+        departmentId: session.selectedDeptId,
+        courseId: session.selectedCourseId,
+        yearLevelId: session.selectedYearLevelId,
+        departmentName: session.selectedDeptName || null,
+        courseName: session.selectedCourseName || null,
+        yearLevelName: session.selectedYearLevelName || null,
       };
 
       const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
