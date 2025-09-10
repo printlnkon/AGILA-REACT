@@ -171,7 +171,7 @@ const createColumns = (handleArchiveUser) => [
     className: "block md:hidden",
     enableHiding: true,
   },
-    // student no. column
+  // student no. column
   {
     id: "studentNumber",
     accessorKey: "studentNumber",
@@ -189,7 +189,7 @@ const createColumns = (handleArchiveUser) => [
     className: "hidden md:table-cell",
     enableHiding: true,
   },
-   // role column
+  // role column
   {
     accessorKey: "role",
     header: "Role",
@@ -635,7 +635,8 @@ export default function AccountsTable() {
           {/* search + filters */}
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
             {/* skeleton for search box */}
-            <Skeleton className="relative w-full sm:max-w-xs h-9" />
+            <Skeleton className="h-9 w-48 flex-1" />
+
             {/* skeleton for filter by role */}
             <Skeleton className="h-9 w-full sm:w-36" />
             {/* skeleton for filter columns */}
@@ -800,7 +801,7 @@ export default function AccountsTable() {
               {globalFilter && (
                 <button
                   onClick={() => setGlobalFilter("")}
-                  className="p-1 mr-2 hover:bg-transparent rounded-full cursor-pointer"
+                  className="p-1 mr-2 hover:bg-primary/10 rounded-full cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -811,7 +812,7 @@ export default function AccountsTable() {
           {/* filter by role */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
@@ -851,7 +852,9 @@ export default function AccountsTable() {
                   <Button
                     variant="ghost"
                     className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                    onClick={() => table.getColumn("role")?.setFilterValue(undefined)}
+                    onClick={() =>
+                      table.getColumn("role")?.setFilterValue(undefined)
+                    }
                   >
                     Clear Filter
                   </Button>
@@ -863,9 +866,8 @@ export default function AccountsTable() {
           {/* filter columns */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Columns2 className="mr-2 h-4 w-4" /> Filter Columns{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button className="w-full sm:w-auto cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -1142,7 +1144,7 @@ export default function AccountsTable() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-          
+
           {/* Batch Archive Dialog */}
           <Dialog
             open={showBatchArchiveDialog}
@@ -1167,7 +1169,7 @@ export default function AccountsTable() {
                 {" "}
                 {/* Responsive button layout */}
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
                   className="w-full sm:w-auto cursor-pointer"
                 >

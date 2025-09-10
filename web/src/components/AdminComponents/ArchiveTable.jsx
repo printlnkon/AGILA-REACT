@@ -70,6 +70,7 @@ import {
   X,
   RotateCcw,
   FolderArchive,
+  UserRoundSearch,
 } from "lucide-react";
 import {
   flexRender,
@@ -664,13 +665,17 @@ export default function ArchiveTable() {
           {/* skeleton for subtitle */}
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        <div className="flex items-center gap-2 py-4">
-          {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
 
-          {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-2" />
-          <Skeleton className="h-9 w-36 ml-2" />
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+            {/* skeleton for search box */}
+            <Skeleton className="h-9 w-48 flex-1" />
+
+            {/* skeleton for filter by role */}
+            <Skeleton className="h-9 w-full sm:w-36" />
+            {/* skeleton for filter columns */}
+            <Skeleton className="h-9 w-full sm:w-36" />
+          </div>
         </div>
 
         {/* skeleton for table */}
@@ -787,10 +792,10 @@ export default function ArchiveTable() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 py-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* batch restore & delete selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Button
               variant="ghost"
               size="sm"
@@ -821,95 +826,115 @@ export default function ArchiveTable() {
           </div>
         )}
 
-        {/* search */}
-        <div className="relative max-w-sm flex-1">
-          {/* search icon */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search archived users..."
-            value={globalFilter ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-              setGlobalFilter(value);
-            }}
-            className="pl-10 max-w-sm"
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {/* clear button */}
-            {globalFilter && (
-              <button
-                onClick={() => setGlobalFilter("")}
-                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* filter by role */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="cursor-pointer ml-2">
-              <Search /> Filter By Role <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuCheckboxItem
-              checked={table.getColumn("role")?.getFilterValue() === undefined}
-              onCheckedChange={() => {
-                table.getColumn("role")?.setFilterValue(undefined);
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+          {/* search */}
+          <div className="relative w-full sm:max-w-xs">
+            {/* search icon */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search archived users..."
+              value={globalFilter ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                setGlobalFilter(value);
               }}
-            >
-              All Roles
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {["academic head", "program head", "teacher", "student"].map(
-              (role) => (
-                <DropdownMenuCheckboxItem
-                  key={role}
-                  checked={table.getColumn("role")?.getFilterValue() === role}
-                  onCheckedChange={(checked) => {
-                    table
-                      .getColumn("role")
-                      ?.setFilterValue(checked ? role : undefined);
-                  }}
-                  className="capitalize"
+              className="pl-10 w-full"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+              {/* clear button */}
+              {globalFilter && (
+                <button
+                  onClick={() => setGlobalFilter("")}
+                  className="p-1 mr-2 hover:bg-primary/10 rounded-full cursor-pointer"
                 >
-                  {role.replace("_", " ")}
-                </DropdownMenuCheckboxItem>
-              )
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
 
-        {/* filter columns */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-2 cursor-pointer">
-              <Columns2 /> Filter Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
+          {/* filter by role */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="cursor-pointer">
+                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                checked={
+                  table.getColumn("role")?.getFilterValue() === undefined
+                }
+                onCheckedChange={() => {
+                  table.getColumn("role")?.setFilterValue(undefined);
+                }}
+              >
+                All Roles
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              {["academic head", "program head", "teacher", "student"].map(
+                (role) => (
                   <DropdownMenuCheckboxItem
-                    key={column.id}
+                    key={role}
+                    checked={table.getColumn("role")?.getFilterValue() === role}
+                    onCheckedChange={(checked) => {
+                      table
+                        .getColumn("role")
+                        ?.setFilterValue(checked ? role : undefined);
+                    }}
                     className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
+                  >
+                    {role.replace("_", " ")}
+                  </DropdownMenuCheckboxItem>
+                )
+              )}
+              {/* Clear filters button */}
+              {table.getColumn("role")?.getFilterValue() !== undefined && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    onClick={() =>
+                      table.getColumn("role")?.setFilterValue(undefined)
                     }
                   >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                    Clear Filter
+                  </Button>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* filter columns */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* data table */}
