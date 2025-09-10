@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "@/api/firebase";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   collection,
   getDocs,
@@ -16,8 +17,6 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
-  query,
-  where,
 } from "firebase/firestore";
 import {
   Dialog,
@@ -88,7 +87,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
+import { useProgramHeadProfile } from "@/context/ProgramHeadProfileContext";
+import { useTeacherProfile } from "@/context/TeacherProfileContext";
 import AddStaffAccountModal from "@/components/AdminComponents/AddStaffAccountModal";
 
 // Action handlers
@@ -265,54 +266,54 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   },
 
   // date created
-  //   {
-  //     id: "Date Created",
-  //     accessorKey: "createdAt",
-  //     header: "Date Created",
-  //     cell: ({ row }) => {
-  //       const timestamp = row.original.createdAt;
-  //       if (!timestamp) return <div>-</div>;
+  {
+    id: "Date Created",
+    accessorKey: "createdAt",
+    header: "Date Created",
+    cell: ({ row }) => {
+      const timestamp = row.original.createdAt;
+      if (!timestamp) return <div>-</div>;
 
-  //       try {
-  //         // convert timestamp to date, handles both Firestore Timestamps and date strings
-  //         const date = timestamp.toDate
-  //           ? timestamp.toDate()
-  //           : new Date(timestamp);
+      try {
+        // convert timestamp to date, handles both Firestore Timestamps and date strings
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
 
-  //         // check if the created date is valid before formatting
-  //         if (isNaN(date.getTime())) {
-  //           return <div>Invalid Date</div>;
-  //         }
+        // check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
 
-  //         return <div>{format(date, "MMMM do, yyyy")}</div>;
-  //       } catch (error) {
-  //         return <div>Invalid Date</div>;
-  //       }
-  //     },
-  //   },
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
+    },
+  },
   // last updated
-  //   {
-  //     id: "Last Updated",
-  //     accessorKey: "updatedAt",
-  //     header: "Last Updated",
-  //     cell: ({ row }) => {
-  //       const timestamp = row.original.updatedAt;
-  //       if (!timestamp) return <div>-</div>;
-  //       try {
-  //         // convert timestamp to date
-  //         const date = timestamp.toDate
-  //           ? timestamp.toDate()
-  //           : new Date(timestamp);
-  //         // Check if the created date is valid before formatting
-  //         if (isNaN(date.getTime())) {
-  //           return <div>Invalid Date</div>;
-  //         }
-  //         return <div>{format(date, "MMMM do, yyyy")}</div>;
-  //       } catch (error) {
-  //         return <div>Invalid Date</div>;
-  //       }
-  //     },
-  //   },
+  {
+    id: "Last Updated",
+    accessorKey: "updatedAt",
+    header: "Last Updated",
+    cell: ({ row }) => {
+      const timestamp = row.original.updatedAt;
+      if (!timestamp) return <div>-</div>;
+      try {
+        // convert timestamp to date
+        const date = timestamp.toDate
+          ? timestamp.toDate()
+          : new Date(timestamp);
+        // Check if the created date is valid before formatting
+        if (isNaN(date.getTime())) {
+          return <div>Invalid Date</div>;
+        }
+        return <div>{format(date, "MMMM do, yyyy")}</div>;
+      } catch (error) {
+        return <div>Invalid Date</div>;
+      }
+    },
+  },
 
   // status column
   {
@@ -442,6 +443,11 @@ export default function StaffTable() {
   const [roleFilter, setRoleFilter] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // view profile contexts
+  const { setSelectedAcademicHead } = useAcademicHeadProfile();
+  const { setSelectedProgramHead } = useProgramHeadProfile();
+  const { setSelectedTeacher } = useTeacherProfile();
+
   // navigate to staff profile
   const navigate = useNavigate();
 
@@ -455,16 +461,19 @@ export default function StaffTable() {
     // navigate to the appropriate pofile page based on role
     switch (user.role) {
       case "Academic Head":
+        setSelectedAcademicHead(user);
         navigate(`/admin/academic-heads/profile`, {
           state: { userId: user.id },
         });
         break;
       case "Program Head":
+        setSelectedProgramHead(user);
         navigate(`/admin/program-heads/profile`, {
           state: { userId: user.id },
         });
         break;
       case "Teacher":
+        setSelectedTeacher(user);
         navigate(`/admin/teachers/profile`, { state: { userId: user.id } });
         break;
       default:
@@ -725,7 +734,7 @@ export default function StaffTable() {
           {/* search + filters */}
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
             {/* skeleton for search box */}
-            <Skeleton className="relative w-full sm:max-w-xs h-9" />
+            <Skeleton className="h-9 w-48 flex-1" />
 
             {/* skeleton for filter by role */}
             <Skeleton className="h-9 w-full sm:w-36" />
@@ -894,7 +903,7 @@ export default function StaffTable() {
               {globalFilter && (
                 <button
                   onClick={() => setGlobalFilter("")}
-                  className="p-1 mr-2 hover:bg-transparent rounded-full cursor-pointer"
+                  className="p-1 mr-2 hover:bg-primary/10 rounded-full cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -905,7 +914,7 @@ export default function StaffTable() {
           {/* filter by role */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="cursor-pointer">
+              <Button className="cursor-pointer">
                 <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
@@ -962,7 +971,7 @@ export default function StaffTable() {
           {/* filter columns */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="cursor-pointer">
+              <Button className="cursor-pointer">
                 <Columns2 /> Filter Columns <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
