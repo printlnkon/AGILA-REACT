@@ -39,7 +39,7 @@ export default function NavBar() {
           {/* logo */}
           <a href="/" className="flex items-center">
             <img
-              src="src/assets/images/AGILA_A.svg"
+              src="/AGILA_A.svg"
               alt="AGILA LOGO"
               className="h-12 w-auto"
               loading="lazy"

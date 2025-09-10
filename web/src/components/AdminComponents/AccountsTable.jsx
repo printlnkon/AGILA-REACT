@@ -180,11 +180,11 @@ const createColumns = (handleArchiveUser) => [
     className: "hidden md:table-cell",
     enableHiding: true,
   },
-  // employee id
+  // employee no. column
   {
     id: "employeeNumber",
     accessorKey: "employeeNumber",
-    header: "Employee I.D",
+    header: "Employee No.",
     cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
     className: "hidden md:table-cell",
     enableHiding: true,
@@ -192,10 +192,20 @@ const createColumns = (handleArchiveUser) => [
   // role column
   {
     accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Role
+          <ArrowUpDown />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("role") || "N/A"}</div>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
     },
   },
   // photo column
@@ -970,7 +980,7 @@ export default function AccountsTable() {
         </div>
 
         {/* rows per page */}
-        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4 w-full sm:w-auto">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">
               Rows per page
