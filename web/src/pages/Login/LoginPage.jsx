@@ -85,12 +85,15 @@ export default function LoginPage() {
             <div className="h-16 bg-gradient-to-r from-blue-800 to-blue-900 relative">
               <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
                 <div className="bg-white rounded-full p-2 shadow-md">
-                  <div className="bg-blue-900 rounded-full p-3">
-                    <img
-                      src="/assets/images/eagle_head_black.svg"
-                      alt="AGILA"
-                      className="h-8 w-8 invert"
-                    />
+                  {/* logo */}
+                  <div className="rounded-full flex items-center p-3">
+                    <Link to="/">
+                      <img
+                        src="src/assets/images/AGILA_A.svg"
+                        alt="AGILA LOGO"
+                        className="h-12 w-auto"
+                      />
+                    </Link>
                   </div>
                 </div>
               </div>
