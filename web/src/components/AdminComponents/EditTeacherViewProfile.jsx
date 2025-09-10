@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function ProgramHeadEditViewProfile({
-  programHead,
+export default function EditTeacherViewProfile({
+  teacher,
   onSave,
   onCancel,
   academicData,
@@ -35,28 +35,67 @@ export default function ProgramHeadEditViewProfile({
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (programHead && academicData) {
-      // Find the ID based on the program head's department name
+    if (teacher && academicData) {
       const department = academicData.departments.find(
-        (d) => d.departmentName === programHead.departmentName
+        (d) => d.departmentName === teacher.departmentName
       );
 
+      const course = department
+        ? academicData.courses.find(
+            (c) =>
+              c.courseName === teacher.courseName &&
+              c.departmentId === department.id
+          )
+        : null;
+
+      const yearLevel = course
+        ? academicData.yearLevels.find(
+            (y) =>
+              y.yearLevelName === teacher.yearLevelName &&
+              y.courseId === course.id
+          )
+        : null;
+
+      const section = yearLevel
+        ? academicData.sections.find(
+            (s) =>
+              s.sectionName === teacher.sectionName &&
+              s.yearLevelId === yearLevel.id
+          )
+        : null;
+
       setFormData({
-        ...programHead,
+        ...teacher,
         departmentId: department?.id || "",
+        courseId: course?.id || "",
+        yearLevelId: yearLevel?.id || "",
+        sectionId: section?.id || "",
       });
     }
-  }, [programHead, academicData]);
+  }, [teacher, academicData]);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
+  // handler for select inputs
   const handleSelectChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+      ...(field === "departmentId" && {
+        courseId: "",
+        yearLevelId: "",
+        sectionId: "",
+      }),
+      ...(field === "courseId" && {
+        yearLevelId: "",
+        sectionId: "",
+      }),
+      ...(field === "yearLevelId" && {
+        sectionId: "",
+      }),
     }));
   };
 
@@ -73,24 +112,33 @@ export default function ProgramHeadEditViewProfile({
       return;
     }
 
-    const updatedProgramHeadData = {
+    const updatedTeacherData = {
       ...formData,
       departmentName:
         academicData.departments.find((d) => d.id === formData.departmentId)
           ?.departmentName || "",
+      courseName:
+        academicData.courses.find((c) => c.id === formData.courseId)
+          ?.courseName || "",
+      yearLevelName:
+        academicData.yearLevels.find((y) => y.id === formData.yearLevelId)
+          ?.yearLevelName || "",
+      sectionName:
+        academicData.sections.find((s) => s.id === formData.sectionId)
+          ?.sectionName || "",
     };
 
     if (selectedImage) {
       const storageRef = ref(
         storage,
-        `programHeadsPhoto/${programHead.employeeNumber}/${selectedImage.name}`
+        `teachersPhoto/${teacher.employeeNumber}/${selectedImage.name}`
       );
       await uploadBytes(storageRef, selectedImage);
       const photoURL = await getDownloadURL(storageRef);
-      updatedProgramHeadData.photoURL = photoURL;
+      updatedTeacherData.photoURL = photoURL;
     }
 
-    onSave(updatedProgramHeadData);
+    onSave(updatedTeacherData);
   };
 
   if (
@@ -124,13 +172,14 @@ export default function ProgramHeadEditViewProfile({
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* edit profile pic */}
+        {/* edit profile picture */}
         <Card className="w-full max-w-sm mx-auto lg:mx-0">
           <CardHeader>
             <div className="font-semibold text-lg sm:text-xl">
               Edit Profile Picture
             </div>
           </CardHeader>
+          {/* edit profile picture */}
           <CardContent className="p-4 sm:p-6 flex flex-col items-center">
             <div className="relative w-36 h-36 mb-4 rounded-full group">
               {selectedImage || formData.photoURL ? (
@@ -146,7 +195,9 @@ export default function ProgramHeadEditViewProfile({
                 />
               ) : (
                 <div className="w-full h-full rounded-full border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold select-none">
-                  {`${(formData.firstName?.charAt(0) || "")}${(formData.lastName?.charAt(0) || "")}`}
+                  {`${formData.firstName?.charAt(0) || ""}${
+                    formData.lastName?.charAt(0) || ""
+                  }`}
                 </div>
               )}
               <div
@@ -172,14 +223,16 @@ export default function ProgramHeadEditViewProfile({
         </Card>
 
         <div className="w-full flex flex-col gap-4">
+          {/* edit teach info */}
           <Card className="w-full">
             <CardHeader>
               <div className="font-semibold text-lg sm:text-xl">
-                Edit Program Head Information
+                Edit Teacher Information
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                {/* first name */}
                 <div>
                   <Label
                     htmlFor="firstName"
@@ -194,6 +247,7 @@ export default function ProgramHeadEditViewProfile({
                     className="text-sm"
                   />
                 </div>
+                {/* middle name */}
                 <div>
                   <Label
                     htmlFor="middleName"
@@ -208,6 +262,7 @@ export default function ProgramHeadEditViewProfile({
                     className="text-sm"
                   />
                 </div>
+                {/* last name */}
                 <div>
                   <Label
                     htmlFor="lastName"
@@ -222,6 +277,7 @@ export default function ProgramHeadEditViewProfile({
                     className="text-sm"
                   />
                 </div>
+                {/* suffix */}
                 <div>
                   <Label
                     htmlFor="suffix"
@@ -237,6 +293,7 @@ export default function ProgramHeadEditViewProfile({
                     placeholder="e.g., Jr., Sr., III"
                   />
                 </div>
+                {/* email */}
                 <div>
                   <Label
                     htmlFor="email"
@@ -252,6 +309,7 @@ export default function ProgramHeadEditViewProfile({
                     className="text-sm"
                   />
                 </div>
+                {/* birthday */}
                 <div>
                   <Label
                     htmlFor="dateOfBirth"
@@ -266,8 +324,9 @@ export default function ProgramHeadEditViewProfile({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={`w-full text-left font-normal justify-between ${!formData.dateOfBirth && "text-muted-foreground"
-                          }`}
+                        className={`w-full text-left font-normal justify-between ${
+                          !formData.dateOfBirth && "text-muted-foreground"
+                        }`}
                       >
                         {formData.dateOfBirth ? (
                           format(new Date(formData.dateOfBirth), "PPP")
@@ -295,11 +354,12 @@ export default function ProgramHeadEditViewProfile({
                         captionLayout="dropdown"
                         initialFocus
                         fromYear={1950}
-                        toYear={new Date().getFullYear() - 25}
+                        toYear={new Date().getFullYear() - 25} // Minimum age for teachers
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
+                {/* gender */}
                 <div>
                   <Label
                     htmlFor="gender"
@@ -326,6 +386,7 @@ export default function ProgramHeadEditViewProfile({
             </CardContent>
           </Card>
 
+          {/* edit acad info */}
           <Card className="w-full">
             <CardHeader>
               <div className="font-semibold text-lg sm:text-xl">
@@ -334,6 +395,7 @@ export default function ProgramHeadEditViewProfile({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                {/* department */}
                 <div>
                   <Label
                     htmlFor="departmentId"
@@ -351,11 +413,132 @@ export default function ProgramHeadEditViewProfile({
                       <SelectValue placeholder="Select a Department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {academicData.departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.departmentName}
-                        </SelectItem>
-                      ))}
+                      {[...academicData.departments]
+                        .sort((a, b) =>
+                          a.departmentName.localeCompare(b.departmentName)
+                        )
+                        .map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.departmentName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* course */}
+                <div>
+                  <Label
+                    htmlFor="courseId"
+                    className="text-xs font-semibold text-muted-foreground mb-2"
+                  >
+                    Course
+                  </Label>
+                  <Select
+                    value={formData.courseId}
+                    onValueChange={(value) =>
+                      handleSelectChange("courseId", value)
+                    }
+                    disabled={!formData.departmentId}
+                  >
+                    <SelectTrigger className="text-sm w-full">
+                      <SelectValue placeholder="Select a Course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicData.courses
+                        .filter((c) => c.departmentId === formData.departmentId)
+                        .map((course) => (
+                          <SelectItem key={course.id} value={course.id}>
+                            {course.courseName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* year level */}
+                <div>
+                  <Label
+                    htmlFor="yearLevelId"
+                    className="text-xs font-semibold text-muted-foreground mb-2"
+                  >
+                    Year Level
+                  </Label>
+                  <Select
+                    value={formData.yearLevelId}
+                    onValueChange={(value) =>
+                      handleSelectChange("yearLevelId", value)
+                    }
+                    disabled={!formData.courseId}
+                  >
+                    <SelectTrigger className="text-sm w-full">
+                      <SelectValue placeholder="Select a Year Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicData.yearLevels
+                        .filter((y) => y.courseId === formData.courseId)
+                        .sort((a, b) => {
+                          const getYearLevel = (name) => {
+                            const match = name.match(/^(\d+)/);
+                            return match ? parseInt(match[0], 10) : 0;
+                          };
+                          return (
+                            getYearLevel(a.yearLevelName) -
+                            getYearLevel(b.yearLevelName)
+                          );
+                        })
+                        .map((level) => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.yearLevelName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* section */}
+                <div>
+                  <Label
+                    htmlFor="sectionId"
+                    className="text-xs font-semibold text-muted-foreground mb-2"
+                  >
+                    Section
+                  </Label>
+                  <Select
+                    value={formData.sectionId}
+                    onValueChange={(value) =>
+                      handleSelectChange("sectionId", value)
+                    }
+                    disabled={!formData.yearLevelId}
+                  >
+                    <SelectTrigger className="text-sm w-full">
+                      <SelectValue placeholder="Select a Section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicData.sections
+                        .filter((s) => s.yearLevelId === formData.yearLevelId)
+                        .sort((a, b) => {
+                          // extract number from section names (e.g., "BT-101" => 101)
+                          const getSectionNumber = (name) => {
+                            const match = name.match(/\d+/);
+                            return match ? parseInt(match[0], 10) : 0;
+                          };
+
+                          // sort section prefix (e.g., "BT")
+                          const prefixA = a.sectionName.split("-")[0];
+                          const prefixB = b.sectionName.split("-")[0];
+                          if (prefixA !== prefixB) {
+                            return prefixA.localeCompare(prefixB);
+                          }
+
+                          // sort by section number
+                          return (
+                            getSectionNumber(a.sectionName) -
+                            getSectionNumber(b.sectionName)
+                          );
+                        })
+                        .map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.sectionName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

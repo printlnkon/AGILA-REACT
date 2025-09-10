@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { useProgramHeadProfile } from "@/context/ProgramHeadProfileContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import ProgramHeadEditViewProfile from "@/components/AdminComponents/ProgramHeadEditViewProfile";
 import { db } from "@/api/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useActiveSession } from "@/context/ActiveSessionContext";
+import { useProgramHeadProfile } from "@/context/ProgramHeadProfileContext";
+import EditProgramHeadViewProfile from "@/components/AdminComponents/EditProgramHeadViewProfile";
 
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) {
@@ -102,7 +102,7 @@ export default function ProgramHeadViewProfile() {
           </div>
         </div>
         <div className="mt-4">
-          <ProgramHeadEditViewProfile
+          <EditProgramHeadViewProfile
             programHead={selectedProgramHead}
             onSave={handleSaveChanges}
             onCancel={handleCancelEdit}
