@@ -89,7 +89,7 @@ export default function LoginPage() {
                   <div className="rounded-full flex items-center p-3">
                     <Link to="/">
                       <img
-                        src="src/assets/images/AGILA_A.svg"
+                        src="/AGILA_A.svg"
                         alt="AGILA LOGO"
                         className="h-12 w-auto"
                       />

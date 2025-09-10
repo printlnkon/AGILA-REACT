@@ -301,11 +301,15 @@ export default function ClassesTable() {
                       <SelectValue placeholder="Select Department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.departmentName}
-                        </SelectItem>
-                      ))}
+                      {[...departments]
+                        .sort((a, b) =>
+                          a.departmentName.localeCompare(b.departmentName)
+                        )
+                        .map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.departmentName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -324,11 +328,15 @@ export default function ClassesTable() {
                       <SelectValue placeholder="Select Course" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.courseName}
-                        </SelectItem>
-                      ))}
+                      {[...courses]
+                        .sort((a, b) =>
+                          a.courseName.localeCompare(b.courseName)
+                        )
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.courseName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
