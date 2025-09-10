@@ -36,14 +36,16 @@ export default function NavBar() {
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
+          {/* logo */}
           <a href="/" className="flex items-center">
             <img
-              src="/assets/images/eagle_head_black.svg"
-              alt="AGILA Logo"
-              className="h-8 w-auto"
+              src="src/assets/images/AGILA_A.svg"
+              alt="AGILA LOGO"
+              className="h-12 w-auto"
               loading="lazy"
             />
-            <span className="ml-2 text-xl font-bold text-blue-900">AGILA</span>
+            {/* logo text */}
+            <span className="mt-2 text-2xl font-bold text-blue-900">GILA</span>
           </a>
 
           <div className="md:hidden">
