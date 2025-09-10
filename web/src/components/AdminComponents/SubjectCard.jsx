@@ -51,6 +51,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const getStatusVariant = (status) => {
+  switch (status) {
+    case "Approved":
+      return "success"; 
+    case "Pending":
+      return "warning"; 
+    case "Rejected":
+      return "destructive"; 
+    default:
+      return "secondary"; 
+  }
+};
+
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
@@ -177,6 +190,9 @@ export default function SubjectCard({
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Determine if the subject is approved to conditionally disable actions
+  const isApproved = subject.status === "Approved";
+
   // Reset form data when dialog opens or closes
   useEffect(() => {
     if (editDialogOpen) {
@@ -245,6 +261,8 @@ export default function SubjectCard({
         description: subjectFormData.description,
         units: parseFloat(subjectFormData.units),
         withLaboratory: subjectFormData.withLaboratory,
+        // Reset status to "Pending" after an admin-initiated edit
+        status: "Pending",
       };
 
       const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
@@ -302,13 +320,27 @@ export default function SubjectCard({
   return (
     <>
       <Card className="w-full transition-all hover:shadow-md">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-bold">
               {/* subj name */}
               {subject.subjectCode} - {subject.subjectName}
             </CardTitle>
             <div className="flex items-center gap-2">
+              {/* Added a Badge for the subject status */}
+              <Badge
+                className={
+                  subject.status === "Approved"
+                    ? "bg-green-600 text-white"
+                    : subject.status === "Pending"
+                    ? "bg-orange-600 text-white"
+                    : subject.status === "Rejected"
+                    ? "bg-red-600 text-white"
+                    : "bg-gray-300 text-black"
+                }
+              >
+                {subject.status || "Pending"}
+              </Badge>
               <Badge className="font-medium">Units: {subject.units}</Badge>
               <TooltipProvider>
                 <DropdownMenu>
@@ -328,21 +360,31 @@ export default function SubjectCard({
                     </TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => setEditDialogOpen(true)}
-                      className="text-primary cursor-pointer"
-                    >
-                      <Edit className="mr-2 h-4 w-4 text-primary" />
-                      <span>Edit</span>
-                    </DropdownMenuItem>
+                    {/* Conditionally render based on status */}
+                    {!isApproved && (
+                      <DropdownMenuItem
+                        onClick={() => setEditDialogOpen(true)}
+                        className="text-primary cursor-pointer"
+                      >
+                        <Edit className="mr-2 h-4 w-4 text-primary" />
+                        <span>Edit</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="text-destructive cursor-pointer"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                      <span>Delete</span>
-                    </DropdownMenuItem>
+                    {!isApproved && (
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-destructive cursor-pointer"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    )}
+                    {isApproved && (
+                       <DropdownMenuItem disabled>
+                         <span>No actions available for Approved subjects</span>
+                       </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TooltipProvider>
@@ -360,7 +402,7 @@ export default function SubjectCard({
         </CardHeader>
       </Card>
 
-      {/* edit subject dialog */}
+      {/* Edit Subject Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="w-full sm:max-w-xl md:max-w-2xl">
           <DialogHeader>

@@ -18,6 +18,8 @@ import { useActiveSession } from "@/context/ActiveSessionContext";
 import AddSubjectModal from "@/components/AdminComponents/AddSubjectModal";
 import SubjectCard from "@/components/AdminComponents/SubjectCard";
 
+// (Keep the helper function getYearLevelNumber as it is)
+
 // Helper function to get year level number for sorting
 const getYearLevelNumber = (name) => {
   const match = name && name.match(/^(\d+)/);
@@ -159,7 +161,9 @@ export default function SubjectTable() {
             subjectName: updatedSubject.subjectName,
             description: updatedSubject.description,
             units: updatedSubject.units,
-            withLaboratory: updatedSubject.withLaboratory
+            withLaboratory: updatedSubject.withLaboratory,
+            // Include the status in the update
+            status: updatedSubject.status, 
           };
         }
         return subject;
@@ -173,6 +177,8 @@ export default function SubjectTable() {
 
   const isNoActiveSession = !activeSession || !activeSession.id;
   const isNoActiveSemester = activeSession && !activeSession.semesterId;
+
+  // (Keep the rest of the component's JSX and logic as they are)
 
   if (loading || sessionLoading) {
     return (
@@ -283,19 +289,30 @@ export default function SubjectTable() {
         <>
           <div className="flex flex-col gap-4">
             <div>
-              <AddSubjectModal
-                isOpen={addDialogOpen}
-                onOpenChange={setAddDialogOpen}
-                onSubjectAdded={(newSubject) =>
-                  setSubjects([...subjects, newSubject])
-                }
-                session={{
-                  ...activeSession,
-                  selectedDeptId,
-                  selectedCourseId,
-                  selectedYearLevelId,
-                }}
-              />
+              {(() => {
+                const selectedDept = departments.find((d) => d.id === selectedDeptId);
+                const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+                const selectedYearLevel = yearLevels.find((yl) => yl.id === selectedYearLevelId);
+
+                return (
+                  <AddSubjectModal
+                    isOpen={addDialogOpen}
+                    onOpenChange={setAddDialogOpen}
+                    onSubjectAdded={(newSubject) =>
+                      setSubjects([...subjects, newSubject])
+                    }
+                    session={{
+                      ...activeSession,
+                      selectedDeptId,
+                      selectedCourseId,
+                      selectedYearLevelId,
+                      selectedDeptName: selectedDept ? selectedDept.departmentName : null,
+                      selectedCourseName: selectedCourse ? selectedCourse.courseName : null,
+                      selectedYearLevelName: selectedYearLevel ? selectedYearLevel.yearLevelName : null,
+                    }}
+                  />
+                );
+              })()}
             </div>
             {/* department, year level, and course filters */}
             <Card>

@@ -19,6 +19,8 @@ import ProgramHead from "@/pages/ProgramHead/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import StudentAttendance from "@/components/StudentComponents/Attendance";
+import StudentRequest from "@/components/StudentComponents/Request";
+import StudentProfile from "@/components/StudentComponents/Profile";
 import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
 import TeacherAttendance from "@/components/TeacherComponents/Attendance";
 import TeacherRequest from "@/components/TeacherComponents/Request";
@@ -27,6 +29,7 @@ import AcademicHeadAttendance from "@/components/AcademicHeadComponents/Attendan
 import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
 import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance";
 import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
+import ProgramHeadSubjectApproval from "@/components/ProgramHeadComponents/ProgramHeadSubjectApproval";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
@@ -145,6 +148,7 @@ function AppContent() {
         <Route index element={<ProgramHeadDashboard />} />
         <Route path="attendance" element={<ProgramHeadAttendance />} />
         <Route path="request" element={<ProgramHeadRequest />} />
+        <Route path="subjectapproval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}
@@ -158,6 +162,8 @@ function AppContent() {
       <Route path="/student" element={<ProtectedRoute roles={["student"]}><Student /></ProtectedRoute>}>
         <Route index element={<StudentDashboard />} />
         <Route path="attendance" element={<StudentAttendance />} />
+        <Route path="request" element={<StudentRequest />} />
+        <Route path="profile" element={<StudentProfile />} />
       </Route>
     </Routes>
   );

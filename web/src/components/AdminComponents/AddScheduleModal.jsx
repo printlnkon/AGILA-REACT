@@ -4,6 +4,8 @@ import {
   addDoc,
   getDocs,
   doc,
+  query,
+  where,
   updateDoc,
 } from "firebase/firestore";
 import { useState, useEffect, useReducer } from "react";
@@ -745,7 +747,9 @@ export default function AddScheduleModal({
         `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/subjects`
       );
 
-      const subjectsSnapshot = await getDocs(subjectsRef);
+      const q = query(subjectsRef, where("status", "==", "Approved"));
+
+      const subjectsSnapshot = await getDocs(q);
 
       if (subjectsSnapshot.empty) {
         setSubjects([]);
@@ -753,20 +757,28 @@ export default function AddScheduleModal({
         return;
       }
 
-      const subjectsList = subjectsSnapshot.docs.map((doc) => {
-        const subjectData = doc.data();
-        return {
-          id: doc.id,
-          subjectCode: subjectData.subjectCode || "",
-          subjectName: subjectData.subjectName || "",
-          code: subjectData.subjectCode || "",
-          name: subjectData.subjectName || "",
-          units: subjectData.units || 0,
-          description: subjectData.description || "",
-          ...subjectData,
-        };
-      });
+      const subjectsList = subjectsSnapshot.docs
+        .map((doc) => {
+          const s = doc.data();
+          return {
+            id: doc.id,
+            subjectCode: s.subjectCode || "",
+            subjectName: s.subjectName || "",
+            code: s.subjectCode || "",
+            name: s.subjectName || "",
+            units: s.units || 0,
+            description: s.description || "",
+            status: s.status || "Pending",
+            ...s,
+          };
+        })
+        .filter((s) => s.status === "Approved");
+
       setSubjects(subjectsList);
+
+      if (formState.subject && !subjectsList.some((s) => s.id === formState.subject)) {
+        dispatch({ type: "SET_FIELD", field: "subject", value: "" });
+      }
     } catch (error) {
       console.error("Error fetching subjects:", error);
       toast.error("Failed to load subjects");
