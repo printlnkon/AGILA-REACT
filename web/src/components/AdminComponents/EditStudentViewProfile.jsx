@@ -7,11 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import {
-  Calendar as CalendarIcon,
-  ArrowLeft,
-  Upload,
-} from "lucide-react";
+import { Calendar as CalendarIcon, ArrowLeft, Upload } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -26,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function StudentEditViewProfile({
+export default function EditStudentViewProfile({
   student,
   onSave,
   onCancel,
@@ -43,15 +39,30 @@ export default function StudentEditViewProfile({
       const department = academicData.departments.find(
         (d) => d.departmentName === student.departmentName
       );
-      const course = academicData.courses.find(
-        (c) => c.courseName === student.courseName
-      );
-      const yearLevel = academicData.yearLevels.find(
-        (y) => y.yearLevelName === student.yearLevelName
-      );
-      const section = academicData.sections.find(
-        (s) => s.sectionName === student.sectionName
-      );
+
+      const course = department
+        ? academicData.courses.find(
+            (c) =>
+              c.courseName === student.courseName &&
+              c.departmentId === department.id
+          )
+        : null;
+
+      const yearLevel = course
+        ? academicData.yearLevels.find(
+            (y) =>
+              y.yearLevelName === student.yearLevelName &&
+              y.courseId === course.id
+          )
+        : null;
+
+      const section = yearLevel
+        ? academicData.sections.find(
+            (s) =>
+              s.sectionName === student.sectionName &&
+              s.yearLevelId === yearLevel.id
+          )
+        : null;
 
       setFormData({
         ...student,
@@ -184,7 +195,9 @@ export default function StudentEditViewProfile({
                 />
               ) : (
                 <div className="w-full h-full rounded-full border-4 border-white shadow-md flex items-center justify-center text-4xl font-bold select-none">
-                  {`${(formData.firstName?.charAt(0) || "")}${(formData.lastName?.charAt(0) || "")}`}
+                  {`${formData.firstName?.charAt(0) || ""}${
+                    formData.lastName?.charAt(0) || ""
+                  }`}
                 </div>
               )}
               <div
@@ -305,8 +318,9 @@ export default function StudentEditViewProfile({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        className={`w-full text-left font-normal justify-between ${!formData.dateOfBirth && "text-muted-foreground"
-                          }`}
+                        className={`w-full text-left font-normal justify-between ${
+                          !formData.dateOfBirth && "text-muted-foreground"
+                        }`}
                       >
                         {formData.dateOfBirth ? (
                           format(new Date(formData.dateOfBirth), "PPP")
@@ -388,11 +402,15 @@ export default function StudentEditViewProfile({
                       <SelectValue placeholder="Select a Department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {academicData.departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.departmentName}
-                        </SelectItem>
-                      ))}
+                      {[...academicData.departments]
+                        .sort((a, b) =>
+                          a.departmentName.localeCompare(b.departmentName)
+                        )
+                        .map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.departmentName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -482,6 +500,26 @@ export default function StudentEditViewProfile({
                     <SelectContent>
                       {academicData.sections
                         .filter((s) => s.yearLevelId === formData.yearLevelId)
+                        .sort((a, b) => {
+                          // extract number from section names (e.g., "BT-101" => 101)
+                          const getSectionNumber = (name) => {
+                            const match = name.match(/\d+/);
+                            return match ? parseInt(match[0], 10) : 0;
+                          };
+
+                          // sort section prefix (e.g., "BT")
+                          const prefixA = a.sectionName.split("-")[0];
+                          const prefixB = b.sectionName.split("-")[0];
+                          if (prefixA !== prefixB) {
+                            return prefixA.localeCompare(prefixB);
+                          }
+
+                          // sort by section number
+                          return (
+                            getSectionNumber(a.sectionName) -
+                            getSectionNumber(b.sectionName)
+                          );
+                        })
                         .map((section) => (
                           <SelectItem key={section.id} value={section.id}>
                             {section.sectionName}

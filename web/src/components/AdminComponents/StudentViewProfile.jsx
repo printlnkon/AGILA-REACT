@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
-import { useStudentProfile } from "@/context/StudentProfileContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import StudentEditViewProfile from "@/components/AdminComponents/StudentEditViewProfile";
 import { db } from "@/api/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { useStudentProfile } from "@/context/StudentProfileContext";
+import EditStudentViewProfile from "@/components/AdminComponents/EditStudentViewProfile";
 
-// A helper function to handle copying text to the clipboard.
 const handleCopyStudentNumber = (studentNumber) => {
   if (!studentNumber) {
     toast.error("Student Number not found");
@@ -200,7 +199,7 @@ export default function StudentViewProfile() {
           </div>
         </div>
         <div className="mt-4">
-          <StudentEditViewProfile
+          <EditStudentViewProfile
             student={selectedStudent}
             onSave={handleSaveChanges}
             onCancel={handleCancelEdit}
