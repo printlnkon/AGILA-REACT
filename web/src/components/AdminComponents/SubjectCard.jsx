@@ -8,7 +8,6 @@ import {
   query,
   where,
   getDocs,
-  addDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { useState, useEffect } from "react";
