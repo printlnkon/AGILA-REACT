@@ -293,7 +293,6 @@ export default function SideBar() {
                       alt="AGILA LOGO"
                       className="h-6 w-auto"
                     />
-                    {/* <GalleryVerticalEnd className="size-4" /> */}
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-bold text-muted-background">

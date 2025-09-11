@@ -24,6 +24,7 @@ export default function Header() {
   const customBreadcrumbNames = {
     "attendance": "Attendance",
     "request": "Request",
+    "subject-approval": "Subject Approval",
   };
 
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);

@@ -915,8 +915,7 @@ export default function StaffTable() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="cursor-pointer">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+                <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

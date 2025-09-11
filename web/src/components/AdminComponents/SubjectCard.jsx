@@ -7,6 +7,8 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -51,23 +53,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const getStatusVariant = (status) => {
-  switch (status) {
-    case "Approved":
-      return "success"; 
-    case "Pending":
-      return "warning"; 
-    case "Rejected":
-      return "destructive"; 
-    default:
-      return "secondary"; 
-  }
-};
-
 const FormError = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="text-sm text-red-500 mt-1 flex items-center gap-1">
+    <div className="text-sm text-destructive mt-1 flex items-center gap-1">
       <X className="w-4 h-4" />
       {message}
     </div>
@@ -175,6 +164,58 @@ const handleScheduleReferencesForDeletion = async (
   }
 };
 
+const sendProgramHeadNotification = async (subject, actionType) => {
+  try {
+    const programHeadsQuery = query(
+      collection(db, "users/program_head/accounts"),
+      where("departmentName", "==", subject.departmentName)
+    );
+
+    const programHeadsSnapshot = await getDocs(programHeadsQuery);
+
+    if (programHeadsSnapshot.empty) {
+      console.log(
+        "No program head found for department:",
+        subject.departmentName
+      );
+      return;
+    }
+
+    // create notifications for each program head
+    const notificationPromises = programHeadsSnapshot.docs.map(
+      async (phDoc) => {
+        const programHeadId = phDoc.id;
+
+        // Create notification
+        return addDoc(collection(db, "notifications"), {
+          userId: programHeadId,
+          userType: "program_head",
+          title: `Subject ${actionType === "edit" ? "Modified" : "Deleted"}`,
+          message: `An administrator has ${
+            actionType === "edit" ? "modified" : "deleted"
+          } the approved subject "${subject.subjectCode} - ${
+            subject.subjectName
+          }"`,
+          subjectId: subject.id,
+          subjectCode: subject.subjectCode,
+          subjectName: subject.subjectName,
+          departmentName: subject.departmentName,
+          courseName: subject.courseName,
+          yearLevelName: subject.yearLevelName,
+          createdAt: serverTimestamp(),
+          read: false,
+        });
+      }
+    );
+
+    await Promise.all(notificationPromises);
+    return true;
+  } catch (error) {
+    console.error("Error sending program head notification:", error);
+    return false;
+  }
+};
+
 export default function SubjectCard({
   subject,
   onSubjectUpdated,
@@ -182,6 +223,8 @@ export default function SubjectCard({
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState(null);
   const [subjectFormData, setSubjectFormData] = useState({
     ...subject,
     units: subject.units.toString(),
@@ -261,7 +304,6 @@ export default function SubjectCard({
         description: subjectFormData.description,
         units: parseFloat(subjectFormData.units),
         withLaboratory: subjectFormData.withLaboratory,
-        // Reset status to "Pending" after an admin-initiated edit
         status: "Pending",
       };
 
@@ -317,6 +359,52 @@ export default function SubjectCard({
     }
   };
 
+  // initiating edit for approved subjects
+  const handleInitiateEdit = () => {
+    if (isApproved) {
+      setActionType("edit");
+      setApprovalDialogOpen(true);
+    } else {
+      setEditDialogOpen(true);
+    }
+  };
+
+  // initiating delete for approved subjects
+  const handleInitiateDelete = () => {
+    if (isApproved) {
+      setActionType("delete");
+      setApprovalDialogOpen(true);
+    } else {
+      setShowDeleteDialog(true);
+    }
+  };
+
+  // confirmation of action on approved subject
+  const handleApprovedAction = async () => {
+    setApprovalDialogOpen(false);
+
+    // Notify program head
+    const notificationSent = await sendProgramHeadNotification(
+      subject,
+      actionType
+    );
+
+    if (!notificationSent) {
+      toast.warning(
+        "Could not notify Program Head, but proceeding with action."
+      );
+    } else {
+      toast.success("Program Head has been notified of this action.");
+    }
+
+    // Proceed with the selected action
+    if (actionType === "edit") {
+      setEditDialogOpen(true);
+    } else if (actionType === "delete") {
+      setShowDeleteDialog(true);
+    }
+  };
+
   return (
     <>
       <Card className="w-full transition-all hover:shadow-md">
@@ -360,31 +448,22 @@ export default function SubjectCard({
                     </TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end">
-                    {/* Conditionally render based on status */}
-                    {!isApproved && (
-                      <DropdownMenuItem
-                        onClick={() => setEditDialogOpen(true)}
-                        className="text-primary cursor-pointer"
-                      >
-                        <Edit className="mr-2 h-4 w-4 text-primary" />
-                        <span>Edit</span>
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      onClick={handleInitiateEdit}
+                      className="text-primary cursor-pointer"
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-primary" />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {!isApproved && (
-                      <DropdownMenuItem
-                        onClick={() => setShowDeleteDialog(true)}
-                        className="text-destructive cursor-pointer"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                        <span>Delete</span>
-                      </DropdownMenuItem>
-                    )}
-                    {isApproved && (
-                       <DropdownMenuItem disabled>
-                         <span>No actions available for Approved subjects</span>
-                       </DropdownMenuItem>
-                    )}
+                    {/* Allow delete for all subjects */}
+                    <DropdownMenuItem
+                      onClick={handleInitiateDelete}
+                      className="text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TooltipProvider>
@@ -393,7 +472,7 @@ export default function SubjectCard({
           <CardDescription className="flex justify-between items-center">
             <span>
               {subject.withLaboratory ? (
-                <Badge variant="secondary">W/ LAB</Badge>
+                <Badge variant="secondary">w/ Laboratory</Badge>
               ) : null}
               <br />
               <div className="mt-2">{subject.description}</div>
@@ -402,14 +481,53 @@ export default function SubjectCard({
         </CardHeader>
       </Card>
 
-      {/* Edit Subject Dialog */}
+      {/* approval confirmation dialog */}
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              Modifying Approved Subject
+            </DialogTitle>
+            <DialogDescription>
+              You are about to {actionType === "edit" ? "modify" : "delete"} an
+              approved subject. This action will notify the Program Head and
+              change the subject's status back to Pending.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={() => {
+                setApprovalDialogOpen(false);
+                toast.info(
+                  `Action to ${actionType} this approved subject has been cancelled.`
+                );
+              }}
+            >
+              Cancel
+            </Button>
+            <Button className="cursor-pointer" onClick={handleApprovedAction}>
+              Proceed and Notify
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* edit subject dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="w-full sm:max-w-xl md:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl">Edit Subject</DialogTitle>
             <DialogDescription>
               Update subject information. All fields marked with{" "}
-              <span className="text-red-500">*</span> are required.
+              <span className="text-destructive">*</span> are required.
+              {isApproved && (
+                <p className="mt-2 text-amber-600">
+                  This subject was previously approved. After editing, it will
+                  return to Pending status and require re-approval.
+                </p>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -418,7 +536,7 @@ export default function SubjectCard({
               {/* subject code */}
               <div className="space-y-1">
                 <Label htmlFor="subjectCode">
-                  Subject Code <span className="text-red-500">*</span>
+                  Subject Code <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="subjectCode"
@@ -433,7 +551,7 @@ export default function SubjectCard({
               {/* subject name */}
               <div className="space-y-1">
                 <Label htmlFor="subjectName">
-                  Subject Name <span className="text-red-500">*</span>
+                  Subject Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="subjectName"
@@ -450,7 +568,7 @@ export default function SubjectCard({
               {/* units */}
               <div className="space-y-1">
                 <Label htmlFor="units">
-                  Units <span className="text-red-500">*</span>
+                  Units <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={subjectFormData.units.toString()}
@@ -500,7 +618,12 @@ export default function SubjectCard({
                 type="button"
                 variant="ghost"
                 className="cursor-pointer"
-                onClick={() => setEditDialogOpen(false)}
+                onClick={() => {
+                  setEditDialogOpen(false);
+                  toast.info(
+                    `Editing "${subject.subjectCode} - ${subject.subjectName}" has been cancelled.`
+                  );
+                }}
                 disabled={isSubmitting}
               >
                 Cancel
@@ -533,6 +656,12 @@ export default function SubjectCard({
                 {subject.subjectName} ({subject.subjectCode})
               </strong>
               ? This action cannot be undone.
+              {isApproved && (
+                <p className="mt-2 text-amber-600">
+                  This is an approved subject. The Program Head has been
+                  notified of this deletion.
+                </p>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 pt-4">

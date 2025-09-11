@@ -1,5 +1,5 @@
 import { db } from "@/api/firebase";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/context/AuthContext";
 
 const INITIAL_SUBJECT_DATA = {
   subjectCode: "",
@@ -48,9 +49,18 @@ export default function AddSubjectModal({
   onSubjectAdded,
   session,
 }) {
+  const { currentUser } = useAuth();
   const [subjectFormData, setSubjectFormData] = useState(INITIAL_SUBJECT_DATA);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // reset form
+  useEffect(() => {
+    if (!isOpen) {
+      setSubjectFormData(INITIAL_SUBJECT_DATA);
+      setFormErrors({});
+    }
+  }, [isOpen]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -110,6 +120,15 @@ export default function AddSubjectModal({
       });
       return;
     }
+
+    if (!currentUser) {
+      toast.error(
+        "Authentication error: You must be logged in to add subjects."
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!session.selectedYearLevelId) {
       toast.error("Please select a year level to add a subject.");
       setIsSubmitting(false);
@@ -132,6 +151,11 @@ export default function AddSubjectModal({
         departmentName: session.selectedDeptName || null,
         courseName: session.selectedCourseName || null,
         yearLevelName: session.selectedYearLevelName || null,
+        createdBy: {
+          userId: currentUser.uid,
+          userName: currentUser.firstName || currentUser.name || currentUser.email,
+          userRole: currentUser.role
+        }
       };
 
       const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
@@ -139,7 +163,6 @@ export default function AddSubjectModal({
       toast.success("Subject added successfully");
 
       onOpenChange(false);
-      setSubjectFormData(INITIAL_SUBJECT_DATA);
     } catch (err) {
       console.error("Error adding subject:", err);
       toast.error("Failed to add subject");
@@ -252,6 +275,7 @@ export default function AddSubjectModal({
 
           <DialogFooter>
             <Button
+              type="button"
               variant="ghost"
               className="cursor-pointer"
               onClick={() => onOpenChange(false)}

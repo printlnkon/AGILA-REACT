@@ -73,7 +73,7 @@ const items = {
         },
         {
           title: "Subject Approval",
-          url: "/program-head/subjectapproval",
+          url: "/program-head/subject-approval",
           icon: ClipboardList,
         },
       ],
@@ -196,8 +196,12 @@ export default function SideBar() {
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to="/program-head">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <GalleryVerticalEnd className="size-4" />
+                  <div className="bg-sidebar-accent text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <img
+                      src="/AGILA_A.svg"
+                      alt="AGILA LOGO"
+                      className="h-6 w-auto"
+                    />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-bold text-muted-background">

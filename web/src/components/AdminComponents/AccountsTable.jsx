@@ -767,6 +767,7 @@ export default function AccountsTable() {
           </p>
         </div>
       </div>
+      
       <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
@@ -821,10 +822,9 @@ export default function AccountsTable() {
 
           {/* filter by role */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+            <DropdownMenuTrigger asChild>   
+              <Button className="w-full sm:w-auto cursor-pointer">
+                <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

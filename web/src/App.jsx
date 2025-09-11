@@ -16,7 +16,7 @@ import Admin from "@/pages/Admin/Admin";
 import Student from "@/pages/Student/Student";
 import Teacher from "@/pages/Teacher/Teacher";
 import ProgramHead from "@/pages/ProgramHead/ProgramHead";
-import AcademicHead from "@/pages/AcademicHead";
+import AcademicHead from "@/pages/AcademicHead/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import StudentAttendance from "@/components/StudentComponents/Attendance";
 import StudentRequest from "@/components/StudentComponents/Request";
@@ -88,6 +88,7 @@ const routeTitles = {
   "/program-head": "AGILA | Program Head - Dashboard",
   "/program-head/attendance": "AGILA | Program Head - Attendance",
   "/program-head/request": "AGILA | Program Head - Request",
+  "/program-head/subject-approval": "AGILA | Program Head - Subject Approval",
   // teacher title route
   "/teacher": "AGILA | Teacher - Dashboard",
   "/teacher/attendance": "AGILA | Teacher - Attendance",
@@ -148,7 +149,7 @@ function AppContent() {
         <Route index element={<ProgramHeadDashboard />} />
         <Route path="attendance" element={<ProgramHeadAttendance />} />
         <Route path="request" element={<ProgramHeadRequest />} />
-        <Route path="subjectapproval" element={<ProgramHeadSubjectApproval />} />
+        <Route path="subject-approval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}
