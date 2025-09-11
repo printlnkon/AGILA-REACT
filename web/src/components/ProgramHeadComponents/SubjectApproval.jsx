@@ -1203,7 +1203,12 @@ export default function SubjectApproval() {
               <p className="font-medium text-amber-900">
                 No department filter applied
               </p>
+              <p className="font-medium text-amber-900">
+                No department filter applied
+              </p>
               <p className="text-amber-800">
+                Program Head department is missing. Showing all pending subjects
+                across departments.
                 Program Head department is missing. Showing all pending subjects
                 across departments.
               </p>

@@ -1,6 +1,7 @@
 import { db } from "@/api/firebase";
 import {
   doc,
+  addDoc,
   deleteDoc,
   updateDoc,
   collection,
@@ -326,6 +327,11 @@ export default function SubjectCard({
         ...updateData,
       });
 
+      // notify program head = edit
+      if (subject.status === "Approved") {
+        await notifyProgramHead("edit", subject, updateData);
+      }
+
       toast.success("Subject updated successfully");
       setEditDialogOpen(false);
     } catch (err) {
@@ -350,6 +356,11 @@ export default function SubjectCard({
       await deleteDoc(doc(db, subjectPath));
 
       onSubjectDeleted(subject.id);
+
+      // notify program head = delete
+      if (subject.status === "Approved") {
+        await notifyProgramHead("delete", subject);
+      }
 
       toast.success("Subject deleted successfully");
       setShowDeleteDialog(false);
