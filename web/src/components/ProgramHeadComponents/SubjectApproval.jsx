@@ -59,7 +59,9 @@ export default function SubjectApproval({ programHeadDeptName }) {
       toast.success(`Subject status updated to ${newStatus}`);
     } catch (error) {
       console.error(`Error updating subject status to ${newStatus}: `, error);
-      toast.error(`Failed to ${newStatus.toLowerCase()} subject. Please try again.`);
+      toast.error(
+        `Failed to ${newStatus.toLowerCase()} subject. Please try again.`
+      );
     }
   };
 
@@ -73,20 +75,33 @@ export default function SubjectApproval({ programHeadDeptName }) {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Subject Approval</h1>
+    <div className="w-full p-4 space-y-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 lg:p-6">
+        <div className="grid auto-rows-min gap-2 sm:gap-4">
+          <div>
+          <h1 className="text-2xl font-bold sm:text-2xl tracking-tight">
+            Manage Subject Approval
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Approve or reject subjects created.
+          </p>
+        </div>
+        </div>
       </div>
-      <Separator />
+      </div>
 
       {!programHeadDeptName && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="p-4 flex gap-3 items-start">
             <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium text-amber-900">No department filter applied</p>
+              <p className="font-medium text-amber-900">
+                No department filter applied
+              </p>
               <p className="text-amber-800">
-                Program Head department is missing. Showing all pending subjects across departments.
+                Program Head department is missing. Showing all pending subjects
+                across departments.
               </p>
             </div>
           </CardContent>

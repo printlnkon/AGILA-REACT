@@ -73,7 +73,7 @@ const items = {
         },
         {
           title: "Subject Approval",
-          url: "/program-head/subjectapproval",
+          url: "/program-head/subject-approval",
           icon: ClipboardList,
         },
       ],

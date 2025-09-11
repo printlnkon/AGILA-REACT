@@ -1,6 +1,7 @@
 import { db } from "@/api/firebase";
 import {
   doc,
+  addDoc,
   deleteDoc,
   updateDoc,
   collection,
@@ -50,19 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const getStatusVariant = (status) => {
-  switch (status) {
-    case "Approved":
-      return "success"; 
-    case "Pending":
-      return "warning"; 
-    case "Rejected":
-      return "destructive"; 
-    default:
-      return "secondary"; 
-  }
-};
 
 const FormError = ({ message }) => {
   if (!message) return null;
@@ -175,6 +163,32 @@ const handleScheduleReferencesForDeletion = async (
   }
 };
 
+const notifyProgramHead = async (type, subject, changes = {}) => {
+  try {
+    const notificationRef = collection(db, "notifications");
+    await notificationRef.add({
+      type, // "edit" or "delete"
+      subjectId: subject.id,
+      subjectCode: subject.subjectCode,
+      subjectName: subject.subjectName,
+      departmentId: subject.departmentId,
+      departmentName: subject.departmentName,
+      courseId: subject.courseId,
+      courseName: subject.courseName,
+      yearLevelId: subject.yearLevelId,
+      yearLevelName: subject.yearLevelName,
+      academicYearId: subject.academicYearId,
+      semesterId: subject.semesterId,
+      timestamp: new Date(),
+      changes,
+      read: false,
+      createdAt: new Date(),
+    });
+  } catch (err) {
+    console.error("Failed to notify Program Head:", err);
+  }
+};
+
 export default function SubjectCard({
   subject,
   onSubjectUpdated,
@@ -284,6 +298,11 @@ export default function SubjectCard({
         ...updateData,
       });
 
+      // notify program head = edit
+      if (subject.status === "Approved") {
+        await notifyProgramHead("edit", subject, updateData);
+      }
+
       toast.success("Subject updated successfully");
       setEditDialogOpen(false);
     } catch (err) {
@@ -308,6 +327,11 @@ export default function SubjectCard({
       await deleteDoc(doc(db, subjectPath));
 
       onSubjectDeleted(subject.id);
+
+      // notify program head = delete
+      if (subject.status === "Approved") {
+        await notifyProgramHead("delete", subject);
+      }
 
       toast.success("Subject deleted successfully");
       setShowDeleteDialog(false);
@@ -360,31 +384,21 @@ export default function SubjectCard({
                     </TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end">
-                    {/* Conditionally render based on status */}
-                    {!isApproved && (
-                      <DropdownMenuItem
-                        onClick={() => setEditDialogOpen(true)}
-                        className="text-primary cursor-pointer"
-                      >
-                        <Edit className="mr-2 h-4 w-4 text-primary" />
-                        <span>Edit</span>
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      onClick={() => setEditDialogOpen(true)}
+                      className="text-primary cursor-pointer"
+                    >
+                      <Edit className="mr-2 h-4 w-4 text-primary" />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {!isApproved && (
-                      <DropdownMenuItem
-                        onClick={() => setShowDeleteDialog(true)}
-                        className="text-destructive cursor-pointer"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                        <span>Delete</span>
-                      </DropdownMenuItem>
-                    )}
-                    {isApproved && (
-                       <DropdownMenuItem disabled>
-                         <span>No actions available for Approved subjects</span>
-                       </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TooltipProvider>

@@ -88,6 +88,7 @@ const routeTitles = {
   "/program-head": "AGILA | Program Head - Dashboard",
   "/program-head/attendance": "AGILA | Program Head - Attendance",
   "/program-head/request": "AGILA | Program Head - Request",
+  "/program-head/subject-approval": "AGILA | Program Head - Subject Approval",
   // teacher title route
   "/teacher": "AGILA | Teacher - Dashboard",
   "/teacher/attendance": "AGILA | Teacher - Attendance",
@@ -148,7 +149,7 @@ function AppContent() {
         <Route index element={<ProgramHeadDashboard />} />
         <Route path="attendance" element={<ProgramHeadAttendance />} />
         <Route path="request" element={<ProgramHeadRequest />} />
-        <Route path="subjectapproval" element={<ProgramHeadSubjectApproval />} />
+        <Route path="subject-approval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}
