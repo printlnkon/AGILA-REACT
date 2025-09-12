@@ -1194,7 +1194,7 @@ export default function SubjectApproval() {
         </TabsList>
       </Tabs>
 
-      {/* Warning for missing department */}
+      {/* warning for missing department */}
       {!deptName && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="p-4 flex gap-3 items-start">
@@ -1203,12 +1203,7 @@ export default function SubjectApproval() {
               <p className="font-medium text-amber-900">
                 No department filter applied
               </p>
-              <p className="font-medium text-amber-900">
-                No department filter applied
-              </p>
               <p className="text-amber-800">
-                Program Head department is missing. Showing all pending subjects
-                across departments.
                 Program Head department is missing. Showing all pending subjects
                 across departments.
               </p>

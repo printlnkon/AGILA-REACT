@@ -1285,7 +1285,7 @@ export default function EditScheduleModal({
               }
             }}
           >
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[750px]">
               <DialogHeader>
                 <DialogTitle>Schedule Conflicts Detected</DialogTitle>
                 <DialogDescription>
