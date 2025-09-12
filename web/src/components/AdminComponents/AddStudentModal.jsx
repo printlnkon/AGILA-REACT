@@ -486,7 +486,14 @@ export default function AddStudentModal({ onUserAdded }) {
         }
       );
 
-      if (onUserAdded) onUserAdded();
+      if (onUserAdded) onUserAdded({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: email,
+        studentNumber,
+        id: userId
+      });
+
       handleDialogChange(false);
     } catch (error) {
       console.error("Error creating user:", error);

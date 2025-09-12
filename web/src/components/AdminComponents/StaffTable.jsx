@@ -91,6 +91,7 @@ import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
 import { useProgramHeadProfile } from "@/context/ProgramHeadProfileContext";
 import { useTeacherProfile } from "@/context/TeacherProfileContext";
 import AddStaffAccountModal from "@/components/AdminComponents/AddStaffAccountModal";
+import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
 // Action handlers
 const handleCopyEmployeeNumber = (employeeNumber) => {
@@ -442,6 +443,8 @@ export default function StaffTable() {
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
   const [roleFilter, setRoleFilter] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState(null); 
 
   // view profile contexts
   const { setSelectedAcademicHead } = useAcademicHeadProfile();
@@ -885,7 +888,18 @@ export default function StaffTable() {
         )}
 
         {/* add staff button */}
-        <AddStaffAccountModal onUserAdded={handleUserAdded} />
+        <AddStaffAccountModal
+          onUserAdded={(userInfo) => {
+            // keep your existing refresh
+            handleUserAdded();
+
+            // NEW: open FaceRegistration with the new user
+            if (userInfo) {
+              setNewUserInfo(userInfo);
+              setShowFaceDialog(true);
+            }
+          }}
+        />
 
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
           {/* search */}
@@ -1270,6 +1284,12 @@ export default function StaffTable() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {/* Face Recognition Dialog */}
+          <FaceRecognition
+            open={showFaceDialog}
+            onClose={() => setShowFaceDialog(false)}
+            userInfo={newUserInfo}
+          />
         </div>
       </div>
     </div>

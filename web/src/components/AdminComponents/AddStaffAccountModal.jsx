@@ -106,8 +106,8 @@ export default function AddStaffAccountModal({ onUserAdded }) {
           <TabsContent value="Program Head" className="mt-4">
             {/* Embed Program Head Form Content */}
             <EmbeddedProgramHeadForm
-              onUserAdded={() => {
-                if (onUserAdded) onUserAdded();
+              onUserAdded={(userInfo) => {
+                if (onUserAdded) onUserAdded(userInfo); 
                 setDialogOpen(false);
               }}
             />
@@ -116,8 +116,8 @@ export default function AddStaffAccountModal({ onUserAdded }) {
           <TabsContent value="Teacher" className="mt-4">
             {/* Embed Teacher Form Content */}
             <EmbeddedTeacherForm
-              onUserAdded={() => {
-                if (onUserAdded) onUserAdded();
+              onUserAdded={(userInfo) => {
+                if (onUserAdded) onUserAdded(userInfo); 
                 setDialogOpen(false);
               }}
             />

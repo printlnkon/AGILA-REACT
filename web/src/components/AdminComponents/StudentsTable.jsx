@@ -91,6 +91,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -406,6 +407,8 @@ export default function StudentsTable() {
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState(null);
 
   // navigate to student profile
   const navigate = useNavigate();
@@ -817,7 +820,7 @@ export default function StudentsTable() {
               variant="ghost"
               size="sm"
               onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer"
+              className="text-amber-600 hover:text-amber-800 cursor-pointer" 
             >
               <X />
               Clear selection
@@ -836,8 +839,11 @@ export default function StudentsTable() {
 
         {/* add new account button */}
         <AddStudentModal
-          onUserAdded={fetchUsers}
-          activeSession={activeSession}
+          onUserAdded={(userInfo) => {
+            fetchUsers();
+            setNewUserInfo(userInfo); // trigger face dialog
+            setShowFaceDialog(true);
+          }}
         />
         <AddUserBulkUpload />
 
@@ -1167,6 +1173,12 @@ export default function StudentsTable() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {/* Face Recognition Dialog */}
+          <FaceRecognition
+            open={showFaceDialog}
+            onClose={() => setShowFaceDialog(false)}
+            userInfo={newUserInfo}
+          />
         </div>
       </div>
     </div>

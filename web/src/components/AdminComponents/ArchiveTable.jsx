@@ -235,7 +235,26 @@ export default function ArchiveTable() {
     try {
       const deleteUser = httpsCallable(functions, "deleteUserAuth");
       // delete from firebase authentication
-      await deleteUser({ email: user.email });
+      const storageFolderName = `${user.firstName} ${user.lastName}`
+      .replace(/\s+/g, "_")
+      .toLowerCase();
+
+      const uniqueNumberValue =
+        user.uniqueNumber || user.studentNumber || user.employeeNumber || "";
+
+      console.log("Sending to deleteUserAuth:", {
+        email: user.email.trim(),
+        storageFolder: storageFolderName,
+        uniqueNumber: uniqueNumberValue
+      });
+
+      await deleteUser({
+        email: user.email.trim(),
+        storageFolder: storageFolderName,
+        uniqueNumber: uniqueNumberValue,
+        role: user.role,
+      });
+      
       // delete from firestore archive collection
       const archiveRef = doc(db, "archive", user.id);
 

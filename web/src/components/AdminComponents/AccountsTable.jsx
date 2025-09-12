@@ -86,6 +86,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
+import TryRecognition from "@/components/AdminComponents/TestRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -791,6 +792,9 @@ export default function AccountsTable() {
             </Button>
           </div>
         )}
+
+         {/* try recog */}
+        <TryRecognition />
 
         {/* export format */}
         <ExportExcelFormat />
