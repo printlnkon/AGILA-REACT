@@ -1,10 +1,13 @@
 import React from "react";
+import { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Card } from "@/components/ui/card";
-import { useLocation, Link } from "react-router-dom";
 import { ThemeToggle } from "@/utils/ThemeToggle";
 import { ThemeToggleDropdown } from "@/utils/ThemeToggleDropdown";
+import { CalendarDays, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useLocation, Link } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,7 +18,21 @@ import {
 } from "@/components/ui/breadcrumb";
 
 export default function Header() {
+  const [currentTime, setCurrentTime] = useState(new Date());
   const location = useLocation();
+
+  useEffect(() => {
+    // set up an interval to update the time every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    // clean up the interval when the component unmounts
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+
   // filter out empty strings from the path, and also the base 'admin' path
   const pathnames = location.pathname
     .split("/")
@@ -142,7 +159,42 @@ export default function Header() {
             </Breadcrumb>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-4">
+          {/* current day and time */}
+          <div className="hidden sm:flex">
+            <Badge
+              variant="outline"
+              className="flex items-center gap-3 py-1.5 px-3 text-muted-foreground font-semibold"
+            >
+              {/* Day */}
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4" />
+                <span>
+                  {currentTime.toLocaleDateString(undefined, {
+                    weekday: "long",
+                  })}
+                </span>
+              </div>
+
+              <Separator orientation="vertical" className="h-4" />
+
+              {/* Time */}
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4" />
+                <span>
+                  {currentTime.toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              </div>
+            </Badge>
+          </div>
+
+          {/* <Separator orientation="vertical" className="h-6 hidden sm:flex" /> */}
+
           {/* show different theme toggles based on screen size */}
           <div className="hidden sm:flex items-center gap-2">
             <ThemeToggleDropdown /> <ThemeToggle />
