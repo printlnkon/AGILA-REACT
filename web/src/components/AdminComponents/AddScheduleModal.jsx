@@ -203,6 +203,7 @@ export default function AddScheduleModal({
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("class_schedule");
   const [loading, setLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Data state
   const [subjects, setSubjects] = useState([]);
@@ -292,7 +293,7 @@ export default function AddScheduleModal({
       }
 
       // Round to next 30-minute interval
-      const roundedMinute = currentMinute < 30 ? "30" : "00";
+      const roundedMinute = "00";
       if (currentMinute >= 30) {
         currentHour += 1;
       }
@@ -621,163 +622,204 @@ export default function AddScheduleModal({
       // Only check for conflicts if both time AND day overlap
       if (timeOverlap && dayOverlap) {
         // Room conflict
-        const roomConflictMessage = `Room ${schedule.roomName} is already booked for ${
-    schedule.subjectCode
-  } (${
-    schedule.isLabComponent || schedule.roomType === "LABORATORY"
-      ? "Laboratory"
-      : "Lecture"
-  }) at ${schedule.startTime} - ${schedule.endTime}`;
-    
-  if (room === schedule.roomId && !uniqueConflictMessages.has(roomConflictMessage)) {
-    uniqueConflictMessages.add(roomConflictMessage);
-    detectedConflicts.push({
-      id: `${schedule.id}-room`,
-      subject: schedule.subjectName,
-      type: "room",
-      conflict: roomConflictMessage,
-    });
-  }
+        const roomConflictMessage = `${
+          schedule.roomName
+        } is already booked for ${schedule.subjectCode} (${
+          schedule.isLabComponent || schedule.roomType === "LABORATORY"
+            ? "Laboratory"
+            : "Lecture"
+        }) at ${schedule.startTime} - ${schedule.endTime}`;
+
+        if (
+          room === schedule.roomId &&
+          !uniqueConflictMessages.has(roomConflictMessage)
+        ) {
+          uniqueConflictMessages.add(roomConflictMessage);
+          detectedConflicts.push({
+            id: `${schedule.id}-room`,
+            subject: schedule.subjectName,
+            type: "room",
+            conflict: roomConflictMessage,
+          });
+        }
 
         // Instructor conflict
         const instructorConflictMessage = `Instructor ${
-    schedule.instructorName
-  } is already teaching ${schedule.subjectCode} (${
-    schedule.isLabComponent || schedule.roomType === "LABORATORY"
-      ? "Laboratory"
-      : "Lecture"
-  }) at ${schedule.startTime} - ${schedule.endTime}`;
-    
-  if (instructor === schedule.instructorId && !uniqueConflictMessages.has(instructorConflictMessage)) {
-    uniqueConflictMessages.add(instructorConflictMessage);
-    detectedConflicts.push({
-      id: `${schedule.id}-instructor`,
-      subject: schedule.subjectName,
-      type: "instructor",
-      conflict: instructorConflictMessage,
-    });
-  }
+          schedule.instructorName
+        } is already teaching ${schedule.subjectCode} (${
+          schedule.isLabComponent || schedule.roomType === "LABORATORY"
+            ? "Laboratory"
+            : "Lecture"
+        }) at ${schedule.startTime} - ${schedule.endTime}`;
+
+        if (
+          instructor === schedule.instructorId &&
+          !uniqueConflictMessages.has(instructorConflictMessage)
+        ) {
+          uniqueConflictMessages.add(instructorConflictMessage);
+          detectedConflicts.push({
+            id: `${schedule.id}-instructor`,
+            subject: schedule.subjectName,
+            type: "instructor",
+            conflict: instructorConflictMessage,
+          });
+        }
 
         // Student section conflict
-        const sectionConflictMessage = `This section already has ${schedule.subjectCode} (${
-    schedule.isLabComponent || schedule.roomType === "LABORATORY"
-      ? "Laboratory"
-      : "Lecture"
-  }) scheduled at ${schedule.startTime} - ${schedule.endTime}`;
-    
-  if (!schedule.isLabComponent && !processedScheduleIds.has(`${schedule.id}-section`) && 
-      !uniqueConflictMessages.has(sectionConflictMessage)) {
-    uniqueConflictMessages.add(sectionConflictMessage);
-    detectedConflicts.push({
-      id: `${schedule.id}-section`,
-      subject: schedule.subjectName,
-      type: "section",
-      conflict: sectionConflictMessage,
-    });
-    processedScheduleIds.add(`${schedule.id}-section`);
-  }
-}
+        const lectureConflictMessage = `This section already has ${schedule.subjectCode} (Lecture) scheduled at ${schedule.startTime} - ${schedule.endTime}`;
+        const labConflictMessage = `This section already has ${schedule.subjectCode} (Laboratory) scheduled at ${schedule.startTime} - ${schedule.endTime}`;
+
+        // Determine if it's a lab or lecture conflict
+        const isLabSchedule =
+          schedule.isLabComponent || schedule.roomType === "LABORATORY";
+        const conflictMessage = isLabSchedule
+          ? labConflictMessage
+          : lectureConflictMessage;
+        const conflictId = `${schedule.id}-section-${
+          isLabSchedule ? "lab" : "lecture"
+        }`;
+
+        if (
+          !processedScheduleIds.has(conflictId) &&
+          !uniqueConflictMessages.has(conflictMessage)
+        ) {
+          uniqueConflictMessages.add(conflictMessage);
+          detectedConflicts.push({
+            id: conflictId,
+            subject: schedule.subjectName,
+            type: "section",
+            conflict: conflictMessage,
+          });
+          processedScheduleIds.add(conflictId);
+        }
+      }
     });
 
     // Check laboratory conflicts if lab is included
     if (hasLaboratory) {
-  const labStartTimeString = `${labStartHour}:${labStartMinute} ${labStartPeriod}`;
-  const labEndTimeString = `${labEndHour}:${labEndMinute} ${labEndPeriod}`;
-  const selectedLabDays = Object.entries(labDays)
-    .filter(([_, isSelected]) => isSelected)
-    .map(([day]) => day);
+      const labStartTimeString = `${labStartHour}:${labStartMinute} ${labStartPeriod}`;
+      const labEndTimeString = `${labEndHour}:${labEndMinute} ${labEndPeriod}`;
+      const selectedLabDays = Object.entries(labDays)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([day]) => day);
 
-  // Only proceed if the lab time and days have been selected
-  const isLabTimeAndDayValid =
-    labStartHour &&
-    labStartMinute &&
-    labEndHour &&
-    labEndMinute &&
-    selectedLabDays.length > 0;
+      // Only proceed if the lab time and days have been selected
+      const isLabTimeAndDayValid =
+        labStartHour &&
+        labStartMinute &&
+        labEndHour &&
+        labEndMinute &&
+        selectedLabDays.length > 0;
 
-  if (isLabTimeAndDayValid) {
-    existingSchedules.forEach((schedule) => {
-      if (schedule.id === formState.editingLabScheduleId) {
-        return;
+      if (isLabTimeAndDayValid) {
+        existingSchedules.forEach((schedule) => {
+          if (schedule.id === formState.editingLabScheduleId) {
+            return;
+          }
+
+          const labTimeOverlap = checkTimeConflict(
+            { startTime: labStartTimeString, endTime: labEndTimeString },
+            { startTime: schedule.startTime, endTime: schedule.endTime }
+          );
+          const labDayOverlap = selectedLabDays.some((day) =>
+            schedule.days.includes(day)
+          );
+
+          if (labTimeOverlap && labDayOverlap) {
+            // Section conflict check for the new laboratory schedule
+            const existingScheduleType =
+              schedule.isLabComponent || schedule.roomType === "LABORATORY"
+                ? "Laboratory"
+                : "Lecture";
+
+            const sectionConflictMessage = `This section already has ${
+              schedule.subjectCode
+            } (${existingScheduleType}) scheduled at ${schedule.startTime} - ${
+              schedule.endTime
+            }`;
+
+            const conflictId = `${
+              schedule.id
+            }-section-${existingScheduleType.toLowerCase()}`;
+
+            if (!uniqueConflictMessages.has(sectionConflictMessage)) {
+              uniqueConflictMessages.add(sectionConflictMessage);
+              detectedConflicts.push({
+                id: conflictId,
+                subject: schedule.subjectName,
+                type: "section",
+                conflict: sectionConflictMessage,
+              });
+            }
+
+            // Lab room conflict check (runs if labRoom is selected)
+            if (labRoom && labRoom === schedule.roomId) {
+              const labRoomConflictMessage = `Laboratory room ${
+                schedule.roomName
+              } is already booked for ${schedule.subjectCode} (${
+                schedule.isLabComponent || schedule.roomType === "LABORATORY"
+                  ? "Laboratory"
+                  : "Lecture"
+              }) at ${schedule.startTime} - ${schedule.endTime}`;
+
+              if (!uniqueConflictMessages.has(labRoomConflictMessage)) {
+                uniqueConflictMessages.add(labRoomConflictMessage);
+                detectedConflicts.push({
+                  id: `${schedule.id}-labRoom`,
+                  subject: schedule.subjectName,
+                  type: "labRoom",
+                  conflict: labRoomConflictMessage,
+                });
+              }
+            }
+
+            // Lab instructor conflict check (runs if labInstructor is selected)
+            if (labInstructor && labInstructor === schedule.instructorId) {
+              const labInstructorConflictMessage = `Laboratory instructor ${
+                schedule.instructorName
+              } is already teaching ${schedule.subjectCode} (${
+                schedule.isLabComponent || schedule.roomType === "LABORATORY"
+                  ? "Laboratory"
+                  : "Lecture"
+              }) at ${schedule.startTime} - ${schedule.endTime}`;
+
+              if (!uniqueConflictMessages.has(labInstructorConflictMessage)) {
+                uniqueConflictMessages.add(labInstructorConflictMessage);
+                detectedConflicts.push({
+                  id: `${schedule.id}-labInstructor`,
+                  subject: schedule.subjectName,
+                  type: "labInstructor",
+                  conflict: labInstructorConflictMessage,
+                });
+              }
+            }
+          }
+        });
       }
 
-      const labTimeOverlap = checkTimeConflict(
-        { startTime: labStartTimeString, endTime: labEndTimeString },
-        { startTime: schedule.startTime, endTime: schedule.endTime }
-      );
-      const labDayOverlap = selectedLabDays.some((day) =>
-        schedule.days.includes(day)
-      );
+      // Check for internal conflicts between the new lecture and lab sessions
+      const isSelfConflictCheckPossible =
+        isLabTimeAndDayValid && instructor && labInstructor;
 
-      if (labTimeOverlap && labDayOverlap) {
-        // Lab room conflict check (runs if labRoom is selected)
-       if (labRoom && labRoom === schedule.roomId) {
-  const labRoomConflictMessage = `Laboratory room ${
-    schedule.roomName
-  } is already booked for ${schedule.subjectCode} (${
-    schedule.isLabComponent || schedule.roomType === "LABORATORY"
-      ? "Laboratory"
-      : "Lecture"
-  }) at ${schedule.startTime} - ${schedule.endTime}`;
-  
-  if (!uniqueConflictMessages.has(labRoomConflictMessage)) {
-    uniqueConflictMessages.add(labRoomConflictMessage);
-    detectedConflicts.push({
-      id: `${schedule.id}-labRoom`,
-      subject: schedule.subjectName,
-      type: "labRoom",
-      conflict: labRoomConflictMessage,
-    });
-  }
-}
+      if (isSelfConflictCheckPossible) {
+        const selfTimeOverlap = checkTimeConflict(
+          { startTime, endTime },
+          { startTime: labStartTimeString, endTime: labEndTimeString }
+        );
+        const selfDayOverlap = selectedLabDays.some((day) =>
+          selectedDays.includes(day)
+        );
 
-        // Lab instructor conflict check (runs if labInstructor is selected)
-        if (labInstructor && labInstructor === schedule.instructorId) {
-  const labInstructorConflictMessage = `Laboratory instructor ${
-    schedule.instructorName
-  } is already teaching ${schedule.subjectCode} (${
-    schedule.isLabComponent || schedule.roomType === "LABORATORY"
-      ? "Laboratory"
-      : "Lecture"
-  }) at ${schedule.startTime} - ${schedule.endTime}`;
-  
-  if (!uniqueConflictMessages.has(labInstructorConflictMessage)) {
-    uniqueConflictMessages.add(labInstructorConflictMessage);
-    detectedConflicts.push({
-      id: `${schedule.id}-labInstructor`,
-      subject: schedule.subjectName,
-      type: "labInstructor",
-      conflict: labInstructorConflictMessage,
-    });
-  }
-}
+        if (selfTimeOverlap && selfDayOverlap && instructor === labInstructor) {
+          detectedConflicts.push({
+            id: "self-conflict",
+            subject: "This schedule",
+            type: "self",
+            conflict: `The same instructor cannot teach Lecture (${startTime} - ${endTime}) and Laboratory (${labStartTimeString} - ${labEndTimeString}) sessions at overlapping times.`,
+          });
+        }
       }
-    });
-  }
-
-  // Check for internal conflicts between the new lecture and lab sessions
-  const isSelfConflictCheckPossible =
-    isLabTimeAndDayValid && instructor && labInstructor;
-
-  if (isSelfConflictCheckPossible) {
-    const selfTimeOverlap = checkTimeConflict(
-      { startTime, endTime },
-      { startTime: labStartTimeString, endTime: labEndTimeString }
-    );
-    const selfDayOverlap = selectedLabDays.some((day) =>
-      selectedDays.includes(day)
-    );
-
-    if (selfTimeOverlap && selfDayOverlap && instructor === labInstructor) {
-      detectedConflicts.push({
-        id: "self-conflict",
-        subject: "This schedule",
-        type: "self",
-        conflict: `The same instructor cannot teach Lecture (${startTime} - ${endTime}) and Laboratory (${labStartTimeString} - ${labEndTimeString}) sessions at overlapping times.`,
-      });
     }
-  }
-}
 
     // Remove duplicates and update state
     const uniqueConflicts = Array.from(
@@ -950,6 +992,24 @@ export default function AddScheduleModal({
     const newErrors = {};
     let isValid = true;
 
+     // Check for midnight time range in end time
+    if (formState.endPeriod === "AM") {
+      const hourNum = parseInt(formState.endHour);
+      if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
+        newErrors.timeRange = "End time cannot be between 12:00 AM - 6:59 AM";
+        isValid = false;
+      }
+    }
+
+    // Check for midnight time range in lab end time
+    if (formState.hasLaboratory && formState.labEndPeriod === "AM") {
+      const hourNum = parseInt(formState.labEndHour);
+      if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
+        newErrors.labTimeRange = "Lab end time cannot be between 12:00 AM - 6:59 AM";
+        isValid = false;
+      }
+    }
+    
     // Existing validations
     if (!roomType) {
       newErrors.roomType = "Room type is required";
@@ -1018,6 +1078,16 @@ export default function AddScheduleModal({
         isValid = false;
       }
 
+      if (
+        formState.room === formState.labRoom &&
+        lectureTime === labTime &&
+        lectureDays === labDays
+      ) {
+        newErrors.labRoom =
+          "Laboratory schedule cannot be identical to the lecture schedule.";
+        isValid = false;
+      }
+
       // Time range validation for lab
       if (labStartHour && labStartMinute && labEndHour && labEndMinute) {
         const start = parseTime(
@@ -1040,9 +1110,22 @@ export default function AddScheduleModal({
         `${startHour}:${startMinute} ${formState.startPeriod}`
       );
       const end = parseTime(`${endHour}:${endMinute} ${formState.endPeriod}`);
+      const duration = end.totalMinutes - start.totalMinutes;
 
       if (start.totalMinutes >= end.totalMinutes) {
         newErrors.timeRange = "End time must be after start time";
+        isValid = false;
+      }
+
+      if (duration < 30) {
+        // 30-minute minimum
+        newErrors.timeRange = "Schedule duration must be at least 30 minutes.";
+        isValid = false;
+      }
+
+      if (duration > 180) {
+        // 3-hour maximum
+        newErrors.timeRange = "Schedule duration cannot exceed 3 hours.";
         isValid = false;
       }
     }
@@ -1417,7 +1500,7 @@ export default function AddScheduleModal({
           <Plus className="h-4 w-4" /> Add Schedule
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 sm:p-6 overflow-y-auto max-h-[90vh]">
+      <DialogContent className="w-[95vw] max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-4xl p-4 sm:p-6 overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">
             Add Class Schedule
@@ -1627,7 +1710,7 @@ export default function AddScheduleModal({
                               if (value === "AM") {
                                 const hourNum = parseInt(formState.startHour);
                                 // Only adjust if hour is less than 7 (except 12 which becomes 12 PM)
-                                if (hourNum < 7 && hourNum !== 12) {
+                                if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
                                   dispatch({
                                     type: "SET_FIELD",
                                     field: "startHour",
@@ -1728,9 +1811,8 @@ export default function AddScheduleModal({
                                   key={`end-hr-${hour}`}
                                   value={hour.toString()}
                                   disabled={
-                                    formState.endPeriod === "PM" &&
-                                    hour > 8 &&
-                                    hour < 12
+                                    (formState.endPeriod === "PM" && hour > 8 && hour < 12) ||
+                                    (formState.endPeriod === "AM" && (hour === 12 || (hour >= 1 && hour <= 6)))
                                   }
                                 >
                                   {hour}
@@ -1787,6 +1869,18 @@ export default function AddScheduleModal({
                                 field: "endPeriod",
                                 value,
                               });
+
+if (value === "AM") {
+      const hourNum = parseInt(formState.endHour);
+      if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
+        dispatch({
+          type: "SET_FIELD",
+          field: "endHour",
+          value: "7", 
+        });
+      }
+    }
+
                               // Adjust hour and minute when switching to PM
                               if (value === "PM") {
                                 const hourNum = parseInt(formState.endHour);
@@ -1838,7 +1932,7 @@ export default function AddScheduleModal({
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Note: End time cannot be later than 8:30 PM
+                      Note: Start & End times must be between 7:00 AM - 8:30 PM
                     </p>
                   </div>
 
@@ -2131,7 +2225,7 @@ export default function AddScheduleModal({
                                     const hourNum = parseInt(
                                       formState.labStartHour
                                     );
-                                    if (hourNum < 7 && hourNum !== 12) {
+                                    if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
                                       dispatch({
                                         type: "SET_FIELD",
                                         field: "labStartHour",
@@ -2235,9 +2329,8 @@ export default function AddScheduleModal({
                                       key={`lab-end-hr-${hour}`}
                                       value={hour.toString()}
                                       disabled={
-                                        formState.labEndPeriod === "PM" &&
-                                        hour > 8 &&
-                                        hour < 12
+                                        (formState.labEndPeriod === "PM" && hour > 8 && hour < 12) ||
+                                        (formState.labEndPeriod === "AM" && (hour === 12 || (hour >= 1 && hour <= 6)))
                                       }
                                     >
                                       {hour}
@@ -2294,6 +2387,17 @@ export default function AddScheduleModal({
                                     field: "labEndPeriod",
                                     value,
                                   });
+
+                                  if (value === "AM") {
+                                    const hourNum = parseInt(formState.labEndHour);
+                                    if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
+                                      dispatch({
+                                        type: "SET_FIELD",
+                                        field: "labEndHour",
+                                        value: "7", 
+                                      });
+                                    }
+                                  }
                                   // Adjust hour and minute when switching to PM
                                   if (value === "PM") {
                                     const hourNum = parseInt(
@@ -2347,7 +2451,7 @@ export default function AddScheduleModal({
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Note: End time cannot be later than 8:30 PM
+                          Note: Lab Start & End times must be between 7:00 AM - 8:30 PM
                         </p>
                       </div>
 
@@ -2579,10 +2683,7 @@ export default function AddScheduleModal({
                     type="button"
                     variant="ghost"
                     className="cursor-pointer text-xs sm:text-sm"
-                    onClick={() => {
-                      resetForm();
-                      setOpen(false);
-                    }}
+                    onClick={() => setShowCancelConfirm(true)}
                   >
                     Cancel
                   </Button>
@@ -2858,10 +2959,7 @@ export default function AddScheduleModal({
                   type="button"
                   variant="ghost"
                   className="cursor-pointer text-xs sm:text-sm"
-                  onClick={() => {
-                    resetForm();
-                    setOpen(false);
-                  }}
+                  onClick={() => setShowCancelConfirm(true)}
                 >
                   Cancel
                 </Button>
@@ -2894,6 +2992,40 @@ export default function AddScheduleModal({
             </form>
           </TabsContent>
         </Tabs>
+        
+        {/* Cancel Confirmation Dialog */}
+        <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Cancellation</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel? All unsaved changes will be lost.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowCancelConfirm(false)}
+                className="cursor-pointer"
+              >
+                Continue
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  resetForm();
+                  setOpen(false);
+                  setShowCancelConfirm(false);
+                }}
+                className="cursor-pointer"
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

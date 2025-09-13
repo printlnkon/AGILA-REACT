@@ -66,8 +66,8 @@ const COLOR_OPTIONS = [
   { value: "orange", label: "Orange", bg: "bg-orange-500", text: "text-white" },
   { value: "pink", label: "Pink", bg: "bg-pink-500", text: "text-white" },
   { value: "cyan", label: "Cyan", bg: "bg-cyan-500", text: "text-white" },
-  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-black" },
-  { value: "lime", label: "Lime", bg: "bg-lime-500", text: "text-black" },
+  { value: "amber", label: "Amber", bg: "bg-amber-500", text: "text-white" },
+  { value: "lime", label: "Lime", bg: "bg-lime-500", text: "text-white" },
   { value: "teal", label: "Teal", bg: "bg-teal-500", text: "text-white" },
 ];
 
@@ -104,6 +104,14 @@ const validateTimeRange = (
   endMinute,
   endPeriod
 ) => {
+
+  if (endPeriod === "AM") {
+    const hourNum = parseInt(endHour);
+    if (hourNum === 12 || (hourNum >= 1 && hourNum <= 6)) {
+      return "End time cannot be between 12:00 AM - 6:59 AM";
+    }
+  }
+
   // Convert to 24-hour format for comparison
   let start24Hour = parseInt(startHour);
   if (startPeriod === "PM" && start24Hour !== 12) start24Hour += 12;
@@ -122,6 +130,21 @@ const validateTimeRange = (
     parseInt(endMinute) <= parseInt(startMinute)
   ) {
     return "End time must be after start time";
+  }
+
+  // Calculate duration in minutes
+  const startMinutes = start24Hour * 60 + parseInt(startMinute);
+  const endMinutes = end24Hour * 60 + parseInt(endMinute);
+  const duration = endMinutes - startMinutes;
+
+  // Check minimum duration (30 minutes)
+  if (duration < 30) {
+    return "Schedule duration must be at least 30 minutes";
+  }
+
+  // Check maximum duration (3 hours = 180 minutes)
+  if (duration > 180) {
+    return "Schedule duration cannot exceed 3 hours";
   }
 
   return null;
@@ -159,6 +182,7 @@ export default function EditScheduleModal({
   const [rooms, setRooms] = useState([]);
   const [conflicts, setConflicts] = useState([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Initialize form for editing schedules
   const form = useForm({
@@ -677,6 +701,7 @@ export default function EditScheduleModal({
         if (!isOpen) {
           setConflicts([]);
           setShowConflictDialog(false);
+          form.reset();
           onClose();
         }
       }}
@@ -836,9 +861,12 @@ export default function EditScheduleModal({
                                 key={`start-hr-${hour}`}
                                 value={hour.toString()}
                                 disabled={
-                                  form.watch("startPeriod") === "PM" &&
-                                  hour > 8 &&
-                                  hour < 12
+                                  (form.watch("startPeriod") === "AM" &&
+                                    hour < 7 &&
+                                    hour !== 12) ||
+                                  (form.watch("startPeriod") === "PM" &&
+                                    hour > 8 &&
+                                    hour < 12)
                                 }
                               >
                                 {hour}
@@ -964,9 +992,8 @@ export default function EditScheduleModal({
                                 key={`end-hr-${hour}`}
                                 value={hour.toString()}
                                 disabled={
-                                  form.watch("endPeriod") === "PM" &&
-                                  hour > 8 &&
-                                  hour < 12
+                                  (form.watch("endPeriod") === "PM" && hour > 8 && hour < 12) || 
+                                  (form.watch("endPeriod") === "AM" && (hour === 12 || (hour >= 1 && hour <= 6)))
                                 }
                               >
                                 {hour}
@@ -1012,6 +1039,16 @@ export default function EditScheduleModal({
                           value={form.watch("endPeriod") || "AM"}
                           onValueChange={(value) => {
                             form.setValue("endPeriod", value);
+
+                            if (value === "AM") {
+                              const hourNum = parseInt(form.watch("endHour"));
+                              if (
+                                hourNum === 12 ||
+                                (hourNum >= 1 && hourNum <= 6)
+                              ) {
+                                form.setValue("endHour", "7"); // Reset to 7 AM as the earliest allowed end time
+                              }
+                            }
                             // Adjust hour and minute when switching to PM
                             if (value === "PM") {
                               const hourNum = parseInt(form.watch("endHour"));
@@ -1049,7 +1086,7 @@ export default function EditScheduleModal({
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-1">
-              Note: End time cannot be later than 8:30 PM
+              Note: End time must be between 7:00 AM - 8:30 PM
             </p>
           </div>
 
@@ -1365,13 +1402,48 @@ export default function EditScheduleModal({
             </DialogContent>
           </Dialog>
 
+          {/* Cancel Confirmation Dialog */}
+          <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Confirm Cancellation</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to cancel? All unsaved changes will be
+                  lost.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="cursor-pointer"
+                >
+                  Continue Editing
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    form.reset();
+                    onClose();
+                    setShowCancelConfirm(false);
+                  }}
+                  className="cursor-pointer"
+                >
+                  Discard Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* Cancel and Save changes button */}
           <DialogFooter>
             <Button
               variant="ghost"
               type="button"
               className="cursor-pointer"
-              onClick={onClose}
+              onClick={() => setShowCancelConfirm(true)}
             >
               Cancel
             </Button>
