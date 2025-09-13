@@ -187,8 +187,8 @@ export default function ArchiveTable() {
     let successCount = 0;
     let failCount = 0;
 
-    // Show a loading toast
-    const loadingToast = toast.loading(
+    // Show a info toast
+    const infoToast = toast.info(
       `Restoring ${selectedRows.length} users...`
     );
 
@@ -204,8 +204,8 @@ export default function ArchiveTable() {
       }
     }
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
+    // Dismiss the info toast
+    toast.dismiss(infoToast);
 
     // Show results
     if (successCount > 0) {
@@ -271,8 +271,8 @@ export default function ArchiveTable() {
     let successCount = 0;
     let failCount = 0;
 
-    // Show a loading toast
-    const loadingToast = toast.loading(
+    // Show a info toast
+    const infoToast = toast.info(
       `Permanently deleting ${selectedRows.length} users...`
     );
 
@@ -288,8 +288,8 @@ export default function ArchiveTable() {
       }
     }
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
+    // Dismiss the info toast
+    toast.dismiss(infoToast);
 
     // Show results
     if (successCount > 0) {
