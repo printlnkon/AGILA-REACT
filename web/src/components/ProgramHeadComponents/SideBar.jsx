@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { SearchForm } from "@/components/ui/search-form";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFirestore, doc, onSnapshot } from "firebase/firestore";
 import {
   LayoutDashboard,
   Settings,
@@ -50,32 +51,16 @@ const items = {
       title: "Dashboard",
       url: "#",
       items: [
-        {
-          title: "Home",
-          url: "/program-head",
-          icon: LayoutDashboard,
-        },
+        { title: "Home", url: "/program-head", icon: LayoutDashboard },
       ],
     },
     {
       title: "Platform",
       url: "#",
       items: [
-        {
-          title: "Attendance",
-          url: "/program-head/attendance",
-          icon: User2,
-        },
-        {
-          title: "Request",
-          url: "/program-head/request",
-          icon: ClipboardList,
-        },
-        {
-          title: "Subject Approval",
-          url: "/program-head/subjectapproval",
-          icon: ClipboardList,
-        },
+        { title: "Schedule", url: "/program-head/schedule", icon: User2 },
+        { title: "Request", url: "/program-head/request", icon: ClipboardList },
+        { title: "Subject Approval", url: "/program-head/subjectapproval", icon: ClipboardList },
       ],
     },
   ],
@@ -83,6 +68,19 @@ const items = {
 
 export default function SideBar() {
   const { currentUser, logout } = useAuth();
+  const [profileData, setProfileData] = useState(null);
+
+  // live profile doc for avatar/name
+  useEffect(() => {
+    if (!currentUser) return;
+    const db = getFirestore();
+    // Firestore path for program head
+    const unsub = onSnapshot(
+      doc(db, "users", "programHead", "accounts", currentUser.uid),
+      (snap) => snap.exists() && setProfileData(snap.data())
+    );
+    return () => unsub();
+  }, [currentUser]);
 
   // sidebar
   const { isMobile, state } = useSidebar();
@@ -95,97 +93,56 @@ export default function SideBar() {
   // search
   const [inputValue, setInputValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // debounce search input
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(inputValue);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    const t = setTimeout(() => setSearchQuery(inputValue), 500);
+    return () => clearTimeout(t);
   }, [inputValue]);
 
-  // filtering logic
+  // filter items
   const filteredItems = useMemo(() => {
-    if (!searchQuery) {
-      return items.navMain;
-    }
-
-    const lowerCaseQuery = searchQuery.toLowerCase();
-
+    if (!searchQuery) return items.navMain;
+    const q = searchQuery.toLowerCase();
     return items.navMain
-      .map((category) => {
-        const filteredCategoryItems = category.items
-          .map((item) => {
-            // filter for sub-items
-            if (item.items) {
-              const filteredSubItems = item.items.filter((subItem) =>
-                subItem.title.toLowerCase().includes(lowerCaseQuery)
-              );
-              if (
-                item.title.toLowerCase().includes(lowerCaseQuery) ||
-                filteredSubItems.length > 0
-              ) {
-                // if parent title doesn't match, show matching sub-items
-                if (!item.title.toLowerCase().includes(lowerCaseQuery)) {
-                  return { ...item, items: filteredSubItems };
-                }
-                // otherwise, show parent and all sub-items
-                return item;
+      .map((cat) => {
+        const filtered = cat.items
+          .map((it) => {
+            if (it.items) {
+              const sub = it.items.filter((s) => s.title.toLowerCase().includes(q));
+              if (it.title.toLowerCase().includes(q) || sub.length) {
+                return it.title.toLowerCase().includes(q) ? it : { ...it, items: sub };
               }
             }
-            // For items without sub-items
-            if (item.title.toLowerCase().includes(lowerCaseQuery)) {
-              return item;
-            }
-            return null;
+            return it.title.toLowerCase().includes(q) ? it : null;
           })
-          .filter(Boolean); // Remove null entries
-
-        if (filteredCategoryItems.length > 0) {
-          return { ...category, items: filteredCategoryItems };
-        }
-        return null;
+          .filter(Boolean);
+        return filtered.length ? { ...cat, items: filtered } : null;
       })
-      .filter(Boolean); // Remove empty categories
+      .filter(Boolean);
   }, [searchQuery]);
 
-  // get user initials
-  const getInitials = (firstName = "", lastName = "") => {
-    const firstInitial = firstName ? firstName.charAt(0) : "";
-    const lastInitial = lastName ? lastName.charAt(0) : "";
-    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+  // initials + avatar sources
+  const getInitials = (f = "", l = "") => {
+    const a = f ? f[0] : "";
+    const b = l ? l[0] : "";
+    return (a + b || "U").toUpperCase();
   };
-
-  // get the firstName and lastName
-  const userInitials = getInitials(
-    currentUser?.firstName,
-    currentUser?.lastName
+  const initials = getInitials(
+    profileData?.firstName || currentUser?.firstName,
+    profileData?.lastName || currentUser?.lastName
   );
+  const avatarUrl = profileData?.profileImage || undefined;
 
-  // function to handle logout
+  // logout
   const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-      alert("Failed to log out. Please try again.");
-    }
+    try { await logout(); navigate("/login"); }
+    catch (e) { console.error("Logout failed:", e); alert("Failed to log out. Please try again."); }
   };
 
-  // determine if the menu item is active
-  const isActive = (url) => {
-    if (url === "/program-head") {
-      return location.pathname === "/program-head";
-    }
-    return (
-      location.pathname === url ||
-      (location.pathname.startsWith(url + "/") && url !== "/program-head")
-    );
-  };
+  // active route
+  const isActive = (url) =>
+    url === "/program-head"
+      ? location.pathname === "/program-head"
+      : location.pathname === url || (location.pathname.startsWith(url + "/") && url !== "/program-head");
 
   return (
     <>
@@ -200,10 +157,8 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-muted-background">
-                      AGILA
-                    </span>
-                    <span className="">v1.0.0</span>
+                    <span className="font-bold text-muted-background">AGILA</span>
+                    <span>v1.0.0</span>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -213,7 +168,6 @@ export default function SideBar() {
 
         {/* content */}
         <SidebarContent>
-          {/* search */}
           <SearchForm searchQuery={inputValue} setSearchQuery={setInputValue} />
           {filteredItems.map((category) => (
             <SidebarGroup key={category.title}>
@@ -224,20 +178,13 @@ export default function SideBar() {
                     <SidebarMenuItem key={menuItem.title}>
                       <SidebarMenuButton
                         tooltip={isCollapsed ? menuItem.title : undefined}
-                        className={`
-                          transition-all duration-200 ease-in-out
-                          ${
-                            isActive(menuItem.url)
-                              ? "font-bold bg-sidebar-primary text-white"
-                              : ""
-                          }
-                        `}
+                        className={`transition-all duration-200 ease-in-out ${
+                          isActive(menuItem.url) ? "font-bold bg-sidebar-primary text-white" : ""
+                        }`}
                         asChild
                       >
                         <Link to={menuItem.url} className="flex items-center">
-                          {menuItem.icon && (
-                            <menuItem.icon className="h-4 w-4" />
-                          )}
+                          {menuItem.icon && <menuItem.icon className="h-4 w-4" />}
                           <span>{menuItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -265,28 +212,20 @@ export default function SideBar() {
                           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
                         >
                           <Avatar className="h-8 w-8 rounded-lg">
-                            <AvatarImage
-                              src={userInitials}
-                              alt={userInitials}
-                            />
-                            <AvatarFallback className="rounded-lg">
-                              {userInitials}
-                            </AvatarFallback>
+                            <AvatarImage src={avatarUrl} alt={initials} />
+                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                           </Avatar>
                           <div className="grid flex-1 text-left text-sm leading-tight">
                             <span className="truncate font-medium">
-                              {currentUser?.firstName} {currentUser?.lastName}
+                              {profileData?.firstName || currentUser?.firstName}{" "}
+                              {profileData?.lastName || currentUser?.lastName}
                             </span>
                           </div>
                           <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    {isCollapsed && (
-                      <TooltipContent side="right">
-                        <p>Profile</p>
-                      </TooltipContent>
-                    )}
+                    {isCollapsed && <TooltipContent side="right"><p>Profile</p></TooltipContent>}
                   </Tooltip>
                 </TooltipProvider>
                 <DropdownMenuContent
@@ -298,24 +237,27 @@ export default function SideBar() {
                   <DropdownMenuLabel className="p-0 font-normal">
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
-                        <AvatarImage src={userInitials} alt={userInitials} />
-                        <AvatarFallback className="rounded-lg">
-                          {userInitials}
-                        </AvatarFallback>
+                        <AvatarImage src={avatarUrl} alt={initials} />
+                        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                       </Avatar>
-                      {/* inside the avatar */}
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
-                          {currentUser?.firstName} {currentUser?.lastName}
+                          {profileData?.firstName || currentUser?.firstName}{" "}
+                          {profileData?.lastName || currentUser?.lastName}
                         </span>
-                        <span className="truncate text-xs">
-                          {currentUser?.email || "No email"}
-                        </span>
+                        <span className="truncate text-xs">{currentUser?.email || "No email"}</span>
                       </div>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => navigate("/program-head/profile")}
+                    >
+                      <User2 />
+                      Profile
+                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer">
                       <Settings />
                       Settings
@@ -326,10 +268,7 @@ export default function SideBar() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer"
-                  >
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                     <LogOut />
                     Log out
                   </DropdownMenuItem>

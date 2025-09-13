@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import { SearchForm } from "@/components/ui/search-form";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFirestore, doc, onSnapshot } from "firebase/firestore";
 import {
   LayoutDashboard,
   Settings,
@@ -62,8 +63,8 @@ const items = {
       url: "#",
       items: [
         {
-          title: "Attendance",
-          url: "/teacher/attendance",
+          title: "Schedule",
+          url: "/teacher/schedule",
           icon: User2,
         },
         {
@@ -78,6 +79,20 @@ const items = {
 
 export default function SideBar() {
   const { currentUser, logout } = useAuth();
+  const [profileData, setProfileData] = useState(null);
+
+  // subscribe to teacher profile document (for avatar image/initials)
+  useEffect(() => {
+    if (!currentUser) return;
+    const db = getFirestore();
+    const unsub = onSnapshot(
+      doc(db, "users", "teacher", "accounts", currentUser.uid),
+      (snap) => {
+        if (snap.exists()) setProfileData(snap.data());
+      }
+    );
+    return () => unsub();
+  }, [currentUser]);
 
   // sidebar
   const { isMobile, state } = useSidebar();
@@ -93,74 +108,51 @@ export default function SideBar() {
 
   // debounce search input
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(inputValue);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    const timer = setTimeout(() => setSearchQuery(inputValue), 500);
+    return () => clearTimeout(timer);
   }, [inputValue]);
 
   // filtering logic
   const filteredItems = useMemo(() => {
-    if (!searchQuery) {
-      return items.navMain;
-    }
+    if (!searchQuery) return items.navMain;
 
-    const lowerCaseQuery = searchQuery.toLowerCase();
-
+    const q = searchQuery.toLowerCase();
     return items.navMain
       .map((category) => {
         const filteredCategoryItems = category.items
           .map((item) => {
-            // filter for sub-items
             if (item.items) {
-              const filteredSubItems = item.items.filter((subItem) =>
-                subItem.title.toLowerCase().includes(lowerCaseQuery)
+              const filteredSubItems = item.items.filter((sub) =>
+                sub.title.toLowerCase().includes(q)
               );
-              if (
-                item.title.toLowerCase().includes(lowerCaseQuery) ||
-                filteredSubItems.length > 0
-              ) {
-                // if parent title doesn't match, show matching sub-items
-                if (!item.title.toLowerCase().includes(lowerCaseQuery)) {
-                  return { ...item, items: filteredSubItems };
-                }
-                // otherwise, show parent and all sub-items
-                return item;
+              if (item.title.toLowerCase().includes(q) || filteredSubItems.length > 0) {
+                return item.title.toLowerCase().includes(q)
+                  ? item
+                  : { ...item, items: filteredSubItems };
               }
             }
-            // For items without sub-items
-            if (item.title.toLowerCase().includes(lowerCaseQuery)) {
-              return item;
-            }
+            if (item.title.toLowerCase().includes(q)) return item;
             return null;
           })
-          .filter(Boolean); // Remove null entries
-
-        if (filteredCategoryItems.length > 0) {
-          return { ...category, items: filteredCategoryItems };
-        }
-        return null;
+          .filter(Boolean);
+        return filteredCategoryItems.length ? { ...category, items: filteredCategoryItems } : null;
       })
-      .filter(Boolean); // Remove empty categories
+      .filter(Boolean);
   }, [searchQuery]);
 
-  // get user initials
+  // initials helper
   const getInitials = (firstName = "", lastName = "") => {
-    const firstInitial = firstName ? firstName.charAt(0) : "";
-    const lastInitial = lastName ? lastName.charAt(0) : "";
-    return `${firstInitial}${lastInitial}`.toUpperCase() || "U";
+    const a = firstName ? firstName.charAt(0) : "";
+    const b = lastName ? lastName.charAt(0) : "";
+    return `${a}${b}`.toUpperCase() || "U";
   };
 
-  // get the firstName and lastName
-  const userInitials = getInitials(
-    currentUser?.firstName,
-    currentUser?.lastName
+  const initials = getInitials(
+    profileData?.firstName || currentUser?.firstName,
+    profileData?.lastName || currentUser?.lastName
   );
 
-  // function to handle logout
+  // logout
   const handleLogout = async () => {
     try {
       await logout();
@@ -171,15 +163,10 @@ export default function SideBar() {
     }
   };
 
-  // determine if the menu item is active
+  // active route
   const isActive = (url) => {
-    if (url === "/teacher") {
-      return location.pathname === "/teacher";
-    }
-    return (
-      location.pathname === url ||
-      (location.pathname.startsWith(url + "/") && url !== "/teacher")
-    );
+    if (url === "/teacher") return location.pathname === "/teacher";
+    return location.pathname === url || (location.pathname.startsWith(url + "/") && url !== "/teacher");
   };
 
   return (
@@ -195,9 +182,7 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-muted-background">
-                      AGILA
-                    </span>
+                    <span className="font-bold text-muted-background">AGILA</span>
                     <span className="">v1.0.0</span>
                   </div>
                 </Link>
@@ -219,20 +204,13 @@ export default function SideBar() {
                     <SidebarMenuItem key={menuItem.title}>
                       <SidebarMenuButton
                         tooltip={isCollapsed ? menuItem.title : undefined}
-                        className={`
-                          transition-all duration-200 ease-in-out
-                          ${
-                            isActive(menuItem.url)
-                              ? "font-bold bg-sidebar-primary text-white"
-                              : ""
-                          }
-                        `}
+                        className={`transition-all duration-200 ease-in-out ${
+                          isActive(menuItem.url) ? "font-bold bg-sidebar-primary text-white" : ""
+                        }`}
                         asChild
                       >
                         <Link to={menuItem.url} className="flex items-center">
-                          {menuItem.icon && (
-                            <menuItem.icon className="h-4 w-4" />
-                          )}
+                          {menuItem.icon && <menuItem.icon className="h-4 w-4" />}
                           <span>{menuItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -261,16 +239,15 @@ export default function SideBar() {
                         >
                           <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage
-                              src={userInitials}
-                              alt={userInitials}
+                              src={profileData?.profileImage || undefined}
+                              alt={initials}
                             />
-                            <AvatarFallback className="rounded-lg">
-                              {userInitials}
-                            </AvatarFallback>
+                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                           </Avatar>
                           <div className="grid flex-1 text-left text-sm leading-tight">
                             <span className="truncate font-medium">
-                              {currentUser?.firstName} {currentUser?.lastName}
+                              {profileData?.firstName || currentUser?.firstName}{" "}
+                              {profileData?.lastName || currentUser?.lastName}
                             </span>
                           </div>
                           <ChevronsUpDown className="ml-auto size-4" />
@@ -293,15 +270,16 @@ export default function SideBar() {
                   <DropdownMenuLabel className="p-0 font-normal">
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
-                        <AvatarImage src={userInitials} alt={userInitials} />
-                        <AvatarFallback className="rounded-lg">
-                          {userInitials}
-                        </AvatarFallback>
+                        <AvatarImage
+                          src={profileData?.profileImage || undefined}
+                          alt={initials}
+                        />
+                        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                       </Avatar>
-                      {/* inside the avatar */}
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
-                          {currentUser?.firstName} {currentUser?.lastName}
+                          {profileData?.firstName || currentUser?.firstName}{" "}
+                          {profileData?.lastName || currentUser?.lastName}
                         </span>
                         <span className="truncate text-xs">
                           {currentUser?.email || "No email"}
@@ -311,6 +289,13 @@ export default function SideBar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => navigate("/teacher/profile")}
+                    >
+                      <User2 />
+                      Profile
+                    </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer">
                       <Settings />
                       Settings
@@ -321,10 +306,7 @@ export default function SideBar() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer"
-                  >
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                     <LogOut />
                     Log out
                   </DropdownMenuItem>

@@ -22,13 +22,15 @@ import StudentAttendance from "@/components/StudentComponents/Attendance";
 import StudentRequest from "@/components/StudentComponents/Request";
 import StudentProfile from "@/components/StudentComponents/Profile";
 import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
-import TeacherAttendance from "@/components/TeacherComponents/Attendance";
+import TeacherSchedule from "@/components/TeacherComponents/Schedule";
 import TeacherRequest from "@/components/TeacherComponents/Request";
+import TeacherProfile from "@/components/TeacherComponents/Profile";
 import AcademicHeadDashboard from "@/components/AcademicHeadComponents/AcademicHeadDashboard";
 import AcademicHeadAttendance from "@/components/AcademicHeadComponents/Attendance";
 import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
-import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance";
+import ProgramHeadSchedule from "@/components/ProgramHeadComponents/Schedule";
 import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
+import ProgramHeadProfile from "@/components/ProgramHeadComponents/Profile";
 import ProgramHeadSubjectApproval from "@/components/ProgramHeadComponents/ProgramHeadSubjectApproval";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
@@ -86,7 +88,7 @@ const routeTitles = {
   "/academic-head/attendance": "AGILA | Academic Head - Attendance",
   // program head title route
   "/program-head": "AGILA | Program Head - Dashboard",
-  "/program-head/attendance": "AGILA | Program Head - Attendance",
+  "/program-head/schedule": "AGILA | Program Head - Schedule",
   "/program-head/request": "AGILA | Program Head - Request",
   // teacher title route
   "/teacher": "AGILA | Teacher - Dashboard",
@@ -146,16 +148,18 @@ function AppContent() {
       {/* program head routes */}
       <Route path="/program-head" element={<ProtectedRoute roles={["program_head"]}><ProgramHead /></ProtectedRoute>}>
         <Route index element={<ProgramHeadDashboard />} />
-        <Route path="attendance" element={<ProgramHeadAttendance />} />
+        <Route path="schedule" element={<ProgramHeadSchedule />} />
         <Route path="request" element={<ProgramHeadRequest />} />
+        <Route path="profile" element={<ProgramHeadProfile />} />
         <Route path="subjectapproval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}
       <Route path="/teacher" element={<ProtectedRoute roles={["teacher"]}><Teacher /></ProtectedRoute>}>
         <Route index element={<TeacherDashboard />} />
-        <Route path="attendance" element={<TeacherAttendance />} />
+        <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="request" element={<TeacherRequest />} />
+        <Route path="profile" element={<TeacherProfile />} />
       </Route>
 
       {/* student routes */}
