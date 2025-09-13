@@ -230,6 +230,20 @@ export default function AcademicYearAndSemesterTable() {
     semesterToActivate,
     academicYearId
   ) => {
+    const academicYear = academicYears.find((ay) => ay.id === academicYearId);
+    
+    if (!academicYear) {
+      toast.error("Associated school year not found.");
+      return;
+    }
+
+    if (academicYear.status !== "Active") {
+      toast.error(
+        "A semester can only be set as active within the active school year."
+      );
+      return;
+    }
+
     setActionLoading(semesterToActivate.id);
     const batch = writeBatch(db);
     const semestersRef = collection(
@@ -238,7 +252,6 @@ export default function AcademicYearAndSemesterTable() {
       academicYearId,
       "semesters"
     );
-    const academicYear = academicYears.find((ay) => ay.id === academicYearId);
     if (!academicYear) return;
 
     academicYear.semesters.forEach((sem) => {
