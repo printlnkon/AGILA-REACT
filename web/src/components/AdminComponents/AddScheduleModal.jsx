@@ -602,6 +602,8 @@ export default function AddScheduleModal({
     const processedScheduleIds = new Set();
     const detectedConflicts = [];
 
+    const uniqueConflictMessages = new Set();
+
     // Check lecture conflicts with existing schedules
     existingSchedules.forEach((schedule) => {
       if (schedule.id === formState.editingScheduleId) {
@@ -619,55 +621,62 @@ export default function AddScheduleModal({
       // Only check for conflicts if both time AND day overlap
       if (timeOverlap && dayOverlap) {
         // Room conflict
-        if (room === schedule.roomId) {
-          detectedConflicts.push({
-            id: `${schedule.id}-room`,
-            subject: schedule.subjectName,
-            type: "room",
-            conflict: `Room ${schedule.roomName} is already booked for ${
-              schedule.subjectCode
-            } (${
-              schedule.isLabComponent || schedule.roomType === "LABORATORY"
-                ? "Laboratory"
-                : "Lecture"
-            }) at ${schedule.startTime} - ${schedule.endTime}`,
-          });
-        }
+        const roomConflictMessage = `Room ${schedule.roomName} is already booked for ${
+    schedule.subjectCode
+  } (${
+    schedule.isLabComponent || schedule.roomType === "LABORATORY"
+      ? "Laboratory"
+      : "Lecture"
+  }) at ${schedule.startTime} - ${schedule.endTime}`;
+    
+  if (room === schedule.roomId && !uniqueConflictMessages.has(roomConflictMessage)) {
+    uniqueConflictMessages.add(roomConflictMessage);
+    detectedConflicts.push({
+      id: `${schedule.id}-room`,
+      subject: schedule.subjectName,
+      type: "room",
+      conflict: roomConflictMessage,
+    });
+  }
 
         // Instructor conflict
-        if (instructor === schedule.instructorId) {
-          detectedConflicts.push({
-            id: `${schedule.id}-instructor`,
-            subject: schedule.subjectName,
-            type: "instructor",
-            conflict: `Instructor ${
-              schedule.instructorName
-            } is already teaching ${schedule.subjectCode} (${
-              schedule.isLabComponent || schedule.roomType === "LABORATORY"
-                ? "Laboratory"
-                : "Lecture"
-            }) at ${schedule.startTime} - ${schedule.endTime}`,
-          });
-        }
+        const instructorConflictMessage = `Instructor ${
+    schedule.instructorName
+  } is already teaching ${schedule.subjectCode} (${
+    schedule.isLabComponent || schedule.roomType === "LABORATORY"
+      ? "Laboratory"
+      : "Lecture"
+  }) at ${schedule.startTime} - ${schedule.endTime}`;
+    
+  if (instructor === schedule.instructorId && !uniqueConflictMessages.has(instructorConflictMessage)) {
+    uniqueConflictMessages.add(instructorConflictMessage);
+    detectedConflicts.push({
+      id: `${schedule.id}-instructor`,
+      subject: schedule.subjectName,
+      type: "instructor",
+      conflict: instructorConflictMessage,
+    });
+  }
 
         // Student section conflict
-        if (
-          !schedule.isLabComponent &&
-          !processedScheduleIds.has(`${schedule.id}-section`)
-        ) {
-          detectedConflicts.push({
-            id: `${schedule.id}-section`,
-            subject: schedule.subjectName,
-            type: "section",
-            conflict: `This section already has ${schedule.subjectCode} (${
-              schedule.isLabComponent || schedule.roomType === "LABORATORY"
-                ? "Laboratory"
-                : "Lecture"
-            }) scheduled at ${schedule.startTime} - ${schedule.endTime}`,
-          });
-          processedScheduleIds.add(`${schedule.id}-section`);
-        }
-      }
+        const sectionConflictMessage = `This section already has ${schedule.subjectCode} (${
+    schedule.isLabComponent || schedule.roomType === "LABORATORY"
+      ? "Laboratory"
+      : "Lecture"
+  }) scheduled at ${schedule.startTime} - ${schedule.endTime}`;
+    
+  if (!schedule.isLabComponent && !processedScheduleIds.has(`${schedule.id}-section`) && 
+      !uniqueConflictMessages.has(sectionConflictMessage)) {
+    uniqueConflictMessages.add(sectionConflictMessage);
+    detectedConflicts.push({
+      id: `${schedule.id}-section`,
+      subject: schedule.subjectName,
+      type: "section",
+      conflict: sectionConflictMessage,
+    });
+    processedScheduleIds.add(`${schedule.id}-section`);
+  }
+}
     });
 
     // Check laboratory conflicts if lab is included
@@ -702,36 +711,46 @@ export default function AddScheduleModal({
 
       if (labTimeOverlap && labDayOverlap) {
         // Lab room conflict check (runs if labRoom is selected)
-        if (labRoom && labRoom === schedule.roomId) {
-          detectedConflicts.push({
-            id: `${schedule.id}-labRoom`,
-            subject: schedule.subjectName,
-            type: "labRoom",
-            conflict: `Laboratory room ${
-              schedule.roomName
-            } is already booked for ${schedule.subjectCode} (${
-              schedule.isLabComponent || schedule.roomType === "LABORATORY"
-                ? "Laboratory"
-                : "Lecture"
-            }) at ${schedule.startTime} - ${schedule.endTime}`,
-          });
-        }
+       if (labRoom && labRoom === schedule.roomId) {
+  const labRoomConflictMessage = `Laboratory room ${
+    schedule.roomName
+  } is already booked for ${schedule.subjectCode} (${
+    schedule.isLabComponent || schedule.roomType === "LABORATORY"
+      ? "Laboratory"
+      : "Lecture"
+  }) at ${schedule.startTime} - ${schedule.endTime}`;
+  
+  if (!uniqueConflictMessages.has(labRoomConflictMessage)) {
+    uniqueConflictMessages.add(labRoomConflictMessage);
+    detectedConflicts.push({
+      id: `${schedule.id}-labRoom`,
+      subject: schedule.subjectName,
+      type: "labRoom",
+      conflict: labRoomConflictMessage,
+    });
+  }
+}
 
         // Lab instructor conflict check (runs if labInstructor is selected)
         if (labInstructor && labInstructor === schedule.instructorId) {
-          detectedConflicts.push({
-            id: `${schedule.id}-labInstructor`,
-            subject: schedule.subjectName,
-            type: "labInstructor",
-            conflict: `Laboratory instructor ${
-              schedule.instructorName
-            } is already teaching ${schedule.subjectCode} (${
-              schedule.isLabComponent || schedule.roomType === "LABORATORY"
-                ? "Laboratory"
-                : "Lecture"
-            }) at ${schedule.startTime} - ${schedule.endTime}`,
-          });
-        }
+  const labInstructorConflictMessage = `Laboratory instructor ${
+    schedule.instructorName
+  } is already teaching ${schedule.subjectCode} (${
+    schedule.isLabComponent || schedule.roomType === "LABORATORY"
+      ? "Laboratory"
+      : "Lecture"
+  }) at ${schedule.startTime} - ${schedule.endTime}`;
+  
+  if (!uniqueConflictMessages.has(labInstructorConflictMessage)) {
+    uniqueConflictMessages.add(labInstructorConflictMessage);
+    detectedConflicts.push({
+      id: `${schedule.id}-labInstructor`,
+      subject: schedule.subjectName,
+      type: "labInstructor",
+      conflict: labInstructorConflictMessage,
+    });
+  }
+}
       }
     });
   }
@@ -1228,8 +1247,6 @@ export default function AddScheduleModal({
           ...labScheduleData,
         };
 
-        // If no conflicts, proceed with submission
-        await handleConfirmedConflictSubmit();
         // Update both schedules
         await onScheduleAdded([newSchedule, newLabSchedule]);
       } else {
@@ -2720,7 +2737,7 @@ export default function AddScheduleModal({
               </div>
 
               {/* Conflicts alert */}
-              {conflicts.length > 0 && (
+              {conflicts.length > 0 && !showConflictDialog && (
                 <Alert
                   variant="destructive"
                   className="bg-red-50 border-red-200"
@@ -2733,16 +2750,14 @@ export default function AddScheduleModal({
                     <p className="mb-2">
                       This schedule conflicts with {conflicts.length} existing
                       schedule(s).{" "}
-                      {conflicts.length > 0 && (
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="p-0 h-auto text-xs sm:text-sm underline text-blue-600 cursor-pointer"
-                          onClick={() => setShowConflictDialog(true)}
-                        >
-                          View conflict details
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="p-0 h-auto text-xs sm:text-sm underline text-blue-600 cursor-pointer"
+                        onClick={() => setShowConflictDialog(true)}
+                      >
+                        View conflict details
+                      </Button>
                     </p>
                   </AlertDescription>
                 </Alert>
