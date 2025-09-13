@@ -275,7 +275,7 @@ const sendToServer = async (images) => {
               </>
             )}
 
-            <Button onClick={handleClose} disabled={isUploading} className="mt-4">
+            <Button variant="ghost" onClick={handleClose} disabled={isUploading} className="mt-4 cursor-pointer">
               Close
             </Button>
           </div>

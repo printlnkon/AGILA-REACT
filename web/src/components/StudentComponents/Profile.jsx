@@ -258,10 +258,10 @@ export default function Profile() {
         </div>
 
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="ghost" onClick={() => setIsEditing(false)}>
+          <Button variant="ghost" onClick={() => setIsEditing(false)} className="cursor-pointer">
             Cancel
           </Button>
-          <Button onClick={handleSaveChanges}>Save Changes</Button>
+          <Button onClick={handleSaveChanges} className="cursor-pointer">Save Changes</Button>
         </div>
       </div>
     );
@@ -357,7 +357,7 @@ export default function Profile() {
       </div>
 
       <div className="flex justify-end mt-4">
-        <Button onClick={() => setIsEditing(true)}>
+        <Button onClick={() => setIsEditing(true)} className="cursor-pointer ">
           <Edit className="w-4 h-4 mr-2" />
           Edit Profile
         </Button>

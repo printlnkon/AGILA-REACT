@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { ScanFace } from "lucide-react";
 
 const videoConstraints = {
-  width: 640,
-  height: 480,
+  width: 1280,
+  height: 720,
   facingMode: "user",
 };
 
@@ -149,15 +149,15 @@ const TryRecognition = () => {
             )}
           </div>
           <div className="flex flex-col items-center">
-            <p className="mt-2 text-md font-semibold text-white">
+            <p className="text-md font-semibold text-white">
               Detected Faces: {detectedFacesCount}
             </p>
           </div>
           <DialogFooter>
             <Button
               onClick={stopRecognition}
-              variant="outline"
-              className="w-full sm:w-auto"
+              variant="ghost"
+              className="w-full sm:w-auto cursor-pointer"
             >
               Cancel
             </Button>

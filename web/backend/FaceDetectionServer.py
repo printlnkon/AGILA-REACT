@@ -282,7 +282,7 @@ def try_recognition():
             test_embedding = np.array(embedding_result[0]['embedding'])
             best_similarity = 0
             best_name = "Unknown"
-            threshold = 0.5
+            threshold = 0.9
 
             for i, emb in enumerate(embeddings_db):
                 similarity = cosine_similarity(emb, test_embedding)
