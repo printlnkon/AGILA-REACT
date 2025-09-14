@@ -2,12 +2,6 @@ import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Check, X, Eye, Clock, Computer } from "lucide-react";
 
 // status badge component
@@ -103,35 +97,21 @@ export default function SubjectApprovalCard({
         <div className="flex gap-2">
           {subject.status === "Pending" && (
             <>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="bg-red-500 hover:bg-red-600 text-white cursor-pointer"
-                      onClick={() => onReject(subject)}
-                    >
-                      <X className="h-4 w-4" />
-                      Reject
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Reject Subject</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button
+                className="bg-red-500 hover:bg-red-600 text-white cursor-pointer"
+                onClick={() => onReject(subject)}
+              >
+                <X className="h-4 w-4" />
+                Reject
+              </Button>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="bg-green-500 hover:bg-green-600 text-white cursor-pointer"
-                      onClick={() => onApprove(subject)}
-                    >
-                      <Check className="h-4 w-4" />
-                      Approve
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Approve Subject</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button
+                className="bg-green-500 hover:bg-green-600 text-white cursor-pointer"
+                onClick={() => onApprove(subject)}
+              >
+                <Check className="h-4 w-4" />
+                Approve
+              </Button>
             </>
           )}
         </div>

@@ -30,6 +30,7 @@ import {
   getDocs,
   serverTimestamp,
   limit,
+  addDoc,
 } from "firebase/firestore";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -200,7 +201,7 @@ const SubjectDetailModal = ({
 
         {/* scrollable content area */}
         <div className="max-h-[65vh] overflow-y-auto pr-4 space-y-6 py-2">
-          {/* --- basic information section --- */}
+          {/* basic information section */}
           <div className="space-y-3">
             <h3 className="text-lg font-semibold border-b pb-2">
               Basic Information
@@ -929,6 +930,27 @@ export default function SubjectApproval() {
         },
       ],
     });
+
+    try {
+      await addDoc(collection(db, "notifications"), {
+        recipientRole: "admin",
+        message: `Subject ${
+          subject.subjectCode
+        } has been ${newStatus.toLowerCase()}.`,
+        type:
+          newStatus === "Approved" ? "subject_approved" : "subject_rejected",
+        link: "/admin/subject",
+        timestamp: serverTimestamp(),
+        isRead: false,
+        triggeredBy: {
+          uid: currentUser.uid,
+          name: currentUser.firstName || "A Program Head",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to create notification:", error);
+      toast.error("Failed to send notification to admin.");
+    }
   };
 
   // Initiate batch action
@@ -1007,7 +1029,9 @@ export default function SubjectApproval() {
         <CardContent className="p-4 flex items-center gap-3">
           <Layers className="h-8 w-8 text-primary" />
           <div>
-            <p className="font-semibold">Showing subjects for your department</p>
+            <p className="font-semibold">
+              Showing subjects for your department
+            </p>
             {deptName ? (
               <p className="text-muted-foreground">
                 Only proposals for the{" "}
@@ -1130,7 +1154,7 @@ export default function SubjectApproval() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <h5 className="text-sm font-medium">Sort by Date</h5>
                   <Select

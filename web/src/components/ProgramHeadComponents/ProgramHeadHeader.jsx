@@ -16,11 +16,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { useAuth } from "@/context/AuthContext";
+import ProgramHeadNotifications from "@/components/ProgramHeadComponents/ProgramHeadNotifications";
 
-export default function Header() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+export default function ProgramHeadHeader() {
+  const { currentUser } = useAuth();
   const location = useLocation();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
+  // current day and time
   useEffect(() => {
     // set up an interval to update the time every second
     const timer = setInterval(() => {
@@ -33,39 +37,19 @@ export default function Header() {
     };
   }, []);
 
-  // filter out empty strings from the path, and also the base 'admin' path
+  // filter out empty strings from the path, and also the base 'program-head' path
   const pathnames = location.pathname
     .split("/")
-    .filter((x) => x && x !== "admin");
+    .filter((x) => x && x !== "program-head");
 
   const customBreadcrumbNames = {
-    // admin paths
-    "classes": "Classes",
-    "academic-year-semester": "School Year & Semester",
-    "department-course": "Department & Course",
-    "year-level-section": "Year Level & Section",
-    "subject": "Subjects",
-    "schedule": "Schedule",
-    "room": "Room",
-    "staff": "Staff",
-    "accounts": "Accounts",
-    "academic-heads": "Academic Heads",
-    "program-heads": "Program Heads",
-    "teachers": "Teachers",
-    "students": "Students",
-    "archives": "Archives",
+    attendance: "Attendance",
+    request: "Request",
+    "subject-approval": "Subject Approval",
   };
 
-  const viewProfileBreadcrumbs = {
-    "classes": "Class List",
-    "academic-heads": "Academic Head Profile",
-    "program-heads": "Program Head Profile",
-    "students": "Student Profile",
-    "teachers": "Teacher Profile",
-  };
-
-  // function to capitalize the first letter
   const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // const showInitialSeparator = pathnames.length > 1;
 
   return (
     <Card className="sticky top-2 p-0 z-10">
@@ -73,31 +57,24 @@ export default function Header() {
         <div className="flex items-center gap-2 overflow-hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6 hidden sm:block" />
-
-          {/* desktop breadcrumbs (hidden on small screens) */}
           <Breadcrumb className="hidden md:flex">
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to="/admin">Home</Link>
+                  <Link to="/program-head">Home</Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {pathnames.length > 0 && <BreadcrumbSeparator />}
               {pathnames.map((value, index) => {
                 const isLast = index === pathnames.length - 1;
                 // reconstruct the path up to the current item
-                const to = `/admin/${pathnames.slice(0, index + 1).join("/")}`;
+                const to = `/program-head/${pathnames
+                  .slice(0, index + 1)
+                  .join("/")}`;
 
-                let name;
-                // check if the previous path segment indicates a profile view
-                if (isLast && viewProfileBreadcrumbs[pathnames[index - 1]]) {
-                  name = viewProfileBreadcrumbs[pathnames[index - 1]];
-                } else {
-                  // otherwise, use the custom name or capitalize the path value
-                  name =
-                    customBreadcrumbNames[value] ||
-                    capitalize(value.replace(/-/g, " "));
-                }
+                const name =
+                  customBreadcrumbNames[value] ||
+                  capitalize(value.replace(/-/g, " "));
 
                 return (
                   <React.Fragment key={to}>
@@ -123,7 +100,7 @@ export default function Header() {
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/admin">Home</Link>
+                    <Link to="/program-head">Home</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {pathnames.length > 1 && (
@@ -143,8 +120,8 @@ export default function Header() {
                           const lastValue = pathnames[pathnames.length - 1];
                           const secondLastValue =
                             pathnames[pathnames.length - 2];
-                          if (viewProfileBreadcrumbs[secondLastValue]) {
-                            return viewProfileBreadcrumbs[secondLastValue];
+                          if (customBreadcrumbNames[secondLastValue]) {
+                            return customBreadcrumbNames[secondLastValue];
                           }
                           return (
                             customBreadcrumbNames[lastValue] ||
@@ -160,14 +137,14 @@ export default function Header() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {/* current day and time */}
           <div className="hidden sm:flex">
             <Badge
               variant="outline"
               className="flex items-center gap-3 py-1.5 px-3 text-muted-foreground font-semibold"
             >
-              {/* Day */}
+              {/* day */}
               <div className="flex items-center gap-1.5">
                 <CalendarDays className="h-4 w-4" />
                 <span>
@@ -179,7 +156,7 @@ export default function Header() {
 
               <Separator orientation="vertical" className="h-4" />
 
-              {/* Time */}
+              {/* time */}
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>
@@ -193,7 +170,10 @@ export default function Header() {
             </Badge>
           </div>
 
-          {/* <Separator orientation="vertical" className="h-6 hidden sm:flex" /> */}
+          {/* notifications - only for program head */}
+          {currentUser?.role === "program_head" && (
+            <ProgramHeadNotifications currentUser={currentUser} />
+          )}
 
           {/* show different theme toggles based on screen size */}
           <div className="hidden sm:flex items-center gap-2">

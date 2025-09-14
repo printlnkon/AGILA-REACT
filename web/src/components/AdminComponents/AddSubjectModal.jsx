@@ -6,7 +6,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import {
   Dialog,
   DialogTrigger,
@@ -41,6 +48,47 @@ const FormError = ({ message }) => {
       {message}
     </div>
   );
+};
+
+// send notification to program head(s)
+const sendProgramHeadNotification = async (subject) => {
+  try {
+    const programHeadsQuery = query(
+      collection(db, "users/program_head/accounts"),
+      where("departmentName", "==", subject.departmentName)
+    );
+
+    const programHeadsSnapshot = await getDocs(programHeadsQuery);
+
+    if (programHeadsSnapshot.empty) {
+      console.log("No program head found for this department");
+      return false;
+    }
+
+    // create notifications for each program head
+    const notificationPromises = programHeadsSnapshot.docs.map(
+      async (phDoc) => {
+        const programHeadId = phDoc.id;
+        return addDoc(collection(db, "notifications"), {
+          userId: programHeadId,
+          userType: "program_head",
+          title: "New Subject Added",
+          message: `A new subject "${subject.subjectCode} - ${subject.subjectName}" has been added and requires your approval.`,
+          subjectId: subject.id,
+          subjectCode: subject.subjectCode,
+          subjectName: subject.subjectName,
+          createdAt: serverTimestamp(),
+          read: false,
+        });
+      }
+    );
+
+    await Promise.all(notificationPromises);
+    return true;
+  } catch (error) {
+    console.error("Error sending program head notification:", error);
+    return false;
+  }
 };
 
 export default function AddSubjectModal({
@@ -153,13 +201,18 @@ export default function AddSubjectModal({
         yearLevelName: session.selectedYearLevelName || null,
         createdBy: {
           userId: currentUser.uid,
-          userName: currentUser.firstName || currentUser.name || currentUser.email,
-          userRole: currentUser.role
-        }
+          userName:
+            currentUser.firstName || currentUser.name || currentUser.email,
+          userRole: currentUser.role,
+        },
       };
 
       const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
-      onSubjectAdded({ ...newSubjectData, id: docRef.id });
+      const newSubject = { ...newSubjectData, id: docRef.id };
+
+      await sendProgramHeadNotification(newSubject);
+
+      onSubjectAdded(newSubject);
       toast.success("Subject added successfully");
 
       onOpenChange(false);

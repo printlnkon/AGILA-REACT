@@ -186,7 +186,7 @@ const sendProgramHeadNotification = async (subject, actionType) => {
       async (phDoc) => {
         const programHeadId = phDoc.id;
 
-        // Create notification
+        // create notification
         return addDoc(collection(db, "notifications"), {
           userId: programHeadId,
           userType: "program_head",
@@ -326,11 +326,6 @@ export default function SubjectCard({
         ...updateData,
       });
 
-      // notify program head = edit
-      if (subject.status === "Approved") {
-        await notifyProgramHead("edit", subject, updateData);
-      }
-
       toast.success("Subject updated successfully");
       setEditDialogOpen(false);
     } catch (err) {
@@ -355,11 +350,6 @@ export default function SubjectCard({
       await deleteDoc(doc(db, subjectPath));
 
       onSubjectDeleted(subject.id);
-
-      // notify program head = delete
-      if (subject.status === "Approved") {
-        await notifyProgramHead("delete", subject);
-      }
 
       toast.success("Subject deleted successfully");
       setShowDeleteDialog(false);
@@ -407,7 +397,7 @@ export default function SubjectCard({
       toast.success("Program Head has been notified of this action.");
     }
 
-    // Proceed with the selected action
+    // proceed with the selected action
     if (actionType === "edit") {
       setEditDialogOpen(true);
     } else if (actionType === "delete") {
@@ -457,6 +447,7 @@ export default function SubjectCard({
                       View More Actions
                     </TooltipContent>
                   </Tooltip>
+                  {/* edit & delete actions */}
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       onClick={handleInitiateEdit}
@@ -466,7 +457,6 @@ export default function SubjectCard({
                       <span>Edit</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    {/* Allow delete for all subjects */}
                     <DropdownMenuItem
                       onClick={handleInitiateDelete}
                       className="text-destructive cursor-pointer"
@@ -533,10 +523,10 @@ export default function SubjectCard({
               Update subject information. All fields marked with{" "}
               <span className="text-destructive">*</span> are required.
               {isApproved && (
-                <p className="mt-2 text-amber-600">
+                <div className="mt-2 text-amber-600">
                   This subject was previously approved. After editing, it will
                   return to Pending status and require re-approval.
-                </p>
+                </div>
               )}
             </DialogDescription>
           </DialogHeader>
