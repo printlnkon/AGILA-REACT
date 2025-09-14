@@ -437,6 +437,7 @@ export default function AccountsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [roleFilter, setRoleFilter] = useState([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -463,6 +464,7 @@ export default function AccountsTable() {
             allUsers.push({
               id: doc.id,
               role: userData.role || "unknown",
+              // role: role.replace("_", " "),
               status: userData.status || "active",
               email: userData.email || "",
               firstName: userData.firstName || "",
@@ -600,6 +602,18 @@ export default function AccountsTable() {
     }
   };
 
+  const handleRoleFilterChange = (selectedRoles) => {
+    if (selectedRoles.length === 0) {
+      // If no roles selected, clear the filter
+      table.getColumn("role")?.setFilterValue(undefined);
+      setRoleFilter([]);
+    } else {
+      // Set the filter with selected roles
+      table.getColumn("role")?.setFilterValue(selectedRoles);
+      setRoleFilter(selectedRoles);
+    }
+  };
+
   const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
     data: users,
@@ -628,6 +642,18 @@ export default function AccountsTable() {
       },
     },
   });
+
+  if (error) {
+    return (
+      <div className="w-full p-4 space-y-4 flex flex-col items-center justify-center h-96">
+        <div className="text-center space-y-3">
+          <p className="text-destructive font-semibold">An error occurred</p>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={fetchUsers}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -767,7 +793,7 @@ export default function AccountsTable() {
           </p>
         </div>
       </div>
-      
+
       <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
@@ -822,49 +848,72 @@ export default function AccountsTable() {
 
           {/* filter by role */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>   
+            <DropdownMenuTrigger asChild>
               <Button className="w-full sm:w-auto cursor-pointer">
                 <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuCheckboxItem
-                checked={
-                  table.getColumn("role")?.getFilterValue() === undefined
-                }
+                checked={roleFilter.length === 0}
                 onCheckedChange={() => {
-                  table.getColumn("role")?.setFilterValue(undefined);
+                  handleRoleFilterChange([]);
                 }}
               >
                 All Roles
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              {["academic head", "program head", "teacher", "student"].map(
-                (role) => (
-                  <DropdownMenuCheckboxItem
-                    key={role}
-                    checked={table.getColumn("role")?.getFilterValue() === role}
-                    onCheckedChange={(checked) => {
-                      table
-                        .getColumn("role")
-                        ?.setFilterValue(checked ? role : undefined);
-                    }}
-                    className="capitalize"
-                  >
-                    {role.replace("_", " ")}
-                  </DropdownMenuCheckboxItem>
-                )
-              )}
-              {/* Clear filters button */}
-              {table.getColumn("role")?.getFilterValue() !== undefined && (
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Academic Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Academic Head"]
+                    : roleFilter.filter((r) => r !== "Academic Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Academic Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Program Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Program Head"]
+                    : roleFilter.filter((r) => r !== "Program Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Program Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Teacher")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Teacher"]
+                    : roleFilter.filter((r) => r !== "Teacher");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Teacher
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Student")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Student"]
+                    : roleFilter.filter((r) => r !== "Student");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Student
+              </DropdownMenuCheckboxItem>
+              {roleFilter.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <Button
                     variant="ghost"
-                    className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                    onClick={() =>
-                      table.getColumn("role")?.setFilterValue(undefined)
-                    }
+                    className="w-full justify-center text-destructive hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    onClick={() => handleRoleFilterChange([])}
                   >
                     Clear Filter
                   </Button>
