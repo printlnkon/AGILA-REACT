@@ -41,27 +41,40 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   ];
   const TIME_SLOTS = [
     "7:00 AM - 7:30 AM",
+    "7:30 AM - 8:00 AM",
     "8:00 AM - 8:30 AM",
+    "8:30 AM - 9:00 AM",
     "9:00 AM - 9:30 AM",
+    "9:30 AM - 10:00 AM",
     "10:00 AM - 10:30 AM",
+    "10:30 AM - 11:00 AM",
     "11:00 AM - 11:30 AM",
+    "11:30 AM - 12:00 PM",
     "12:00 PM - 12:30 PM",
+    "12:30 PM - 1:00 PM",
     "1:00 PM - 1:30 PM",
+    "1:30 PM - 2:00 PM",
     "2:00 PM - 2:30 PM",
+    "2:30 PM - 3:00 PM",
     "3:00 PM - 3:30 PM",
+    "3:30 PM - 4:00 PM",
     "4:00 PM - 4:30 PM",
+    "4:30 PM - 5:00 PM",
     "5:00 PM - 5:30 PM",
+    "5:30 PM - 6:00 PM",
     "6:00 PM - 6:30 PM",
+    "6:30 PM - 7:00 PM",
     "7:00 PM - 7:30 PM",
+    "7:30 PM - 8:00 PM",
     "8:00 PM - 8:30 PM",
   ];
 
   const renderCalendar = () => {
     return (
       <div className="border rounded-lg mt-4 overflow-hidden">
-        <div className="grid grid-cols-8 relative">
+        <div className="grid grid-cols-8">
           {/* Time column */}
-          <div className="border-r relative">
+          <div className="border-r">
             <div className="h-12 border-b flex items-center justify-center font-semibold">
               Time
             </div>
@@ -87,82 +100,84 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
             );
 
             return (
-              <div key={day} className="relative border-r min-h-full">
+              <div key={day} className="border-r min-h-full">
                 {/* Day header */}
                 <div className="h-12 border-b flex items-center justify-center font-semibold">
                   {day}
                 </div>
 
-                {/* Time slot gridlines */}
-                {TIME_SLOTS.map((_, index) => (
-                  <div
-                    key={index}
-                    className={cn("h-[90px]", index !== 0 && "border-t")}
-                  />
-                ))}
-
-                {/* Schedule items */}
-                {daySchedules.map((schedule) => {
-                  const { top, height } = getSchedulePosition(schedule);
-                  const totalHours = calculateTotalHours(
-                    schedule.startTime,
-                    schedule.endTime
-                  );
-                  const { bg, hoverBg, text } =
-                    getScheduleColorClasses(schedule);
-
-                  return (
+                <div className="relative">
+                  {/* Time slot gridlines */}
+                  {TIME_SLOTS.map((_, index) => (
                     <div
-                      key={`${day}-${schedule.id}`}
-                      className={`absolute w-full px-2 py-1 rounded-md overflow-hidden text-center
-                    transition-colors cursor-pointer flex flex-col justify-center
-                    ${bg} ${hoverBg} ${text}`}
-                      style={{
-                        top: `${12 + top}px`, // Add header height offset (12px)
-                        height: `${Math.max(height, 60)}px`,
-                        zIndex: 1,
-                      }}
-                    >
-                      {/* section name with schedule type */}
-                      <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
-                        {schedule.sectionName || "Section"} •{" "}
-                        {getScheduleTypeName(schedule)}
-                      </div>
+                      key={index}
+                      className={cn("h-[90px]", index !== 0 && "border-t")}
+                    />
+                  ))}
 
-                      {/* subject code with subject name */}
-                      <div className="font-semibold text-xs leading-tight truncate">
-                        {schedule.subjectCode} - {schedule.subjectName}
-                      </div>
+                  {/* Schedule items */}
+                  {daySchedules.map((schedule) => {
+                    const { top, height } = getSchedulePosition(schedule);
+                    const totalHours = calculateTotalHours(
+                      schedule.startTime,
+                      schedule.endTime
+                    );
+                    const { bg, hoverBg, text } =
+                      getScheduleColorClasses(schedule);
 
-                      {/* room information */}
-                      <div className="text-xs mt-0.5 truncate">
-                        {schedule.roomName || room?.roomNo}
-                      </div>
-
-                      {/* time information and total hours */}
-                      {height >= 75 && (
-                        <div className="flex justify-center items-center gap-1 mt-1 text-xs">
-                          <Clock className="h-2.5 w-2.5" />
-                          <span className="truncate">{totalHours}</span>
+                    return (
+                      <div
+                        key={`${day}-${schedule.id}`}
+                        className={`absolute w-full px-2 py-1 rounded-md overflow-hidden text-center
+                      transition-colors cursor-pointer flex flex-col justify-center
+                      ${bg} ${hoverBg} ${text}`}
+                        style={{
+                          top: `${top}px`,
+                          height: `${height}px`,
+                          zIndex: 1,
+                        }}
+                      >
+                        {/* section name with schedule type */}
+                        <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
+                          {schedule.sectionName || "Section"} •{" "}
+                          {getScheduleTypeName(schedule)}
                         </div>
-                      )}
 
-                      {/* instructor name - only show if we have enough space */}
-                      <div className="truncate text-xs italic">
-                        {schedule.instructorName}
+                        {/* subject code with subject name */}
+                        <div className="font-semibold text-xs leading-tight truncate">
+                          {schedule.subjectCode} - {schedule.subjectName}
+                        </div>
+
+                        {/* room information */}
+                        <div className="text-xs mt-0.5 truncate">
+                          {schedule.roomName || room?.roomNo}
+                        </div>
+
+                        {/* time information and total hours */}
+                        {height >= 75 && (
+                          <div className="flex justify-center items-center gap-1 mt-1 text-xs">
+                            <Clock className="h-2.5 w-2.5" />
+                            <span className="truncate">{totalHours}</span>
+                          </div>
+                        )}
+
+                        {/* instructor name - only show if we have enough space */}
+                        <div className="truncate text-xs italic">
+                          {schedule.instructorName}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
-                {/* Empty state */}
-                {daySchedules.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center mt-12">
-                    <span className="text-xs text-muted-foreground">
-                      No classes
-                    </span>
-                  </div>
-                )}
+                  {/* Empty state */}
+                  {daySchedules.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground">
+                        No classes
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -259,34 +274,32 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
   };
 
   const getSchedulePosition = (schedule) => {
-    const timeToMinutes = (time) => {
-      const [hourPart, minutePart] = time.split(":");
-      let hour = parseInt(hourPart);
-      const minuteAndPeriod = minutePart.split(" ");
-      const minute = parseInt(minuteAndPeriod[0]);
-      const isPM = minuteAndPeriod[1] === "PM";
-
-      if (isPM && hour !== 12) hour += 12;
-      if (!isPM && hour === 12) hour = 0;
-
-      return hour * 60 + minute;
-    };
-
-    // Calculate position based on time
-    const startMinutes = timeToMinutes(schedule.startTime);
-    const endMinutes = timeToMinutes(schedule.endTime);
-    const startOfDay = timeToMinutes("7:00 AM"); // First time slot
-
-    // Each time slot is 60px high
+    // Each time slot row in the grid is 90px tall
     const slotHeight = 90;
-    // Calculate position relative to the start of the day
-    const top = ((startMinutes - startOfDay) / 55) * slotHeight;
-    // Calculate height based on duration
-    const height = ((endMinutes - startMinutes) / 55) * slotHeight;
+
+    // Find the index of the time slot where the schedule begins.
+    const startIndex = TIME_SLOTS.findIndex(
+      (slot) => slot.split(" - ")[0].trim() === schedule.startTime
+    );
+
+    // Find the index of the last slot occupied by the schedule by its end time.
+    const lastSlotIndex = TIME_SLOTS.findIndex(
+      (slot) => slot.split(" - ")[1].trim() === schedule.endTime
+    );
+
+    // If the schedule's start time doesn't align with a slot, hide it.
+    if (startIndex === -1) {
+      console.warn("Schedule start time does not align with grid:", schedule);
+      return { top: 0, height: 0 };
+    }
+
+    // The end index for calculation is one after the last occupied slot.
+    // If not found, default to a single-slot duration.
+    const endIndex = lastSlotIndex !== -1 ? lastSlotIndex + 1 : startIndex + 1;
 
     return {
-      top: top,
-      height: height,
+      top: startIndex * slotHeight,
+      height: Math.max((endIndex - startIndex) * slotHeight, slotHeight),
     };
   };
 
