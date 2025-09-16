@@ -2,7 +2,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Outlet } from "react-router-dom";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import SideBar from "@/components/ProgramHeadComponents/SideBar";
-import Header from "@/components/ProgramHeadComponents/Header";
+import ProgramHeadHeader from "@/components/ProgramHeadComponents/ProgramHeadHeader";
 
 export default function ProgramHead() {
   return (
@@ -13,7 +13,7 @@ export default function ProgramHead() {
           <SideBar />
           <SidebarInset>
             {/* header/breadcrumbs for the program head */}
-            <Header />
+            <ProgramHeadHeader />
             {/* main content */}
             <Outlet />
           </SidebarInset>

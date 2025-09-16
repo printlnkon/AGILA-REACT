@@ -151,7 +151,7 @@ function AppContent() {
         <Route path="schedule" element={<ProgramHeadSchedule />} />
         <Route path="request" element={<ProgramHeadRequest />} />
         <Route path="profile" element={<ProgramHeadProfile />} />
-        <Route path="subjectapproval" element={<ProgramHeadSubjectApproval />} />
+        <Route path="subject-approval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}

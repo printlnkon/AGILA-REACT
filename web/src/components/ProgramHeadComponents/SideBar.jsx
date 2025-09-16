@@ -51,16 +51,29 @@ const items = {
       title: "Dashboard",
       url: "#",
       items: [
-        { title: "Home", url: "/program-head", icon: LayoutDashboard },
+        { title: "Home", 
+          url: "/program-head", 
+          icon: LayoutDashboard 
+        }
       ],
     },
     {
       title: "Platform",
       url: "#",
       items: [
-        { title: "Schedule", url: "/program-head/schedule", icon: User2 },
-        { title: "Request", url: "/program-head/request", icon: ClipboardList },
-        { title: "Subject Approval", url: "/program-head/subjectapproval", icon: ClipboardList },
+        { title: "Schedule", 
+          url: "/program-head/schedule", 
+          icon: User2 
+        },
+        { title: "Request", 
+          url: "/program-head/request", 
+          icon: ClipboardList 
+        },
+        {
+          title: "Subject Approval",
+          url: "/program-head/subject-approval",
+          icon: ClipboardList,
+        },
       ],
     },
   ],
@@ -107,9 +120,13 @@ export default function SideBar() {
         const filtered = cat.items
           .map((it) => {
             if (it.items) {
-              const sub = it.items.filter((s) => s.title.toLowerCase().includes(q));
+              const sub = it.items.filter((s) =>
+                s.title.toLowerCase().includes(q)
+              );
               if (it.title.toLowerCase().includes(q) || sub.length) {
-                return it.title.toLowerCase().includes(q) ? it : { ...it, items: sub };
+                return it.title.toLowerCase().includes(q)
+                  ? it
+                  : { ...it, items: sub };
               }
             }
             return it.title.toLowerCase().includes(q) ? it : null;
@@ -134,15 +151,21 @@ export default function SideBar() {
 
   // logout
   const handleLogout = async () => {
-    try { await logout(); navigate("/login"); }
-    catch (e) { console.error("Logout failed:", e); alert("Failed to log out. Please try again."); }
+    try {
+      await logout();
+      navigate("/login");
+    } catch (e) {
+      console.error("Logout failed:", e);
+      alert("Failed to log out. Please try again.");
+    }
   };
 
   // active route
   const isActive = (url) =>
     url === "/program-head"
       ? location.pathname === "/program-head"
-      : location.pathname === url || (location.pathname.startsWith(url + "/") && url !== "/program-head");
+      : location.pathname === url ||
+        (location.pathname.startsWith(url + "/") && url !== "/program-head");
 
   return (
     <>
@@ -157,7 +180,9 @@ export default function SideBar() {
                     <GalleryVerticalEnd className="size-4" />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-bold text-muted-background">AGILA</span>
+                    <span className="font-bold text-muted-background">
+                      AGILA
+                    </span>
                     <span>v1.0.0</span>
                   </div>
                 </Link>
@@ -179,12 +204,16 @@ export default function SideBar() {
                       <SidebarMenuButton
                         tooltip={isCollapsed ? menuItem.title : undefined}
                         className={`transition-all duration-200 ease-in-out ${
-                          isActive(menuItem.url) ? "font-bold bg-sidebar-primary text-white" : ""
+                          isActive(menuItem.url)
+                            ? "font-bold bg-sidebar-primary text-white"
+                            : ""
                         }`}
                         asChild
                       >
                         <Link to={menuItem.url} className="flex items-center">
-                          {menuItem.icon && <menuItem.icon className="h-4 w-4" />}
+                          {menuItem.icon && (
+                            <menuItem.icon className="h-4 w-4" />
+                          )}
                           <span>{menuItem.title}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -213,7 +242,9 @@ export default function SideBar() {
                         >
                           <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage src={avatarUrl} alt={initials} />
-                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                            <AvatarFallback className="rounded-lg">
+                              {initials}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="grid flex-1 text-left text-sm leading-tight">
                             <span className="truncate font-medium">
@@ -225,7 +256,11 @@ export default function SideBar() {
                         </SidebarMenuButton>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    {isCollapsed && <TooltipContent side="right"><p>Profile</p></TooltipContent>}
+                    {isCollapsed && (
+                      <TooltipContent side="right">
+                        <p>Profile</p>
+                      </TooltipContent>
+                    )}
                   </Tooltip>
                 </TooltipProvider>
                 <DropdownMenuContent
@@ -238,14 +273,18 @@ export default function SideBar() {
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
                         <AvatarImage src={avatarUrl} alt={initials} />
-                        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                        <AvatarFallback className="rounded-lg">
+                          {initials}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
                           {profileData?.firstName || currentUser?.firstName}{" "}
                           {profileData?.lastName || currentUser?.lastName}
                         </span>
-                        <span className="truncate text-xs">{currentUser?.email || "No email"}</span>
+                        <span className="truncate text-xs">
+                          {currentUser?.email || "No email"}
+                        </span>
                       </div>
                     </div>
                   </DropdownMenuLabel>
@@ -268,7 +307,10 @@ export default function SideBar() {
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                  >
                     <LogOut />
                     Log out
                   </DropdownMenuItem>

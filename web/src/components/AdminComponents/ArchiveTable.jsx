@@ -187,8 +187,8 @@ export default function ArchiveTable() {
     let successCount = 0;
     let failCount = 0;
 
-    // Show a loading toast
-    const loadingToast = toast.loading(
+    // Show a info toast
+    const infoToast = toast.info(
       `Restoring ${selectedRows.length} users...`
     );
 
@@ -204,8 +204,8 @@ export default function ArchiveTable() {
       }
     }
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
+    // Dismiss the info toast
+    toast.dismiss(infoToast);
 
     // Show results
     if (successCount > 0) {
@@ -235,26 +235,7 @@ export default function ArchiveTable() {
     try {
       const deleteUser = httpsCallable(functions, "deleteUserAuth");
       // delete from firebase authentication
-      const storageFolderName = `${user.firstName} ${user.lastName}`
-      .replace(/\s+/g, "_")
-      .toLowerCase();
-
-      const uniqueNumberValue =
-        user.uniqueNumber || user.studentNumber || user.employeeNumber || "";
-
-      console.log("Sending to deleteUserAuth:", {
-        email: user.email.trim(),
-        storageFolder: storageFolderName,
-        uniqueNumber: uniqueNumberValue
-      });
-
-      await deleteUser({
-        email: user.email.trim(),
-        storageFolder: storageFolderName,
-        uniqueNumber: uniqueNumberValue,
-        role: user.role,
-      });
-      
+      await deleteUser({ email: user.email });
       // delete from firestore archive collection
       const archiveRef = doc(db, "archive", user.id);
 
@@ -290,8 +271,8 @@ export default function ArchiveTable() {
     let successCount = 0;
     let failCount = 0;
 
-    // Show a loading toast
-    const loadingToast = toast.loading(
+    // Show a info toast
+    const infoToast = toast.info(
       `Permanently deleting ${selectedRows.length} users...`
     );
 
@@ -307,8 +288,8 @@ export default function ArchiveTable() {
       }
     }
 
-    // Dismiss the loading toast
-    toast.dismiss(loadingToast);
+    // Dismiss the info toast
+    toast.dismiss(infoToast);
 
     // Show results
     if (successCount > 0) {
@@ -876,8 +857,7 @@ export default function ArchiveTable() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="cursor-pointer">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+                <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

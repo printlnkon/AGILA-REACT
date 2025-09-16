@@ -86,7 +86,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
-import TryRecognition from "@/components/AdminComponents/TestRecognition";
+import TryRecognition from "@/components/AdminComponents/TryRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -438,6 +438,7 @@ export default function AccountsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [roleFilter, setRoleFilter] = useState([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -601,6 +602,18 @@ export default function AccountsTable() {
     }
   };
 
+  const handleRoleFilterChange = (selectedRoles) => {
+    if (selectedRoles.length === 0) {
+      // If no roles selected, clear the filter
+      table.getColumn("role")?.setFilterValue(undefined);
+      setRoleFilter([]);
+    } else {
+      // Set the filter with selected roles
+      table.getColumn("role")?.setFilterValue(selectedRoles);
+      setRoleFilter(selectedRoles);
+    }
+  };
+
   const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
     data: users,
@@ -640,6 +653,8 @@ export default function AccountsTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
+          {/* skeleton for try recognition button */}
+          <Skeleton className="h-9 w-28" />
           {/* skeleton for export button */}
           <Skeleton className="h-9 w-28" />
 
@@ -826,49 +841,71 @@ export default function AccountsTable() {
           {/* filter by role */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button className="w-full sm:w-auto cursor-pointer">
+                <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuCheckboxItem
-                checked={
-                  table.getColumn("role")?.getFilterValue() === undefined
-                }
+                checked={roleFilter.length === 0}
                 onCheckedChange={() => {
-                  table.getColumn("role")?.setFilterValue(undefined);
+                  handleRoleFilterChange([]);
                 }}
               >
                 All Roles
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              {["academic head", "program head", "teacher", "student"].map(
-                (role) => (
-                  <DropdownMenuCheckboxItem
-                    key={role}
-                    checked={table.getColumn("role")?.getFilterValue() === role}
-                    onCheckedChange={(checked) => {
-                      table
-                        .getColumn("role")
-                        ?.setFilterValue(checked ? role : undefined);
-                    }}
-                    className="capitalize"
-                  >
-                    {role.replace("_", " ")}
-                  </DropdownMenuCheckboxItem>
-                )
-              )}
-              {/* Clear filters button */}
-              {table.getColumn("role")?.getFilterValue() !== undefined && (
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Academic Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Academic Head"]
+                    : roleFilter.filter((r) => r !== "Academic Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Academic Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Program Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Program Head"]
+                    : roleFilter.filter((r) => r !== "Program Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Program Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Teacher")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Teacher"]
+                    : roleFilter.filter((r) => r !== "Teacher");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Teacher
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Student")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Student"]
+                    : roleFilter.filter((r) => r !== "Student");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Student
+              </DropdownMenuCheckboxItem>
+              {roleFilter.length > 0 && (
                 <>
                   <DropdownMenuSeparator />
                   <Button
                     variant="ghost"
-                    className="w-full justify-center text-red-500 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                    onClick={() =>
-                      table.getColumn("role")?.setFilterValue(undefined)
-                    }
+                    className="w-full justify-center text-destructive hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    onClick={() => handleRoleFilterChange([])}
                   >
                     Clear Filter
                   </Button>

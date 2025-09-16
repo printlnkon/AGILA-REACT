@@ -235,12 +235,12 @@ export default function ViewRoomSchedule({ open, onOpenChange, room }) {
       amber: {
         bg: "bg-amber-500",
         hoverBg: "hover:bg-amber-600",
-        text: "text-black",
+        text: "text-white",
       },
       lime: {
         bg: "bg-lime-500",
         hoverBg: "hover:bg-lime-600",
-        text: "text-black",
+        text: "text-white",
       },
       teal: {
         bg: "bg-teal-500",

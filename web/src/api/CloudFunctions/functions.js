@@ -2,7 +2,6 @@ const { onCall } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
-
 setGlobalOptions({
   region: "asia-southeast1",
   cpu: 1,

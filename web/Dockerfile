@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # copy local directories to the current local directory of docker image (/app)
-COPY ./src ./src
-COPY ./public ./public
+# COPY ./src ./src
+# COPY ./public ./public
 
 # install the app dependencies
 RUN npm install
