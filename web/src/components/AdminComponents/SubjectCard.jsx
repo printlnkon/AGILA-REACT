@@ -405,17 +405,19 @@ export default function SubjectCard({
     }
   };
 
-  return (
+    return (
     <>
       <Card className="w-full transition-all hover:shadow-md">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <CardTitle className="text-xl font-bold">
-              {/* subj name */}
-              {subject.subjectCode} - {subject.subjectName}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              {/* Added a Badge for the subject status */}
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+            <div>
+              <CardTitle className="text-lg sm:text-xl font-bold">
+                {subject.subjectCode} - {subject.subjectName}
+              </CardTitle>
+            </div>
+
+            {/* actions and badges container */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Badge
                 className={
                   subject.status === "Approved"
@@ -469,14 +471,13 @@ export default function SubjectCard({
               </TooltipProvider>
             </div>
           </div>
-          <CardDescription className="flex justify-between items-center">
-            <span>
-              {subject.withLaboratory ? (
-                <Badge variant="secondary">w/ Laboratory</Badge>
-              ) : null}
-              <br />
-              <div className="mt-2">{subject.description}</div>
-            </span>
+          <CardDescription className="pt-2">
+            {subject.withLaboratory && (
+              <Badge variant="secondary" className="mb-2">
+                w/ Laboratory
+              </Badge>
+            )}
+            <div>{subject.description}</div>
           </CardDescription>
         </CardHeader>
       </Card>
