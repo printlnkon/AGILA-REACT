@@ -680,8 +680,7 @@ export default function ScheduleCalendar({
         onClick={() => handleScheduleClick(schedule)}
         className={`absolute w-full px-2 py-1 rounded-md overflow-hidden text-center
         transition-colors cursor-pointer flex flex-col justify-center
-        ${bg} ${hoverBg} ${text}
-        ${isCurrentSchedule ? "ring-1 ring-offset-1 ring-primary" : ""}`}
+        ${bg} ${hoverBg} ${text}`}
         style={{
           top: `${top}px`,
           height: `${Math.max(height, 60)}px`,
@@ -689,21 +688,21 @@ export default function ScheduleCalendar({
         }}
       >
         {/* section name with schedule type */}
-        <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
+        <div className="text-md font-medium opacity-80 mb-0.5 truncate">
           {sectionName || "Section"} • {getScheduleTypeName(schedule)}
         </div>
 
         {/* subject code with subject name */}
-        <div className="font-semibold text-xs leading-tight truncate">
+        <div className="font-semibold text-md leading-tight truncate">
           {schedule.subjectCode} - {schedule.subjectName}
         </div>
 
         {/* room information */}
-        <div className="text-xs mt-0.5 truncate">{schedule.roomName}</div>
+        <div className="text-md mt-0.5 truncate">{schedule.roomName}</div>
 
         {/* time information and total hours */}
         {height >= 75 && (
-          <div className="flex justify-center items-center gap-1 mt-1 text-xs">
+          <div className="flex justify-center items-center gap-1 mt-1 text-md">
             <Clock className="h-2.5 w-2.5" />
             <span className="truncate">{totalHours}</span>
           </div>
@@ -931,8 +930,8 @@ export default function ScheduleCalendar({
                 <div
                   key={schedule.id}
                   onClick={() => handleScheduleClick(schedule)}
-                  className={`absolute left-0 right-0 mx-2 px-3 py-2 rounded-md overflow-hidden text-center border
-                  transition-colors cursor-pointer
+                  className={`absolute left-0 right-0 rounded-md overflow-hidden text-center border
+                  transition-colors cursor-pointer flex flex-col justify-center space-y-1
                   ${bg} ${hoverBg} ${text}`}
                   style={{
                     top: `${top}px`,
@@ -941,24 +940,24 @@ export default function ScheduleCalendar({
                   }}
                 >
                   {/* section name with schedule type */}
-                  <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
+                  <div className="text-lg font-medium opacity-80 mb-0.5 truncate">
                     {sectionName || "Section"} • {getScheduleTypeName(schedule)}
                   </div>
 
                   {/* subject code with subject name*/}
-                  <div className="font-semibold text-sm sm:text-base leading-tight truncate">
+                  <div className="font-semibold text-xl leading-tight truncate">
                     {schedule.subjectCode && `${schedule.subjectCode} - `}
                     {schedule.subjectName}
                   </div>
 
                   {/* room information */}
-                  <div className="text-xs mt-0.5 truncate">
+                  <div className="text-md mt-0.5 truncate">
                     {schedule.roomName}
                   </div>
 
                   {/* time and total hours */}
                   {height >= 90 && (
-                    <div className="flex justify-center items-center gap-1 mt-1 text-xs">
+                    <div className="flex justify-center items-center gap-1 mt-1 text-md">
                       <Clock className="h-3 w-3" />
                       <span>{totalHours}</span>
                     </div>
@@ -966,7 +965,7 @@ export default function ScheduleCalendar({
 
                   {/* instructor - only show if enough space */}
                   {height >= 120 && (
-                    <div className="truncate text-xs mt-1 italic">
+                    <div className="truncate text-md mt-1 italic">
                       {schedule.instructorName}
                     </div>
                   )}
