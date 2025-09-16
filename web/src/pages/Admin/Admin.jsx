@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import SideBar from "@/components/AdminComponents/SideBar";
-import Header from "@/components/AdminComponents/Header";
+import AdminHeader from "@/components/AdminComponents/AdminHeader";
 
 export default function Admin() {
   return (
@@ -13,7 +13,7 @@ export default function Admin() {
           <SideBar />
           <SidebarInset>
             {/* breadcrumbs */}
-            <Header />
+            <AdminHeader />
             {/* main */}
             <Outlet />
           </SidebarInset>

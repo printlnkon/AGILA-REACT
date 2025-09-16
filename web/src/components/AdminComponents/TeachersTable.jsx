@@ -735,10 +735,8 @@ export default function TeachersTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddTeacherModal
-          onUserAdded={fetchUsers}
-          activeSession={activeSession}
-        />
+        <AddTeacherModal onUserAdded={fetchUsers} />
+
         <AddUserBulkUpload role="teacher" onUserAdded={fetchUsers} />
 
         {/* archive selected button */}

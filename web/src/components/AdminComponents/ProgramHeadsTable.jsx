@@ -92,6 +92,7 @@ import {
 import AddProgramHeadModal from "@/components/AdminComponents/AddProgramHeadModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 
+
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) return toast.error("Employee No. not found");
   navigator.clipboard
@@ -734,10 +735,8 @@ export default function ProgramHeadsTable() {
       </div>
       <div className="flex items-center gap-2 py-4">
         {/* add new account button */}
-        <AddProgramHeadModal
-          onUserAdded={fetchUsers}
-          activeSession={activeSession}
-        />
+        <AddProgramHeadModal onUserAdded={fetchUsers} />
+
         <AddUserBulkUpload role="program_head" onUserAdded={fetchUsers} />
 
         {/* archive selected button */}

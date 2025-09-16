@@ -1,5 +1,5 @@
 import { db } from "@/api/firebase";
-import { addDoc, collection, doc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,6 @@ export default function AddRoomModal({ onRoomAdded }) {
       const roomData = {
         roomNo: formData.roomNo,
         floor: formData.floor,
-        status: formData.status || "available",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -107,7 +106,7 @@ export default function AddRoomModal({ onRoomAdded }) {
           Add Room
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-2xl xl:max-w-md">
+       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl">Add Room</DialogTitle>
           <DialogDescription>
@@ -134,7 +133,7 @@ export default function AddRoomModal({ onRoomAdded }) {
                     <SelectValue placeholder="Select floor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 6 }, (_, i) => i + 1).map((floor) => (
+                    {Array.from({ length: 7 }, (_, i) => i + 1).map((floor) => (
                       <SelectItem key={floor} value={floor.toString()}>
                         {floor === 1
                           ? `${floor}st Floor`

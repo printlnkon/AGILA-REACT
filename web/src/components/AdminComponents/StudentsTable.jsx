@@ -91,6 +91,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
+import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -358,8 +359,11 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
               <DialogHeader>
                 <DialogTitle>Confirm Archive</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to archive the user <strong>"{user.firstName}{" "}
-                  {user.lastName}"</strong>? This will set their account status to{" "}
+                  Are you sure you want to archive the user{" "}
+                  <strong>
+                    "{user.firstName} {user.lastName}"
+                  </strong>
+                  ? This will set their account status to{" "}
                   <strong>inactive</strong>.
                 </DialogDescription>
               </DialogHeader>
@@ -403,6 +407,8 @@ export default function StudentsTable() {
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
+  const [showFaceDialog, setShowFaceDialog] = useState(false);
+  const [newUserInfo, setNewUserInfo] = useState(null);
 
   // navigate to student profile
   const navigate = useNavigate();
@@ -477,7 +483,8 @@ export default function StudentsTable() {
     } catch (error) {
       console.error("Error fetching active session:", error);
       toast.error("No Active School Year", {
-        description: "Please set a school year and semester as active in the School Year & Semester module."
+        description:
+          "Please set a school year and semester as active in the School Year & Semester module.",
       });
       return false;
     }
@@ -674,17 +681,21 @@ export default function StudentsTable() {
           {/* skeleton for subtitle */}
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
-        <div className="flex items-center gap-2 py-4">
+
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
           {/* skeleton for add user button */}
           <Skeleton className="h-9 w-28" />
           {/* skeleton for export button */}
           <Skeleton className="h-9 w-28" />
 
-          {/* skeleton for search box */}
-          <Skeleton className="relative max-w-sm flex-1 h-9" />
+          {/* search + filters */}
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+            {/* skeleton for search box */}
+            <Skeleton className="h-9 w-48 flex-1" />
 
-          {/* skeleton for filter columns */}
-          <Skeleton className="h-9 w-36 ml-2" />
+            {/* skeleton for filter columns */}
+            <Skeleton className="h-9 w-full flex-1" />
+          </div>
         </div>
 
         {/* skeleton for table */}
@@ -794,28 +805,22 @@ export default function StudentsTable() {
       {/* header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Manage Students</h1>
+          <h1 className="text-2xl sm:text-2xl font-bold">Manage Students</h1>
           <p className="text-muted-foreground">
             Add, edit, or archive students available in the system.
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 py-4">
-        {/* add new account button */}
-        <AddStudentModal
-          onUserAdded={fetchUsers}
-          activeSession={activeSession}
-        />
-        <AddUserBulkUpload />
 
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* archive selected button */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer"
+              className="text-amber-600 hover:text-amber-800 cursor-pointer" 
             >
               <X />
               Clear selection
@@ -832,57 +837,69 @@ export default function StudentsTable() {
           </div>
         )}
 
-        {/* search */}
-        <div className="relative max-w-sm flex-1">
-          {/* search icon */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
-          <Input
-            placeholder="Search users..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="pl-10 max-w-sm"
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {/* clear button */}
-            {globalFilter && (
-              <button
-                onClick={() => setGlobalFilter("")}
-                className="p-1 mr-2 hover:bg-gray-100 rounded-full cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4 text-primary" />
-              </button>
-            )}
-          </div>
-        </div>
+        {/* add new account button */}
+        <AddStudentModal
+          onUserAdded={(userInfo) => {
+            fetchUsers();
+            setNewUserInfo(userInfo); // trigger face dialog
+            setShowFaceDialog(true);
+          }}
+        />
+        <AddUserBulkUpload />
 
-        {/* flter columns */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-2 cursor-pointer">
-              <Columns2 /> Filter Columns <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
+          {/* search */}
+          <div className="relative w-full sm:max-w-xs">
+            {/* search icon */}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
+            <Input
+              placeholder="Search users..."
+              value={globalFilter ?? ""}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              className="pl-10 w-full"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+              {/* clear button */}
+              {globalFilter && (
+                <button
+                  onClick={() => setGlobalFilter("")}
+                  className="p-1 mr-2 hover:bg-primary/10 rounded-full cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4 text-primary" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* flter columns */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* data table */}
@@ -1156,6 +1173,12 @@ export default function StudentsTable() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          {/* Face Recognition Dialog */}
+          <FaceRecognition
+            open={showFaceDialog}
+            onClose={() => setShowFaceDialog(false)}
+            userInfo={newUserInfo}
+          />
         </div>
       </div>
     </div>

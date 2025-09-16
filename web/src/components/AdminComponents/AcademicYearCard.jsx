@@ -1,10 +1,9 @@
 // AcademicYearCard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -37,6 +36,10 @@ import {
   CalendarDays,
   LoaderCircle,
   Edit,
+  CalendarIcon,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Tooltip,
@@ -44,7 +47,135 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import SemesterCard from "@/components/AdminComponents/SemesterCard";
+
+// Year Calendar Component
+function YearCalendar({
+  selected,
+  onSelect,
+  disabledYears = [],
+  initialFromYear,
+}) {
+  // Use the current year as default starting point
+  const currentYear = new Date().getFullYear();
+  const [viewStartYear, setViewStartYear] = useState(
+    initialFromYear || currentYear
+  );
+
+  // Show 9 years at once (3 rows of 3)
+  const yearsPerPage = 9;
+
+  // Create array of years for current view
+  const years = [];
+  for (let i = 0; i < yearsPerPage; i++) {
+    years.push(viewStartYear + i);
+  }
+
+  // Group years into rows of 3
+  const yearRows = [];
+  for (let i = 0; i < years.length; i += 3) {
+    yearRows.push(years.slice(i, i + 3));
+  }
+
+  // Navigate to previous set of years
+  const goToPreviousYears = () => {
+    setViewStartYear((prevYears) => prevYears - yearsPerPage);
+  };
+
+  // Navigate to next set of years
+  const goToNextYears = () => {
+    setViewStartYear((prevYears) => prevYears + yearsPerPage);
+  };
+
+  // Check if a year is the selected year
+  const isSelectedYear = (year) => {
+    if (!selected) return false;
+    return selected.getFullYear() === year;
+  };
+
+  // Check if a year is disabled
+  const isDisabledYear = (year) => {
+    return year < currentYear || disabledYears.includes(year);
+  };
+
+  return (
+    <div className="p-3 w-[280px]">
+      <div className="flex items-center justify-between mb-3">
+        {/* left button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          disabled={viewStartYear <= currentYear}
+          onClick={goToPreviousYears}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Previous years</span>
+        </Button>
+
+        <div className="text-sm font-medium">
+          {viewStartYear} - {viewStartYear + yearsPerPage - 1}
+        </div>
+
+        {/* right button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={goToNextYears}
+        >
+          <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Next years</span>
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {yearRows.map((row, i) => (
+          <div key={i} className="flex gap-2 justify-center">
+            {row.map((year) => (
+              <Button
+                key={year}
+                variant={isSelectedYear(year) ? "default" : "outline"}
+                className={cn(
+                  "h-9 flex-1 text-sm",
+                  isDisabledYear(year) && "opacity-50 cursor-not-allowed"
+                )}
+                disabled={isDisabledYear(year)}
+                onClick={() => {
+                  if (!isDisabledYear(year)) {
+                    const date = new Date(year, 0, 1);
+                    onSelect(date);
+                  }
+                }}
+              >
+                {year}
+              </Button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {currentYear !== viewStartYear && (
+        <div className="mt-3 flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs cursor-pointer"
+            onClick={() => setViewStartYear(currentYear)}
+          >
+            Go to Current Year
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const toDate = (timestamp) => {
   if (!timestamp) return null;
@@ -77,8 +208,63 @@ export default function AcademicYearCard({
   const statusConfig = getStatusConfig(acadYear.status);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
-  const [editedYearName, setEditedYearName] = useState(acadYear.acadYear);
   const [loading, setLoading] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [disabledYears, setDisabledYears] = useState([]);
+  const [canUpdateYear, setCanUpdateYear] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Parse the current academic year to get the starting year
+  useEffect(() => {
+    const match = acadYear.acadYear.match(/S\.Y - (\d{4})-\d{4}/);
+    if (match && match[1]) {
+      const startYear = parseInt(match[1]);
+      setSelectedDate(new Date(startYear, 0, 1));
+    }
+
+    // Extract existing years for validation
+    const existingStartYears = [];
+    if (existingYears && existingYears.length > 0) {
+      existingYears.forEach((year) => {
+        if (year !== acadYear.acadYear) {
+          // Skip the current year
+          const match = year.match(/S\.Y - (\d{4})-\d{4}/);
+          if (match && match[1]) {
+            existingStartYears.push(parseInt(match[1]));
+          }
+        }
+      });
+    }
+    setDisabledYears(existingStartYears);
+  }, [acadYear.acadYear, existingYears]);
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+
+    // Check if the selected year is already in use
+    const selectedYear = date.getFullYear();
+    const formattedYear = formatAcademicYear(date);
+
+    if (formattedYear === acadYear.acadYear) {
+      // If it's the same as the current year, it's valid
+      setCanUpdateYear(true);
+      setErrorMessage("");
+    } else if (existingYears.includes(formattedYear)) {
+      setCanUpdateYear(false);
+      setErrorMessage(`Academic year ${formattedYear} already exists.`);
+    } else {
+      setCanUpdateYear(true);
+      setErrorMessage("");
+    }
+  };
+
+  const formatAcademicYear = (date) => {
+    if (!date) return "";
+    const startYear = date.getFullYear();
+    const endYear = startYear + 1;
+    return `S.Y - ${startYear}-${endYear}`;
+  };
 
   const handleDeleteClick = () => {
     onDelete(acadYear);
@@ -87,28 +273,22 @@ export default function AcademicYearCard({
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    if (!editedYearName) {
-      toast.error("School Year name is required.");
+
+    if (!selectedDate) {
+      toast.error("Please select a valid year.");
       return;
     }
 
-    const yearFormat = /^S\.Y - \d{4}-\d{4}$/;
-    if (!yearFormat.test(editedYearName)) {
-      toast.error("Invalid format. Please use 'S.Y - YYYY-YYYY'.");
+    if (!canUpdateYear) {
+      toast.error(errorMessage || "Cannot update to this academic year.");
       return;
     }
 
-    if (
-      editedYearName !== acadYear.acadYear &&
-      existingYears.includes(editedYearName)
-    ) {
-      toast.error("This school year already exists.");
-      return;
-    }
+    const formattedYear = formatAcademicYear(selectedDate);
 
     setLoading(true);
     // prop function passed from the parent
-    await onUpdate(acadYear.id, editedYearName);
+    await onUpdate(acadYear.id, formattedYear);
     setLoading(false);
     setEditOpen(false);
   };
@@ -236,23 +416,64 @@ export default function AcademicYearCard({
         </DialogContent>
       </Dialog>
 
+      {/* edit dialog  */}
       <Dialog open={isEditOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Academic Year</DialogTitle>
             <DialogDescription>
-              Make changes to the academic year.
+              Select a new year for the academic year.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-4">
-              <Label htmlFor="yearName">School Year</Label>
-              <Input
-                id="yearName"
-                value={editedYearName}
-                onChange={(e) => setEditedYearName(e.target.value)}
-                placeholder="e.g., S.Y - 2025-2026"
-              />
+              <Label htmlFor="yearPicker">School Year</Label>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="yearPicker"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate
+                      ? format(selectedDate, "yyyy")
+                      : "Select a year"}
+                    <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <YearCalendar
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      handleDateChange(date);
+                      setCalendarOpen(false);
+                    }}
+                    disabledYears={disabledYears}
+                    initialFromYear={
+                      selectedDate
+                        ? selectedDate.getFullYear()
+                        : new Date().getFullYear()
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {selectedDate && (
+                <div className="mt-2 text-sm">
+                  School Year will be changed to:{" "}
+                  <strong>{formatAcademicYear(selectedDate)}</strong>
+                </div>
+              )}
+
+              {!canUpdateYear && (
+                <div className="mt-2 text-sm text-destructive">
+                  {errorMessage}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <DialogClose asChild>
@@ -266,12 +487,12 @@ export default function AcademicYearCard({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !canUpdateYear || !selectedDate}
                 className="cursor-pointer"
               >
                 {loading ? (
                   <>
-                    <span className="animate-spin">
+                    <span className="animate-spin mr-2">
                       <LoaderCircle />
                     </span>
                     Saving...

@@ -1,15 +1,11 @@
 import { useState, useEffect } from "react";
+import { db } from "@/api/firebase";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Pencil,
-  UsersRound,
-  Building,
-  Trash2,
-  AlertCircle,
-} from "lucide-react";
+import { Pencil, Trash2, CalendarDays } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +64,7 @@ import {
   Search,
   X,
   Loader2,
+  Building,
 } from "lucide-react";
 import {
   Tooltip,
@@ -75,26 +72,41 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { toast } from "sonner";
-import AddRoomModal from "@/components/AdminComponents/AddRoomModal";
-import { db } from "@/api/firebase";
 import {
   collection,
   getDocs,
   doc,
   deleteDoc,
   onSnapshot,
+  query,
+  where,
+  collectionGroup,
 } from "firebase/firestore";
+import ViewRoomSchedule from "@/components/AdminComponents/ViewRoomSchedule";
+import AddRoomModal from "@/components/AdminComponents/AddRoomModal";
+import EditRoomModal from "@/components/AdminComponents/EditRoomModal";
 
-const createColumns = (handleEditRoom, handleDeleteRoom) => [
+const checkRoomHasSchedules = async (roomId) => {
+  try {
+    const schedulesQuery = query(
+      collectionGroup(db, "schedules"),
+      where("roomId", "==", roomId)
+    );
+    const querySnapshot = await getDocs(schedulesQuery);
+    return !querySnapshot.empty; // Returns true if schedules exist, false otherwise
+  } catch (error) {
+    console.error("Error checking for room schedules:", error);
+    toast.error("An error occurred while checking room schedules.");
+    // Return true to prevent accidental deletion if the check fails
+    return true;
+  }
+};
+
+const createColumns = (
+  handleEditRoom,
+  handleDeleteRoom,
+  handleViewSchedules
+) => [
   // floor
   {
     accessorKey: "floor",
@@ -142,89 +154,34 @@ const createColumns = (handleEditRoom, handleDeleteRoom) => [
     },
     cell: ({ row }) => <div className="ml-3">{row.getValue("roomNo")}</div>,
   },
-  // type
-  {
-    accessorKey: "type",
-    header: <div className="ml-3">Room Type</div>,
-    cell: ({ row }) => {
-      const roomType = row.getValue("type");
-
-      if (!roomType) {
-        return (
-          <div className="flex items-center ml-3">
-            <Badge className="bg-slate-100 text-slate-700">Unassigned</Badge>
-          </div>
-        );
-      }
-
-      // display different badges based on room type
-      const badgeColor = roomType.toLowerCase().includes("lecture")
-        ? "bg-blue-100 text-blue-700 border-blue-200"
-        : roomType.toLowerCase().includes("laboratory")
-        ? "bg-purple-100 text-purple-700 border-purple-200"
-        : "bg-green-100 text-green-700 border-green-200";
-
-      const displayText = roomType.toLowerCase().includes("lecture")
-        ? "Lecture"
-        : roomType.toLowerCase().includes("laboratory")
-        ? "Laboratory"
-        : roomType;
-
-      return (
-        <div className="flex items-center ml-3">
-          <Badge className={badgeColor}>{displayText}</Badge>
-        </div>
-      );
-    },
-  },
-  // status
-  {
-    accessorKey: "status",
-    header: <div className="ml-3">Status</div>,
-    cell: ({ row }) => {
-      const status = row.getValue("status");
-      // Define status display and styling
-      let displayStatus = status;
-      let statusColor = "";
-
-      switch (status) {
-      case "available":
-        displayStatus = "Available";
-        statusColor = "bg-green-600 text-white";
-        break;
-      case "scheduled":
-        displayStatus = "Scheduled";
-        statusColor = "bg-blue-600 text-white";
-        break;
-      case "unavailable":
-        displayStatus = "Unavailable";
-        statusColor = "bg-red-600 text-white";
-        break;
-      default:
-        displayStatus = status || "Unknown";
-        statusColor = "bg-amber-600 text-white";
-    }
-      return (
-        <Badge
-          className={`capitalize ml-3 ${
-            status === "available"
-              ? "bg-green-600 text-white"
-              : "bg-amber-600 text-white"
-          }`}
-        >
-          {status}
-        </Badge>
-      );
-    },
-  },
   // actions
   {
     id: "actions",
     header: "Actions",
     cell: ({ row }) => {
       const roomData = row.original;
-      const [showEditDialog, setShowEditDialog] = useState(false);
       const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+      const [checkingSchedules, setCheckingSchedules] = useState(false);
+
+      const handleDeleteClick = async () => {
+        setCheckingSchedules(true);
+        try {
+          const hasAssignedSchedules = await checkRoomHasSchedules(roomData.id);
+          if (!hasAssignedSchedules) {
+            setShowDeleteDialog(true);
+          } else {
+            toast.error("Cannot delete room with assigned schedules.", {
+              description:
+                "Please remove all schedules assigned to this room first.",
+            });
+          }
+        } catch (error) {
+          console.error("Error checking room schedules:", error);
+          toast.error("Failed to check room schedules. Please try again.");
+        } finally {
+          setCheckingSchedules(false);
+        }
+      };
 
       return (
         <>
@@ -246,6 +203,14 @@ const createColumns = (handleEditRoom, handleDeleteRoom) => [
               </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
+                  onClick={() => handleViewSchedules(row.original)}
+                  className="cursor-pointer"
+                >
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  View Schedules
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
                   onClick={() => handleEditRoom(row.original)}
                   className="cursor-pointer"
                 >
@@ -254,10 +219,15 @@ const createColumns = (handleEditRoom, handleDeleteRoom) => [
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
+                  onClick={handleDeleteClick}
                   className="cursor-pointer text-destructive"
+                  disabled={checkingSchedules}
                 >
-                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                  {checkingSchedules ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                  )}
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -305,31 +275,62 @@ const createColumns = (handleEditRoom, handleDeleteRoom) => [
 export default function RoomTable() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sorting, setSorting] = useState([]);
+  const [sorting, setSorting] = useState([{ id: "floor", desc: false }]);
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [showSchedulesModal, setShowSchedulesModal] = useState(false);
+
+  // state for edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [roomToEdit, setRoomToEdit] = useState(null);
 
   // Extract unique floors for filtering
   const availableFloors = Array.from(
     new Set(rooms.map((room) => room.floor))
   ).sort();
 
-  // Extract unique room types for filtering
-  const availableRoomTypes = Array.from(
-    new Set(rooms.map((room) => room.type).filter(Boolean))
-  ).sort();
+  // Function to check if a room has schedules
+  const checkRoomHasSchedules = async (roomId) => {
+    try {
+      const schedulesQuery = query(
+        collectionGroup(db, "schedules"),
+        where("roomId", "==", roomId)
+      );
+      const querySnapshot = await getDocs(schedulesQuery);
+      return !querySnapshot.empty; // Returns true if schedules exist, false otherwise
+    } catch (error) {
+      console.error("Error checking room schedules:", error);
+      throw error;
+    }
+  };
+
+  // Function to view room schedules
+  const handleViewSchedules = (room) => {
+    setSelectedRoom(room);
+    setShowSchedulesModal(true);
+  };
 
   // Function to handle editing room
   const handleEditRoom = (room) => {
-    // Implement room editing functionality
-    console.log("Edit room:", room);
-    // You can open an edit modal here
+    setRoomToEdit(room);
+    setShowEditModal(true);
   };
 
   // Function to handle deleting room
   const handleDeleteRoom = async (roomId) => {
     try {
+      // First check if the room has schedules
+      const hasSchedules = await checkRoomHasSchedules(roomId);
+
+      if (hasSchedules) {
+        toast.error("Cannot delete room with assigned schedules", {
+          description: "Remove all schedules assigned to this room first",
+        });
+        return;
+      }
+
       await deleteDoc(doc(db, "rooms", roomId));
       toast.success("Room deleted successfully");
     } catch (error) {
@@ -340,8 +341,12 @@ export default function RoomTable() {
 
   // Function to handle room added
   const handleRoomAdded = (newRoom) => {
-    // New room will be added through the Firestore listener
-    toast.success(`Room ${newRoom.roomNo} added successfully`);
+    toast.success(`${newRoom.roomNo} added successfully`);
+  };
+
+  // Function to handle room updated
+  const handleRoomUpdated = (updatedRoom) => {
+    toast.success(`${updatedRoom.roomNo} updated successfully`);
   };
 
   // Fetch rooms data from Firestore
@@ -374,7 +379,11 @@ export default function RoomTable() {
     return () => unsubscribe();
   }, []);
 
-  const columns = createColumns(handleEditRoom, handleDeleteRoom);
+  const columns = createColumns(
+    handleEditRoom,
+    handleDeleteRoom,
+    handleViewSchedules
+  );
 
   const table = useReactTable({
     data: rooms,
@@ -614,93 +623,6 @@ export default function RoomTable() {
             </DropdownMenu>
           )}
 
-          {/* filter by type */}
-          {availableRoomTypes.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <UsersRound className="mr-2 h-4 w-4" /> Filter By Type
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuCheckboxItem
-                  checked={
-                    table.getColumn("type")?.getFilterValue() === undefined
-                  }
-                  onCheckedChange={() => {
-                    table.getColumn("type")?.setFilterValue(undefined);
-                  }}
-                >
-                  All Types
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem
-                  checked={table.getColumn("type")?.getFilterValue() === ""}
-                  onCheckedChange={() => {
-                    table.getColumn("type")?.setFilterValue("");
-                  }}
-                >
-                  Unassigned Rooms
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={table
-                    .getColumn("type")
-                    ?.getFilterValue()
-                    ?.includes("lecture")}
-                  onCheckedChange={(checked) => {
-                    table
-                      .getColumn("type")
-                      ?.setFilterValue(checked ? "lecture" : undefined);
-                  }}
-                >
-                  Lecture Rooms
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={table
-                    .getColumn("type")
-                    ?.getFilterValue()
-                    ?.includes("laboratory")}
-                  onCheckedChange={(checked) => {
-                    table
-                      .getColumn("type")
-                      ?.setFilterValue(checked ? "laboratory" : undefined);
-                  }}
-                >
-                  Laboratory Rooms
-                </DropdownMenuCheckboxItem>
-                {availableRoomTypes.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {availableRoomTypes
-                      .filter(
-                        (type) =>
-                          !["lecture", "laboratory", ""].includes(
-                            type.toLowerCase()
-                          )
-                      )
-                      .map((type) => (
-                        <DropdownMenuCheckboxItem
-                          key={type}
-                          checked={
-                            table.getColumn("type")?.getFilterValue() === type
-                          }
-                          onCheckedChange={(checked) => {
-                            table
-                              .getColumn("type")
-                              ?.setFilterValue(checked ? type : undefined);
-                          }}
-                          className="capitalize"
-                        >
-                          {type}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           {/* column visibility */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -736,7 +658,7 @@ export default function RoomTable() {
         </div>
       </div>
 
-      {/* table */}
+      {/* data table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -976,34 +898,25 @@ export default function RoomTable() {
           </Pagination>
         </div>
       </div>
-    </div>
-  );
-}
 
-// Empty state card component
-function EmptyRoomsCard() {
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-amber-500" />
-          No Rooms Found
-        </CardTitle>
-        <CardDescription>
-          There are currently no rooms in the system.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center p-6 text-center">
-          <Building className="h-16 w-16 text-muted-foreground mb-4" />
-          <p className="text-lg font-medium mb-2">Add your first room</p>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            Use the "Add Room" button to create a new room. Rooms can be
-            assigned to schedules after they are created.
-          </p>
-          <AddRoomModal />
-        </div>
-      </CardContent>
-    </Card>
+      {/* View Room Schedules Modal */}
+      {selectedRoom && (
+        <ViewRoomSchedule
+          open={showSchedulesModal}
+          onOpenChange={setShowSchedulesModal}
+          room={selectedRoom}
+        />
+      )}
+
+      {/* Edit Room Modal */}
+      {roomToEdit && (
+        <EditRoomModal
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          roomData={roomToEdit}
+          onRoomUpdated={handleRoomUpdated}
+        />
+      )}
+    </div>
   );
 }

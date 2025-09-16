@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import AcademicHeadEditViewProfile from "@/components/AdminComponents/AcademicHeadEditViewProfile";
+import { useAcademicHeadProfile } from "@/context/AcademicHeadProfileContext";
+import EditAcademicHeadViewProfile from "@/components/AdminComponents/EditAcademicHeadViewProfile";
 
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) {
@@ -62,7 +62,7 @@ export default function AcademicHeadViewProfile() {
           </div>
         </div>
         <div className="mt-4">
-          <AcademicHeadEditViewProfile
+          <EditAcademicHeadViewProfile
             academicHead={selectedAcademicHead}
             onSave={handleSaveChanges}
             onCancel={handleCancelEdit}

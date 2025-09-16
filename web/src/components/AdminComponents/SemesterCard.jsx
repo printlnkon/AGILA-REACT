@@ -228,13 +228,14 @@ export default function SemesterCard({
           <DialogHeader>
             <DialogTitle>Edit Semester</DialogTitle>
             <DialogDescription>
-              Update the semester details below. Click save when you're done.
+              Update the semester details below. All fields marked with{" "}
+              <span className="text-destructive">*</span> are required.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="semesterName" className="text-right">
-                Semester
+                Semester <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={editedData.semesterName}
@@ -248,12 +249,11 @@ export default function SemesterCard({
                 <SelectContent>
                   <SelectItem value="1st Semester">1st Semester</SelectItem>
                   <SelectItem value="2nd Semester">2nd Semester</SelectItem>
-                  <SelectItem value="Mid-Year">Mid-Year</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Start Date</Label>
+              <Label className="text-right">Start Date <span className="text-destructive">*</span></Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -274,6 +274,7 @@ export default function SemesterCard({
                   <Calendar
                     mode="single"
                     selected={editedData.startDate}
+                    month={editedData.startDate}
                     onSelect={(date) =>
                       setEditedData((prev) => ({ ...prev, startDate: date }))
                     }
@@ -284,7 +285,7 @@ export default function SemesterCard({
               </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">End Date</Label>
+              <Label className="text-right">End Date <span className="text-destructive">*</span></Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -305,6 +306,7 @@ export default function SemesterCard({
                   <Calendar
                     mode="single"
                     selected={editedData.endDate}
+                    month={editedData.endDate}
                     onSelect={(date) =>
                       setEditedData((prev) => ({ ...prev, endDate: date }))
                     }

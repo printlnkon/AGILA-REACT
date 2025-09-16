@@ -91,73 +91,21 @@ const items = {
           title: "School Year & Semester",
           url: "/admin/academic-year-semester",
           icon: BookOpen,
-          // items: [
-          //   {
-          //     title: "View Academic Years",
-          //     url: "/admin/academic-year",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
-        // {
-        //   title: "Semester",
-        //   url: "/admin/semester",
-        //   icon: Calendar,
-        //   items: [
-        //     {
-        //       title: "View Semesters",
-        //       url: "/admin/semester",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
         {
           title: "Department & Course",
           url: "/admin/department-course",
           icon: Building2,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
-        // {
-        //   title: "Course",
-        //   url: "/admin/course",
-        //   icon:  LayoutList,
-        //   items: [
-        //     {
-        //       title: "View Courses",
-        //       url: "#",
-        //       icon: UsersRound,
-        //     },
-        //   ],
-        // },
         {
           title: "Year Level & Section",
           url: "/admin/year-level-section",
           icon: Layers,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
         {
           title: "Subject",
           url: "/admin/subject",
           icon: BookText,
-          // items: [
-          //   {
-          //     title: "View Courses",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
         {
           title: "Schedule",
@@ -171,11 +119,6 @@ const items = {
             },
           ],
         },
-        // {
-        //   title: "Schedules",
-        //   url: "/admin/schedules",
-        //   icon: Calendar,
-        // },
       ],
     },
     {
@@ -188,19 +131,22 @@ const items = {
           icon: UsersRound,
           items: [
             {
-              title: "Academic Heads",
-              url: "/admin/academic-heads",
-              // icon: UsersRound,
-            },
-            {
-              title: "Program Heads",
-              url: "/admin/program-heads",
-              // icon: UsersRound,
-            },
-            {
-              title: "Teachers",
-              url: "/admin/teachers",
-              // icon: UsersRound,
+              title: "Staff",
+              url: "/admin/staff",
+              items: [
+                {
+                  title: "Academic Heads",
+                  url: "/admin/academic-heads",
+                },
+                {
+                  title: "Program Heads",
+                  url: "/admin/program-heads",
+                },
+                {
+                  title: "Teachers",
+                  url: "/admin/teachers",
+                },
+              ],
             },
             {
               title: "Students",
@@ -213,13 +159,6 @@ const items = {
           title: "Archives",
           url: "/admin/archives",
           icon: Archive,
-          // items: [
-          //   {
-          //     title: "View Archive Users",
-          //     url: "#",
-          //     icon: UsersRound,
-          //   },
-          // ],
         },
       ],
     },
@@ -348,8 +287,12 @@ export default function SideBar() {
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to="/admin">
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                    <GalleryVerticalEnd className="size-4" />
+                  <div className="bg-sidebar-accent flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <img
+                      src="/AGILA_A.svg"
+                      alt="AGILA LOGO"
+                      className="h-6 w-auto"
+                    />
                   </div>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-bold text-muted-background">

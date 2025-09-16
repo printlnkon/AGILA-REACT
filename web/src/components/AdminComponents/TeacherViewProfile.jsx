@@ -6,12 +6,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import TeacherEditViewProfile from "@/components/AdminComponents/TeacherEditViewProfile";
 import { db } from "@/api/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs,} from "firebase/firestore";
 import { useActiveSession } from "@/context/ActiveSessionContext";
+import EditTeacherViewProfile from "@/components/AdminComponents/EditTeacherViewProfile";
 
-// A helper function to handle copying text to the clipboard.
 const handleCopyEmployeeNo = (employeeNo) => {
   if (!employeeNo) {
     toast.error("Employee Number not found");
@@ -163,7 +162,7 @@ export default function TeacherViewProfile() {
           </div>
         </div>
         <div className="mt-4">
-          <TeacherEditViewProfile
+          <EditTeacherViewProfile
             teacher={selectedTeacher}
             onSave={handleSaveChanges}
             onCancel={handleCancelEdit}

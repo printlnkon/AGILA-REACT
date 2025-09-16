@@ -86,6 +86,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
+import TryRecognition from "@/components/AdminComponents/TryRecognition";
 
 // Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
@@ -171,6 +172,43 @@ const createColumns = (handleArchiveUser) => [
     className: "block md:hidden",
     enableHiding: true,
   },
+  // student no. column
+  {
+    id: "studentNumber",
+    accessorKey: "studentNumber",
+    header: "Student No.",
+    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
+    className: "hidden md:table-cell",
+    enableHiding: true,
+  },
+  // employee no. column
+  {
+    id: "employeeNumber",
+    accessorKey: "employeeNumber",
+    header: "Employee No.",
+    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
+    className: "hidden md:table-cell",
+    enableHiding: true,
+  },
+  // role column
+  {
+    accessorKey: "role",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Role
+          <ArrowUpDown />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("role") || "N/A"}</div>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+  },
   // photo column
   {
     id: "Photo",
@@ -188,24 +226,6 @@ const createColumns = (handleArchiveUser) => [
         </Avatar>
       );
     },
-  },
-  // student no. column
-  {
-    id: "studentNumber",
-    accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
-  },
-  // employee id
-  {
-    id: "employeeNumber",
-    accessorKey: "employeeNumber",
-    header: "Employee I.D",
-    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
-    className: "hidden md:table-cell",
-    enableHiding: true,
   },
   // name column
   {
@@ -249,15 +269,6 @@ const createColumns = (handleArchiveUser) => [
       <div className="lowercase ml-3">{row.getValue("email") || "N/A"}</div>
     ),
     className: "hidden md:table-cell",
-  },
-  // role column
-  {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const role = row.getValue("role") || "N/A";
-      return <div className="capitalize">{role.replace("_", " ")}</div>;
-    },
   },
   // date created
   {
@@ -427,6 +438,7 @@ export default function AccountsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
+  const [roleFilter, setRoleFilter] = useState([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -590,6 +602,18 @@ export default function AccountsTable() {
     }
   };
 
+  const handleRoleFilterChange = (selectedRoles) => {
+    if (selectedRoles.length === 0) {
+      // If no roles selected, clear the filter
+      table.getColumn("role")?.setFilterValue(undefined);
+      setRoleFilter([]);
+    } else {
+      // Set the filter with selected roles
+      table.getColumn("role")?.setFilterValue(selectedRoles);
+      setRoleFilter(selectedRoles);
+    }
+  };
+
   const columns = createColumns(handleArchiveUser, handleBatchArchive);
   const table = useReactTable({
     data: users,
@@ -629,13 +653,15 @@ export default function AccountsTable() {
           <Skeleton className="mt-2 h-4 w-80" />
         </div>
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
+          {/* skeleton for try recognition button */}
+          <Skeleton className="h-9 w-28" />
           {/* skeleton for export button */}
           <Skeleton className="h-9 w-28" />
 
           {/* search + filters */}
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
             {/* skeleton for search box */}
-            <Skeleton className="relative w-full sm:max-w-xs h-9" />
+            <Skeleton className="h-9 w-48 flex-1" />
 
             {/* skeleton for filter by role */}
             <Skeleton className="h-9 w-full sm:w-36" />
@@ -782,6 +808,9 @@ export default function AccountsTable() {
           </div>
         )}
 
+         {/* try recog */}
+        <TryRecognition />
+
         {/* export format */}
         <ExportExcelFormat />
 
@@ -801,7 +830,7 @@ export default function AccountsTable() {
               {globalFilter && (
                 <button
                   onClick={() => setGlobalFilter("")}
-                  className="p-1 mr-2 hover:bg-transparent rounded-full cursor-pointer"
+                  className="p-1 mr-2 hover:bg-primary/10 rounded-full cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -812,38 +841,75 @@ export default function AccountsTable() {
           {/* filter by role */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button className="w-full sm:w-auto cursor-pointer">
+                <UserRoundSearch /> Filter By Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuCheckboxItem
-                checked={
-                  table.getColumn("role")?.getFilterValue() === undefined
-                }
+                checked={roleFilter.length === 0}
                 onCheckedChange={() => {
-                  table.getColumn("role")?.setFilterValue(undefined);
+                  handleRoleFilterChange([]);
                 }}
               >
                 All Roles
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              {["academic head", "program head", "teacher", "student"].map(
-                (role) => (
-                  <DropdownMenuCheckboxItem
-                    key={role}
-                    checked={table.getColumn("role")?.getFilterValue() === role}
-                    onCheckedChange={(checked) => {
-                      table
-                        .getColumn("role")
-                        ?.setFilterValue(checked ? role : undefined);
-                    }}
-                    className="capitalize"
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Academic Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Academic Head"]
+                    : roleFilter.filter((r) => r !== "Academic Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Academic Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Program Head")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Program Head"]
+                    : roleFilter.filter((r) => r !== "Program Head");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Program Head
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Teacher")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Teacher"]
+                    : roleFilter.filter((r) => r !== "Teacher");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Teacher
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={roleFilter.includes("Student")}
+                onCheckedChange={(checked) => {
+                  const newFilter = checked
+                    ? [...roleFilter, "Student"]
+                    : roleFilter.filter((r) => r !== "Student");
+                  handleRoleFilterChange(newFilter);
+                }}
+              >
+                Student
+              </DropdownMenuCheckboxItem>
+              {roleFilter.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-destructive hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                    onClick={() => handleRoleFilterChange([])}
                   >
-                    {role.replace("_", " ")}
-                  </DropdownMenuCheckboxItem>
-                )
+                    Clear Filter
+                  </Button>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -851,9 +917,8 @@ export default function AccountsTable() {
           {/* filter columns */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Columns2 className="mr-2 h-4 w-4" /> Filter Columns{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button className="w-full sm:w-auto cursor-pointer">
+                <Columns2 /> Filter Columns <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -956,7 +1021,7 @@ export default function AccountsTable() {
         </div>
 
         {/* rows per page */}
-        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4 w-full sm:w-auto">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium whitespace-nowrap">
               Rows per page
@@ -1130,7 +1195,7 @@ export default function AccountsTable() {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-          
+
           {/* Batch Archive Dialog */}
           <Dialog
             open={showBatchArchiveDialog}
@@ -1155,7 +1220,7 @@ export default function AccountsTable() {
                 {" "}
                 {/* Responsive button layout */}
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setShowBatchArchiveDialog(false)}
                   className="w-full sm:w-auto cursor-pointer"
                 >

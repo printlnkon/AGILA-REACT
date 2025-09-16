@@ -19,18 +19,24 @@ import ProgramHead from "@/pages/ProgramHead/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import StudentAttendance from "@/components/StudentComponents/Attendance";
+import StudentRequest from "@/components/StudentComponents/Request";
+import StudentProfile from "@/components/StudentComponents/Profile";
 import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
-import TeacherAttendance from "@/components/TeacherComponents/Attendance";
+import TeacherSchedule from "@/components/TeacherComponents/Schedule";
 import TeacherRequest from "@/components/TeacherComponents/Request";
+import TeacherProfile from "@/components/TeacherComponents/Profile";
 import AcademicHeadDashboard from "@/components/AcademicHeadComponents/AcademicHeadDashboard";
 import AcademicHeadAttendance from "@/components/AcademicHeadComponents/Attendance";
 import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
-import ProgramHeadAttendance from "@/components/ProgramHeadComponents/Attendance";
+import ProgramHeadSchedule from "@/components/ProgramHeadComponents/Schedule";
 import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
+import ProgramHeadProfile from "@/components/ProgramHeadComponents/Profile";
+import ProgramHeadSubjectApproval from "@/components/ProgramHeadComponents/ProgramHeadSubjectApproval";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
 import Classes from "@/components/AdminComponents/Classes";
 import Accounts from "@/components/AdminComponents/Accounts";
 import ViewClassList from "@/components/AdminComponents/ViewClassList";
+import Staff from "@/components/AdminComponents/Staff";
 import AcademicHeads from "@/components/AdminComponents/AcademicHeads";
 import ProgramHeads from "@/components/AdminComponents/ProgramHeads";
 import Teachers from "@/components/AdminComponents/Teachers";
@@ -68,6 +74,7 @@ const routeTitles = {
   "/admin/schedule": "AGILA | Admin - Schedule",
   "/admin/room": "AGILA | Admin - Room",
   "/admin/accounts": "AGILA | Admin - Accounts",
+  "/admin/staff": "AGILA | Admin - Staff",
   "/admin/academic-heads": "AGILA | Admin - Academic Heads",
   "/admin/program-heads": "AGILA | Admin - Program Heads",
   "/admin/teachers": "AGILA | Admin - Teachers",
@@ -81,7 +88,7 @@ const routeTitles = {
   "/academic-head/attendance": "AGILA | Academic Head - Attendance",
   // program head title route
   "/program-head": "AGILA | Program Head - Dashboard",
-  "/program-head/attendance": "AGILA | Program Head - Attendance",
+  "/program-head/schedule": "AGILA | Program Head - Schedule",
   "/program-head/request": "AGILA | Program Head - Request",
   // teacher title route
   "/teacher": "AGILA | Teacher - Dashboard",
@@ -120,6 +127,7 @@ function AppContent() {
         <Route path="schedule" element={<Schedule />} />
         <Route path="room" element={<Room />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="staff" element={<Staff />} />
         <Route path="academic-heads" element={<AcademicHeads />} />
         <Route path="program-heads" element={<ProgramHeads />} />
         <Route path="teachers" element={<Teachers />} />
@@ -140,21 +148,26 @@ function AppContent() {
       {/* program head routes */}
       <Route path="/program-head" element={<ProtectedRoute roles={["program_head"]}><ProgramHead /></ProtectedRoute>}>
         <Route index element={<ProgramHeadDashboard />} />
-        <Route path="attendance" element={<ProgramHeadAttendance />} />
+        <Route path="schedule" element={<ProgramHeadSchedule />} />
         <Route path="request" element={<ProgramHeadRequest />} />
+        <Route path="profile" element={<ProgramHeadProfile />} />
+        <Route path="subject-approval" element={<ProgramHeadSubjectApproval />} />
       </Route>
 
       {/* teacher routes */}
       <Route path="/teacher" element={<ProtectedRoute roles={["teacher"]}><Teacher /></ProtectedRoute>}>
         <Route index element={<TeacherDashboard />} />
-        <Route path="attendance" element={<TeacherAttendance />} />
+        <Route path="schedule" element={<TeacherSchedule />} />
         <Route path="request" element={<TeacherRequest />} />
+        <Route path="profile" element={<TeacherProfile />} />
       </Route>
 
       {/* student routes */}
       <Route path="/student" element={<ProtectedRoute roles={["student"]}><Student /></ProtectedRoute>}>
         <Route index element={<StudentDashboard />} />
         <Route path="attendance" element={<StudentAttendance />} />
+        <Route path="request" element={<StudentRequest />} />
+        <Route path="profile" element={<StudentProfile />} />
       </Route>
     </Routes>
   );
