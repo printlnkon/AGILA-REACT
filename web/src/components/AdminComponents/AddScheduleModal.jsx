@@ -1122,7 +1122,7 @@ export default function AddScheduleModal({
 
       if (duration > 180) {
         // 3-hour maximum
-        newErrors.timeRange = "Schedule duration cannot exceed 3 hours.";
+        newErrors.timeRange = "Schedule duration cannot exceed above 3 hours.";
         isValid = false;
       }
     }

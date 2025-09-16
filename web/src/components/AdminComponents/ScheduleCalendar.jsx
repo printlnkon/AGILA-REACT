@@ -96,52 +96,46 @@ const days = {
 // time slots for the calendar - can be customized as needed
 const timeSlots = [
   "7:00 AM - 7:30 AM",
+  "7:30 AM - 8:00 AM",
   "8:00 AM - 8:30 AM",
+  "8:30 AM - 9:00 AM",
   "9:00 AM - 9:30 AM",
   "10:00 AM - 10:30 AM",
+  "10:30 AM - 11:00 AM",
   "11:00 AM - 11:30 AM",
+  "11:30 AM - 12:00 PM",
   "12:00 PM - 12:30 PM",
+  "12:30 PM - 1:00 PM",
   "1:00 PM - 1:30 PM",
+  "1:30 PM - 2:00 PM",
   "2:00 PM - 2:30 PM",
+  "2:30 PM - 3:00 PM",
   "3:00 PM - 3:30 PM",
+  "3:30 PM - 4:00 PM",
   "4:00 PM - 4:30 PM",
+  "4:30 PM - 5:00 PM",
   "5:00 PM - 5:30 PM",
+  "5:30 PM - 6:00 PM",
   "6:00 PM - 6:30 PM",
+  "6:30 PM - 7:00 PM",
   "7:00 PM - 7:30 PM",
+  "7:30 PM - 8:00 PM",
   "8:00 PM - 8:30 PM",
 ];
 
-// Time options for dropdown select
-const timeOptions = [
-  "7:00 AM",
-  "7:30 AM",
-  "8:00 AM",
-  "8:30 AM",
-  "9:00 AM",
-  "9:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "12:00 PM",
-  "12:30 PM",
-  "1:00 PM",
-  "1:30 PM",
-  "2:00 PM",
-  "2:30 PM",
-  "3:00 PM",
-  "3:30 PM",
-  "4:00 PM",
-  "4:30 PM",
-  "5:00 PM",
-  "5:30 PM",
-  "6:00 PM",
-  "6:30 PM",
-  "7:00 PM",
-  "7:30 PM",
-  "8:00 PM",
-  "8:30 PM",
-];
+// time options for dropdown select
+const timeStringToMinutes = (timeStr) => {
+  const [time, period] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0; // Midnight case
+  return hours * 60 + minutes;
+};
+
+// time options for dropdowns, derived from the available timeslots to ensure validity
+const timeOptions = Array.from(
+  new Set(timeSlots.flatMap((slot) => slot.split(" - ").map((s) => s.trim())))
+).sort((a, b) => timeStringToMinutes(a) - timeStringToMinutes(b));
 
 // month names for month view
 const monthNames = [
@@ -617,20 +611,33 @@ export default function ScheduleCalendar({
 
   // calculate the position of a schedule in the calendar
   const calculateSchedulePosition = (schedule) => {
-    // find the closest time slot index for start and end time
-    const startIndex = timeOptions.findIndex(
-      (time) => time === schedule.startTime
+    // Find the index of the time slot where the schedule begins.
+    const startIndex = timeSlots.findIndex(
+      (slot) => slot.split(" - ")[0].trim() === schedule.startTime
     );
-    const endIndex = timeOptions.findIndex((time) => time === schedule.endTime);
 
-    // calculate the height based on duration (each slot is 60px high)
-    const finalStartIndex = startIndex >= 0 ? Math.floor(startIndex / 2) : 0;
-    const finalEndIndex =
-      endIndex >= 0 ? Math.floor(endIndex / 2) : finalStartIndex + 1;
+    // Find the index of the last slot occupied by the schedule by its end time.
+    const lastSlotIndex = timeSlots.findIndex(
+      (slot) => slot.split(" - ")[1].trim() === schedule.endTime
+    );
+
+    // If the schedule's start time doesn't align with a slot, it cannot be rendered.
+    // This can happen if data exists for a time that has been removed (e.g., "9:00 AM").
+    if (startIndex === -1) {
+      console.warn(
+        "Schedule start time does not align with grid and cannot be rendered:",
+        schedule
+      );
+      return { top: 0, height: 0, zIndex: -1 }; // Hide the schedule
+    }
+
+    // The end index for calculation is one after the last occupied slot.
+    // If the exact end time isn't found, default to a single-slot duration.
+    const endIndex = lastSlotIndex !== -1 ? lastSlotIndex + 1 : startIndex + 1;
 
     return {
-      top: finalStartIndex * 60,
-      height: Math.max((finalEndIndex - finalStartIndex) * 60, 60),
+      top: startIndex * 60,
+      height: Math.max((endIndex - startIndex) * 60, 60), // Ensure min height
     };
   };
 
