@@ -2814,13 +2814,14 @@ export default function AddScheduleModal({
                     })}
                   </div>
 
-                  <DialogFooter className="mt-6">
+                  <DialogFooter>
                     <Button
+                      variant="destructive"
                       type="button"
                       onClick={() => setShowConflictDialog(false)}
                       className="cursor-pointer"
                     >
-                      Okay
+                      Cancel Schedule
                     </Button>
                   </DialogFooter>
                 </DialogContent>

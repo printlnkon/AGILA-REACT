@@ -307,6 +307,21 @@ export default function SubjectCard({
         status: "Pending",
       };
 
+      // notify program head
+      if (isApproved) {
+        const notificationSent = await sendProgramHeadNotification(
+          subject,
+          "edit"
+        );
+        if (notificationSent) {
+          toast.success("Program Head has been notified of the changes.");
+        } else {
+          toast.warning(
+            "Could not notify the Program Head, but proceeding with the update."
+          );
+        }
+      }
+
       const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
 
       await updateDoc(doc(db, subjectPath), updateData);
@@ -339,6 +354,21 @@ export default function SubjectCard({
   // delete subject confirmation
   const handleDeleteSubject = async () => {
     try {
+      // notify program head
+      if (isApproved) {
+        const notificationSent = await sendProgramHeadNotification(
+          subject,
+          "delete"
+        );
+        if (notificationSent) {
+          toast.success("Program Head has been notified of the deletion.");
+        } else {
+          toast.warning(
+            "Could not notify the Program Head, but proceeding with deletion."
+          );
+        }
+      }
+
       const subjectPath = `academic_years/${subject.academicYearId}/semesters/${subject.semesterId}/departments/${subject.departmentId}/courses/${subject.courseId}/year_levels/${subject.yearLevelId}/subjects/${subject.id}`;
 
       await handleScheduleReferencesForDeletion(
@@ -383,20 +413,6 @@ export default function SubjectCard({
   const handleApprovedAction = async () => {
     setApprovalDialogOpen(false);
 
-    // Notify program head
-    const notificationSent = await sendProgramHeadNotification(
-      subject,
-      actionType
-    );
-
-    if (!notificationSent) {
-      toast.warning(
-        "Could not notify Program Head, but proceeding with action."
-      );
-    } else {
-      toast.success("Program Head has been notified of this action.");
-    }
-
     // proceed with the selected action
     if (actionType === "edit") {
       setEditDialogOpen(true);
@@ -405,7 +421,7 @@ export default function SubjectCard({
     }
   };
 
-    return (
+  return (
     <>
       <Card className="w-full transition-all hover:shadow-md">
         <CardHeader className="pb-4">
@@ -509,7 +525,7 @@ export default function SubjectCard({
               Cancel
             </Button>
             <Button className="cursor-pointer" onClick={handleApprovedAction}>
-              Proceed and Notify
+              Proceed
             </Button>
           </div>
         </DialogContent>
