@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Card } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +17,6 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Plus,
   LoaderCircle,
@@ -19,17 +24,21 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  Info,
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Enhanced YearCalendar component with navigation
 function YearCalendar({
   selected,
   onSelect,
@@ -155,6 +164,7 @@ export default function AddAcademicYearModal({
   onOpenChange,
   onAcademicYearAdded,
   existingYears,
+  academicYearsList = [],
 }) {
   const [selectedDate, setSelectedDate] = useState();
   const [loading, setLoading] = useState(false);
@@ -163,12 +173,16 @@ export default function AddAcademicYearModal({
   const [disabledYears, setDisabledYears] = useState([]);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Extract existing years and create disabled years
+  // copy settings states
+  const [enableCopy, setEnableCopy] = useState(false);
+  const [copyFromYear, setCopyFromYear] = useState("");
+
+  // extract existing years and create disabled years
   useEffect(() => {
     const currentYear = new Date().getFullYear();
     const existingStartYears = [];
 
-    // Extract start years from existing academic years
+    // extract start years from existing academic years
     if (existingYears && existingYears.length > 0) {
       existingYears.forEach((year) => {
         const match = year.match(/S\.Y - (\d{4})-\d{4}/);
@@ -240,7 +254,12 @@ export default function AddAcademicYearModal({
 
     const academicYearFormat = formatAcademicYear(selectedDate);
     setLoading(true);
-    const success = await onAcademicYearAdded(academicYearFormat);
+
+    // copy settings if enabled
+    const copyData =
+      enableCopy && copyFromYear ? { copyFrom: copyFromYear } : null;
+
+    const success = await onAcademicYearAdded(academicYearFormat, copyData);
     setLoading(false);
 
     if (success) {
@@ -248,8 +267,21 @@ export default function AddAcademicYearModal({
     }
   };
 
+   const resetFormState = () => {
+    setEnableCopy(false);
+    setCopyFromYear("");
+  };
+
+  const handleOpenChange = (isOpen) => {
+    if (!isOpen) {
+      // reset the form state when the dialog is closed.
+      resetFormState();
+    }
+    onOpenChange(isOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="cursor-pointer">
           <Plus className="h-4 w-4" /> Add School Year
@@ -302,6 +334,71 @@ export default function AddAcademicYearModal({
               </div>
             )}
 
+            {/* copy settings */}
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <Checkbox
+                  id="enableCopy"
+                  checked={enableCopy}
+                  onCheckedChange={setEnableCopy}
+                />
+                <Label
+                  htmlFor="enableCopy"
+                  className="flex items-center cursor-pointer"
+                >
+                  Copy configurations from previous school year
+                </Label>
+              </div>
+
+              {enableCopy && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="copyFromYear" className="mb-2">
+                      Copy from:
+                    </Label>
+                    <Select
+                      value={copyFromYear}
+                      onValueChange={setCopyFromYear}
+                      disabled={!enableCopy}
+                    >
+                      <SelectTrigger id="copyFromYear" className="w-full mt-1">
+                        <SelectValue placeholder="Select school year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {academicYearsList.map((year) => (
+                          <SelectItem key={year.id} value={year.id}>
+                            {year.acadYear}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {copyFromYear !== "" && (
+                    <Card className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1.5">
+                          <Info />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium">
+                            All configuration collections will be copied,
+                            including:
+                          </p>
+                          <ul className="mt-2 grid grid-cols-1 gap-y-1 text-sm text-muted-foreground list-disc list-inside sm:grid-cols-1 sm:gap-x-6">
+                            <li>Semesters</li>
+                            <li>Departments & Courses</li>
+                            <li>Year Levels & Sections</li>
+                            <li>Subjects</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </div>
+
             {!canAddYear && (
               <Alert variant="destructive" className="mt-2">
                 <AlertDescription>
@@ -319,7 +416,12 @@ export default function AddAcademicYearModal({
             </DialogClose>
             <Button
               type="submit"
-              disabled={loading || !canAddYear || !selectedDate}
+              disabled={
+                loading ||
+                !canAddYear ||
+                !selectedDate ||
+                (enableCopy && !copyFromYear)
+              }
               className="cursor-pointer"
             >
               {loading ? (
@@ -327,7 +429,7 @@ export default function AddAcademicYearModal({
                   <span className="animate-spin mr-2">
                     <LoaderCircle />
                   </span>
-                  Adding...
+                  Adding school year...
                 </>
               ) : (
                 "Add"

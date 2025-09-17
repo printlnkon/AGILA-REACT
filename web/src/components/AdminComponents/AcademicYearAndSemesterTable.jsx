@@ -15,6 +15,8 @@ import {
   addDoc,
   serverTimestamp,
   orderBy,
+  getDoc,
+  where,
 } from "firebase/firestore";
 import AddAcademicYearModal from "@/components/AdminComponents/AddAcademicYearModal";
 import AddSemesterModal from "@/components/AdminComponents/AddSemesterModal";
@@ -88,21 +90,627 @@ export default function AcademicYearAndSemesterTable() {
     fetchAcademicData();
   }, [fetchAcademicData]);
 
-  const handleAddAcademicYear = async (yearName) => {
+  const handleAddAcademicYear = async (yearName, copyData = null) => {
     try {
-      await addDoc(collection(db, "academic_years"), {
+      const acadYearRef = await addDoc(collection(db, "academic_years"), {
         acadYear: yearName,
         status: "Upcoming",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      toast.success(`Academic Year "${yearName}" added successfully!`);
+
+        if (copyData && copyData.copyFrom) {
+        const sourceYearId = copyData.copyFrom;
+        
+        toast.info(
+          "Copying configurations from previous school year, please wait...",
+          {
+            duration: 5000,
+          }
+        );
+
+        // Copy all configurations in sequence
+        await copySemesters(sourceYearId, acadYearRef.id);
+        await copyDepartments(sourceYearId, acadYearRef.id);
+        await copyCourses(sourceYearId, acadYearRef.id);
+        await copyYearLevels(sourceYearId, acadYearRef.id);
+        await copySections(sourceYearId, acadYearRef.id);
+        await copySubjects(sourceYearId, acadYearRef.id);
+      }
+
+      toast.success(`School Year "${yearName}" added successfully!`, 
+        {
+          duration: 5000,
+        }
+      );
       fetchAcademicData();
       return true;
     } catch (error) {
-      console.error("Error adding academic year: ", error);
-      toast.error("Failed to add academic year.");
+      console.error("Error adding school year: ", error);
+      toast.error("Failed to add school year.");
       return false;
+    }
+  };
+
+  // function to copy semesters
+  const copySemesters = async (sourceYearId, targetYearId) => {
+    try {
+      const semestersRef = collection(
+        db,
+        "academic_years",
+        sourceYearId,
+        "semesters"
+      );
+      const semestersSnapshot = await getDocs(semestersRef);
+
+      if (!semestersSnapshot.empty) {
+        const batch = writeBatch(db);
+
+        semestersSnapshot.docs.forEach((semDoc) => {
+          const semData = semDoc.data();
+          const newSemRef = doc(
+            collection(db, "academic_years", targetYearId, "semesters")
+          );
+
+          // copy with "Upcoming" status regardless of original status
+          batch.set(newSemRef, {
+            semesterName: semData.semesterName,
+            startDate: semData.startDate || null,
+            endDate: semData.endDate || null,
+            status: "Upcoming",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        toast.success("Semesters copied successfully.");
+      }
+    } catch (error) {
+      console.error("Error copying semesters: ", error);
+      toast.error("Failed to copy semesters.");
+      return false;
+    }
+  };
+
+  // function to copy departments
+  const copyDepartments = async (sourceYearId, targetYearId) => {
+    try {
+      const sourceSemestersRef = collection(db, "academic_years", sourceYearId, "semesters");
+      let sourceSemesterId;
+
+      const activeSemQuery = query(sourceSemestersRef, where("status", "==", "Active"));
+      const activeSemSnapshot = await getDocs(activeSemQuery);
+
+      if (!activeSemSnapshot.empty) {
+        sourceSemesterId = activeSemSnapshot.docs[0].id;
+      } else {
+        const anySemQuery = query(sourceSemestersRef, orderBy("createdAt", "desc"), limit(1));
+        const anySemSnapshot = await getDocs(anySemQuery);
+        if (anySemSnapshot.empty) {
+          console.log("No source semesters found to copy departments from.");
+          return false; // No semesters to copy from
+        }
+        sourceSemesterId = anySemSnapshot.docs[0].id;
+      }
+      
+      // get departments from the determined source semester
+      const deptRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments");
+      const deptSnapshot = await getDocs(deptRef);
+
+      if (deptSnapshot.empty) {
+        return false; // Nothing to copy
+      }
+
+      // get target semesters
+      const targetSemestersRef = collection(db, "academic_years", targetYearId, "semesters");
+      const targetSemSnapshot = await getDocs(targetSemestersRef);
+
+      if (!targetSemSnapshot.empty) {
+        const batch = writeBatch(db);
+
+        // copy departments to each target semester
+        for (const targetSemDoc of targetSemSnapshot.docs) {
+          const targetSemId = targetSemDoc.id;
+
+          for (const deptDoc of deptSnapshot.docs) {
+            const deptData = deptDoc.data();
+            const newDeptRef = doc(collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments"));
+
+            batch.set(newDeptRef, {
+              academicYearId: targetYearId,
+              semesterId: targetSemId,
+              departmentName: deptData.departmentName,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+          }
+        }
+        await batch.commit();
+        toast.success("Departments copied successfully.");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error copying departments: ", error);
+      toast.error("Failed to copy departments.");
+      return false;
+    }
+  };
+
+ // function to copy courses
+  const copyCourses = async (sourceYearId, targetYearId) => {
+    try {
+      
+      const sourceSemestersRef = collection(db, "academic_years", sourceYearId, "semesters");
+      let sourceSemesterId;
+
+      const activeSemQuery = query(sourceSemestersRef, where("status", "==", "Active"));
+      const activeSemSnapshot = await getDocs(activeSemQuery);
+
+      if (!activeSemSnapshot.empty) {
+        sourceSemesterId = activeSemSnapshot.docs[0].id;
+      } else {
+        const anySemQuery = query(sourceSemestersRef, orderBy("createdAt", "desc"), limit(1));
+        const anySemSnapshot = await getDocs(anySemQuery);
+        if (anySemSnapshot.empty) {
+          console.log("No source semesters found to copy courses from.");
+          return false;
+        }
+        sourceSemesterId = anySemSnapshot.docs[0].id;
+      }
+      
+
+      const sourceDeptRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments");
+      const sourceDeptSnapshot = await getDocs(sourceDeptRef);
+
+      if (sourceDeptSnapshot.empty) {
+        return false; // No departments to copy courses from
+      }
+
+      const batch = writeBatch(db);
+      const targetSemestersRef = collection(db, "academic_years", targetYearId, "semesters");
+      const targetSemSnapshot = await getDocs(targetSemestersRef);
+
+      if (targetSemSnapshot.empty) {
+        return false; // No target semesters to copy to
+      }
+
+      for (const targetSemDoc of targetSemSnapshot.docs) {
+        const targetSemId = targetSemDoc.id;
+        const targetDeptRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments");
+        const targetDeptSnapshot = await getDocs(targetDeptRef);
+
+        const deptNameToIdMap = {};
+        targetDeptSnapshot.docs.forEach(dept => {
+          deptNameToIdMap[dept.data().departmentName] = dept.id;
+        });
+
+        for (const sourceDeptDoc of sourceDeptSnapshot.docs) {
+          const sourceDeptData = sourceDeptDoc.data();
+          const sourceDeptId = sourceDeptDoc.id;
+          const targetDeptId = deptNameToIdMap[sourceDeptData.departmentName];
+
+          if (targetDeptId) {
+            const sourceCoursesRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses");
+            const sourceCoursesSnapshot = await getDocs(sourceCoursesRef);
+
+            sourceCoursesSnapshot.docs.forEach(courseDoc => {
+              const courseData = courseDoc.data();
+              const newCourseRef = doc(collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses"));
+
+              batch.set(newCourseRef, {
+                departmentId: targetDeptId,
+                departmentName: sourceDeptData.departmentName,
+                courseCode: courseData.courseCode,
+                courseName: courseData.courseName,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              });
+            });
+          }
+        }
+      }
+
+      if (batch._mutations.length > 0) {
+        await batch.commit();
+        toast.success("Courses copied successfully.");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error copying courses:", error);
+      toast.error("Failed to copy courses.");
+      return false;
+    }
+  };
+
+  // function to copy year levels
+  const copyYearLevels = async (sourceYearId, targetYearId) => {
+    try {
+      const sourceSemestersRef = collection(db, "academic_years", sourceYearId, "semesters");
+      let sourceSemesterId;
+
+      const activeSemQuery = query(sourceSemestersRef, where("status", "==", "Active"));
+      const activeSemSnapshot = await getDocs(activeSemQuery);
+
+      if (!activeSemSnapshot.empty) {
+        sourceSemesterId = activeSemSnapshot.docs[0].id;
+      } else {
+        const anySemQuery = query(sourceSemestersRef, orderBy("createdAt", "desc"), limit(1));
+        const anySemSnapshot = await getDocs(anySemQuery);
+        if (anySemSnapshot.empty) {
+          console.log("No source semesters found to copy year levels from.");
+          return false;
+        }
+        sourceSemesterId = anySemSnapshot.docs[0].id;
+      }
+      
+
+      const sourceDeptRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments");
+      const sourceDeptSnapshot = await getDocs(sourceDeptRef);
+
+      if (sourceDeptSnapshot.empty) {
+        return false;
+      }
+
+      const targetSemestersRef = collection(db, "academic_years", targetYearId, "semesters");
+      const targetSemSnapshot = await getDocs(targetSemestersRef);
+
+      if (targetSemSnapshot.empty) {
+        return false;
+      }
+
+      const batch = writeBatch(db);
+
+      for (const targetSemDoc of targetSemSnapshot.docs) {
+        const targetSemId = targetSemDoc.id;
+        const targetDeptRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments");
+        const targetDeptSnapshot = await getDocs(targetDeptRef);
+
+        for (const targetDeptDoc of targetDeptSnapshot.docs) {
+          const targetDeptId = targetDeptDoc.id;
+          const targetDeptData = targetDeptDoc.data();
+
+          const sourceDeptDoc = sourceDeptSnapshot.docs.find(
+            dept => dept.data().departmentName === targetDeptData.departmentName
+          );
+
+          if (sourceDeptDoc) {
+            const sourceDeptId = sourceDeptDoc.id;
+            const targetCoursesRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses");
+            const targetCoursesSnapshot = await getDocs(targetCoursesRef);
+            const sourceCoursesRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses");
+            const sourceCoursesSnapshot = await getDocs(sourceCoursesRef);
+
+            for (const targetCourseDoc of targetCoursesSnapshot.docs) {
+              const targetCourseId = targetCourseDoc.id;
+              const targetCourseData = targetCourseDoc.data();
+
+              const sourceCourseDoc = sourceCoursesSnapshot.docs.find(
+                course => course.data().courseName === targetCourseData.courseName
+              );
+
+              if (sourceCourseDoc) {
+                const sourceCourseId = sourceCourseDoc.id;
+                const sourceYearLevelsRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses", sourceCourseId, "year_levels");
+                const sourceYearLevelsSnapshot = await getDocs(sourceYearLevelsRef);
+
+                sourceYearLevelsSnapshot.docs.forEach(yearLevelDoc => {
+                  const yearLevelData = yearLevelDoc.data();
+                  const newYearLevelRef = doc(collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses", targetCourseId, "year_levels"));
+
+                  batch.set(newYearLevelRef, {
+                    courseId: targetCourseId,
+                    departmentId: targetDeptId,
+                    yearLevelName: yearLevelData.yearLevelName,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                  });
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (batch._mutations.length > 0) {
+        await batch.commit();
+        toast.success("Year Levels copied successfully.");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error copying year levels:", error);
+      toast.error("Failed to copy year levels.");
+      return false;
+    }
+  };
+
+  // function to copy subjects
+  const copySubjects = async (sourceYearId, targetYearId) => {
+    try {
+      // Find the source semester to copy from. Prioritize the 'Active' semester,
+      // but fall back to the most recently created one if none are active.
+      const sourceSemestersRef = collection(db, "academic_years", sourceYearId, "semesters");
+      let sourceSemesterId;
+
+      const activeSemQuery = query(sourceSemestersRef, where("status", "==", "Active"));
+      const activeSemSnapshot = await getDocs(activeSemQuery);
+
+      if (!activeSemSnapshot.empty) {
+        sourceSemesterId = activeSemSnapshot.docs[0].id;
+      } else {
+        const anySemQuery = query(sourceSemestersRef, orderBy("createdAt", "desc"), limit(1));
+        const anySemSnapshot = await getDocs(anySemQuery);
+        if (anySemSnapshot.empty) {
+          console.log("No source semesters found to copy subjects from.");
+          return false;
+        }
+        sourceSemesterId = anySemSnapshot.docs[0].id;
+      }
+
+      // Get all semesters in the new academic year where we'll copy the subjects to.
+      const targetSemestersRef = collection(db, "academic_years", targetYearId, "semesters");
+      const targetSemSnapshot = await getDocs(targetSemestersRef);
+      if (targetSemSnapshot.empty) {
+        return false; // No target semesters to copy to.
+      }
+
+      const batch = writeBatch(db);
+
+      // Get all departments from the source semester just once to avoid re-fetching.
+      const sourceDeptRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments");
+      const sourceDeptSnapshot = await getDocs(sourceDeptRef);
+      if (sourceDeptSnapshot.empty) {
+        return false; // Nothing to copy if there are no departments.
+      }
+
+      // Loop through each semester in the new academic year.
+      for (const targetSemDoc of targetSemSnapshot.docs) {
+        const targetSemId = targetSemDoc.id;
+
+        // Get the corresponding departments in the target semester.
+        const targetDeptRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments");
+        const targetDeptSnapshot = await getDocs(targetDeptRef);
+        const targetDeptMap = new Map(
+          targetDeptSnapshot.docs.map(doc => [doc.data().departmentName, doc.id])
+        );
+
+        // Match source departments with target departments by name.
+        for (const sourceDeptDoc of sourceDeptSnapshot.docs) {
+          const sourceDeptData = sourceDeptDoc.data();
+          const sourceDeptId = sourceDeptDoc.id;
+          const targetDeptId = targetDeptMap.get(sourceDeptData.departmentName);
+
+          if (!targetDeptId) continue; // Skip if department doesn't exist in the target.
+
+          // Match courses within the matched department.
+          const sourceCoursesRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses");
+          const sourceCoursesSnapshot = await getDocs(sourceCoursesRef);
+          const targetCoursesRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses");
+          const targetCoursesSnapshot = await getDocs(targetCoursesRef);
+          const targetCourseMap = new Map(
+            targetCoursesSnapshot.docs.map(doc => [doc.data().courseName, doc.id])
+          );
+
+          for (const sourceCourseDoc of sourceCoursesSnapshot.docs) {
+            const sourceCourseData = sourceCourseDoc.data();
+            const sourceCourseId = sourceCourseDoc.id;
+            const targetCourseId = targetCourseMap.get(sourceCourseData.courseName);
+            
+            if (!targetCourseId) continue; // Skip if course doesn't exist in the target.
+
+            // Match year levels within the matched course.
+            const sourceYearLevelsRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses", sourceCourseId, "year_levels");
+            const sourceYearLevelsSnapshot = await getDocs(sourceYearLevelsRef);
+            const targetYearLevelsRef = collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses", targetCourseId, "year_levels");
+            const targetYearLevelsSnapshot = await getDocs(targetYearLevelsRef);
+            const targetYearLevelMap = new Map(
+              targetYearLevelsSnapshot.docs.map(doc => [doc.data().yearLevelName, doc.id])
+            );
+
+            for (const sourceYearLevelDoc of sourceYearLevelsSnapshot.docs) {
+              const sourceYearLevelData = sourceYearLevelDoc.data();
+              const sourceYearLevelId = sourceYearLevelDoc.id;
+              const targetYearLevelId = targetYearLevelMap.get(sourceYearLevelData.yearLevelName);
+
+              if (!targetYearLevelId) continue; // Skip if year level doesn't exist.
+
+              // Finally, get the subjects from the source and add them to the batch.
+              const sourceSubjectsRef = collection(db, "academic_years", sourceYearId, "semesters", sourceSemesterId, "departments", sourceDeptId, "courses", sourceCourseId, "year_levels", sourceYearLevelId, "subjects");
+              const sourceSubjectsSnapshot = await getDocs(sourceSubjectsRef);
+              
+              sourceSubjectsSnapshot.docs.forEach(subjectDoc => {
+                const subjectData = subjectDoc.data();
+                // Define the path for the new subject document in the target location.
+                const newSubjectRef = doc(collection(db, "academic_years", targetYearId, "semesters", targetSemId, "departments", targetDeptId, "courses", targetCourseId, "year_levels", targetYearLevelId, "subjects"));
+                
+                batch.set(newSubjectRef, {
+                  academicYearId: targetYearId,
+                  semesterId: targetSemId,
+                  departmentId: targetDeptId,
+                  departmentName: subjectData.departmentName,
+                  courseId: targetCourseId,
+                  courseName: sourceCourseData.courseName,
+                  yearLevelId: targetYearLevelId,
+                  yearLevelName: sourceYearLevelData.yearLevelName,
+                  createdBy: subjectData.createdBy || null,
+                  description: subjectData.description || "",
+                  subjectName: subjectData.subjectName,
+                  subjectCode: subjectData.subjectCode,
+                  status: subjectData.status || "Approved",
+                  statusComment: subjectData.statusComment || "",
+                  statusHistory: subjectData.statusHistory || [],
+                  units: subjectData.units || 0,
+                  updatedBy: subjectData.updatedBy || null,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                });
+              });
+            }
+          }
+        }
+      }
+
+      // Commit all the batched writes to Firestore.
+      if (batch._mutations.length > 0) {
+        await batch.commit();
+        toast.success("Subjects copied successfully.");
+      }
+      return true;
+
+    } catch (error) {
+      console.error("Error copying subjects:", error);
+      toast.error("Failed to copy subjects.");
+      return false;
+    }
+  };
+
+  // function to copy sections
+  const copySections = async (sourceYearId, targetYearId) => {
+    try {
+      const sourceSemestersRef = collection(db, "academic_years", sourceYearId, "semesters");
+      let sourceSemesterId;
+
+      const activeSemQuery = query(sourceSemestersRef, where("status", "==", "Active"));
+      const activeSemSnapshot = await getDocs(activeSemQuery);
+
+      if (!activeSemSnapshot.empty) {
+        sourceSemesterId = activeSemSnapshot.docs[0].id;
+      } else {
+        const anySemQuery = query(sourceSemestersRef, orderBy("createdAt", "desc"), limit(1));
+        const anySemSnapshot = await getDocs(anySemQuery);
+        if (anySemSnapshot.empty) {
+          console.log("No source semesters found to copy sections from.");
+          return false;
+        }
+        sourceSemesterId = anySemSnapshot.docs[0].id;
+      }
+      
+
+      const targetSemestersRef = collection(db, "academic_years", targetYearId, "semesters");
+      const targetSemSnapshot = await getDocs(targetSemestersRef);
+
+      if (targetSemSnapshot.empty) {
+        return false; // No target semesters to copy to
+      }
+
+      const batch = writeBatch(db);
+
+      for (const targetSemDoc of targetSemSnapshot.docs) {
+        const targetSemId = targetSemDoc.id;
+
+        await processNestedCollections(
+          batch,
+          db,
+          sourceYearId,
+          sourceSemesterId,
+          targetYearId,
+          targetSemId
+        );
+      }
+
+      if (batch._mutations.length > 0) {
+        await batch.commit();
+        toast.success("Sections copied successfully.");
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error copying sections:", error);
+      toast.error("Failed to copy sections.");
+      return false;
+    }
+  };
+
+  // helper function to process nested collections (sections)
+  const processNestedCollections = async (
+    batch,
+    db,
+    sourceYearId,
+    sourceSemesterId,
+    targetYearId,
+    targetSemId,
+    sourcePath = [],
+    targetPath = [],
+    collectionLevel = 0
+  ) => {
+    const collectionHierarchy = ["departments", "courses", "year_levels", "sections"];
+
+    if (collectionLevel >= collectionHierarchy.length) {
+      return; // Base case
+    }
+
+    const currentCollection = collectionHierarchy[collectionLevel];
+
+    // --- START: Corrected Path Building Logic ---
+    const sourceBaseRef = doc(db, "academic_years", sourceYearId, "semesters", sourceSemesterId);
+    const targetBaseRef = doc(db, "academic_years", targetYearId, "semesters", targetSemId);
+
+    const sourceCollectionRef = sourcePath.length > 0
+      ? collection(doc(sourceBaseRef, ...sourcePath), currentCollection)
+      : collection(sourceBaseRef, currentCollection);
+
+    const targetCollectionRef = targetPath.length > 0
+      ? collection(doc(targetBaseRef, ...targetPath), currentCollection)
+      : collection(targetBaseRef, currentCollection);
+    // --- END: Corrected Path Building Logic ---
+
+    const sourceDocsSnapshot = await getDocs(sourceCollectionRef);
+    const targetDocsSnapshot = await getDocs(targetCollectionRef);
+
+    if (currentCollection === "sections") {
+      sourceDocsSnapshot.docs.forEach(sectionDoc => {
+        const sectionData = sectionDoc.data();
+        const newSectionRef = doc(targetCollectionRef);
+
+        batch.set(newSectionRef, {
+          sectionName: sectionData.sectionName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      return;
+    }
+
+    const targetDocs = {};
+    targetDocsSnapshot.docs.forEach((doc) => {
+      const nameField =
+        currentCollection === "departments"
+          ? "departmentName"
+          : currentCollection === "courses"
+          ? "courseName"
+          : "yearLevelName";
+      targetDocs[doc.data()[nameField]] = { id: doc.id };
+    });
+
+    for (const sourceDoc of sourceDocsSnapshot.docs) {
+      const sourceData = sourceDoc.data();
+      const nameField =
+        currentCollection === "departments"
+          ? "departmentName"
+          : currentCollection === "courses"
+          ? "courseName"
+          : "yearLevelName";
+
+      if (targetDocs[sourceData[nameField]]) {
+        const targetDocId = targetDocs[sourceData[nameField]].id;
+
+        const newSourcePath = [...sourcePath, currentCollection, sourceDoc.id];
+        const newTargetPath = [...targetPath, currentCollection, targetDocId];
+
+        await processNestedCollections(
+          batch,
+          db,
+          sourceYearId,
+          sourceSemesterId,
+          targetYearId,
+          targetSemId,
+          newSourcePath,
+          newTargetPath,
+          collectionLevel + 1
+        );
+      }
     }
   };
 
@@ -304,8 +912,8 @@ export default function AcademicYearAndSemesterTable() {
     setAddSemesterModalOpen(true);
   };
 
-  // Loading Skeleton Component
-  const LoadingSkeleton = () => {
+  // skeleton loading state
+  if (loading) {
     return (
       <div className="w-full p-4 space-y-4">
         <div className="mb-4">
@@ -350,10 +958,6 @@ export default function AcademicYearAndSemesterTable() {
         </div>
       </div>
     );
-  };
-
-  if (loading) {
-    return <LoadingSkeleton />;
   }
 
   return (
@@ -375,6 +979,7 @@ export default function AcademicYearAndSemesterTable() {
           open={isAddAcadYearModalOpen}
           onAcademicYearAdded={handleAddAcademicYear}
           existingYears={academicYears.map((ay) => ay.acadYear)}
+          academicYearsList={academicYears}
         />
       </div>
 
