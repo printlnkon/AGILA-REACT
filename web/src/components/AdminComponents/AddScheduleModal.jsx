@@ -1122,7 +1122,7 @@ export default function AddScheduleModal({
 
       if (duration > 180) {
         // 3-hour maximum
-        newErrors.timeRange = "Schedule duration cannot exceed 3 hours.";
+        newErrors.timeRange = "Schedule duration cannot exceed above 3 hours.";
         isValid = false;
       }
     }
@@ -1335,144 +1335,6 @@ export default function AddScheduleModal({
       }
 
       toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
-      resetForm();
-      setOpen(false);
-    } catch (err) {
-      toast.error("Failed to add schedule");
-      console.error("Error adding schedule:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmedConflictSubmit = async () => {
-    setShowConflictDialog(false);
-    setLoading(true);
-
-    try {
-      const {
-        roomType,
-        subject,
-        room,
-        instructor,
-        color,
-        startHour,
-        startMinute,
-        startPeriod,
-        endHour,
-        endMinute,
-        endPeriod,
-        days,
-        hasLaboratory,
-        labStartHour,
-        labStartMinute,
-        labStartPeriod,
-        labEndHour,
-        labEndMinute,
-        labEndPeriod,
-        labDays,
-        labRoom,
-        labInstructor,
-      } = formState;
-
-      // Get selected days for lecture
-      const selectedDays = Object.entries(days)
-        .filter(([_, isSelected]) => isSelected)
-        .map(([day]) => day);
-
-      // Update room type for lecture room
-      const roomRef = doc(db, "rooms", room);
-      await updateDoc(roomRef, {
-        roomType: roomType,
-        updatedAt: new Date(),
-      });
-
-      // Lecture schedule object
-      const scheduleData = {
-        subjectId: subject,
-        subjectCode: subjects.find((s) => s.id === subject)?.code,
-        subjectName: subjects.find((s) => s.id === subject)?.name,
-        roomId: room,
-        roomName: rooms.find((r) => r.id === room)?.name,
-        instructorId: instructor,
-        instructorName: instructors.find((i) => i.id === instructor)?.name,
-        startTime: `${startHour}:${startMinute} ${startPeriod}`,
-        endTime: `${endHour}:${endMinute} ${endPeriod}`,
-        days: selectedDays,
-        roomType: "LECTURE",
-        color: color,
-        createdAt: new Date(),
-        hasLaboratory: hasLaboratory,
-      };
-
-      // Path to save schedules
-      const schedulesPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${departmentId}/courses/${courseId}/year_levels/${yearLevel}/sections/${sectionId}/schedules`;
-
-      // Add lecture schedule document to firestore
-      const lectureDocRef = await addDoc(
-        collection(db, schedulesPath),
-        scheduleData
-      );
-
-      // Add the ID to the schedule data for the local state update
-      const newSchedule = {
-        id: lectureDocRef.id,
-        ...scheduleData,
-      };
-
-      // If laboratory component is enabled, create lab schedule
-      if (hasLaboratory) {
-        // Get selected days for laboratory
-        const selectedLabDays = Object.entries(labDays)
-          .filter(([_, isSelected]) => isSelected)
-          .map(([day]) => day);
-
-        // Update room type for laboratory room
-        const labRoomRef = doc(db, "rooms", labRoom);
-        await updateDoc(labRoomRef, {
-          roomType: "laboratory",
-          updatedAt: new Date(),
-        });
-
-        // Laboratory schedule object
-        const labScheduleData = {
-          subjectId: subject,
-          subjectCode: subjects.find((s) => s.id === subject)?.code,
-          subjectName: subjects.find((s) => s.id === subject)?.name,
-          roomId: labRoom,
-          roomName: rooms.find((r) => r.id === labRoom)?.name,
-          instructorId: labInstructor,
-          instructorName: instructors.find((i) => i.id === labInstructor)?.name,
-          startTime: `${labStartHour}:${labStartMinute} ${labStartPeriod}`,
-          endTime: `${labEndHour}:${labEndMinute} ${labEndPeriod}`,
-          days: selectedLabDays,
-          roomType: "LABORATORY",
-          color: color,
-          createdAt: new Date(),
-          lectureScheduleId: lectureDocRef.id,
-          isLabComponent: true,
-        };
-
-        // Add laboratory schedule document to firestore
-        const labDocRef = await addDoc(
-          collection(db, schedulesPath),
-          labScheduleData
-        );
-
-        // Add the lab schedule to the local state update
-        const newLabSchedule = {
-          id: labDocRef.id,
-          ...labScheduleData,
-        };
-
-        // Update both schedules
-        await onScheduleAdded([newSchedule, newLabSchedule]);
-      } else {
-        // Only update lecture schedule
-        await onScheduleAdded(newSchedule);
-      }
-
-      // toast.success(`Schedule${hasLaboratory ? "s" : ""} successfully added`);
       resetForm();
       setOpen(false);
     } catch (err) {
@@ -2952,21 +2814,14 @@ export default function AddScheduleModal({
                     })}
                   </div>
 
-                  <DialogFooter className="mt-6">
+                  <DialogFooter>
                     <Button
+                      variant="destructive"
                       type="button"
-                      variant="ghost"
                       onClick={() => setShowConflictDialog(false)}
                       className="cursor-pointer"
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleConfirmedConflictSubmit}
-                      className="cursor-pointer"
-                    >
-                      Proceed Anyway
+                      Cancel Schedule
                     </Button>
                   </DialogFooter>
                 </DialogContent>

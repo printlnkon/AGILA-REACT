@@ -96,52 +96,47 @@ const days = {
 // time slots for the calendar - can be customized as needed
 const timeSlots = [
   "7:00 AM - 7:30 AM",
+  "7:30 AM - 8:00 AM",
   "8:00 AM - 8:30 AM",
+  "8:30 AM - 9:00 AM",
   "9:00 AM - 9:30 AM",
-  "10:00 AM - 10:30 AM",
-  "11:00 AM - 11:30 AM",
+  "9:30 AM - 10:00 AM",
+  "10:00 AM - 10:30 AM",  
+  "10:30 AM - 11:00 AM",
+  "11:00 AM - 11:30 AM",  
+  "11:30 AM - 12:00 PM",
   "12:00 PM - 12:30 PM",
+  "12:30 PM - 1:00 PM",
   "1:00 PM - 1:30 PM",
+  "1:30 PM - 2:00 PM",
   "2:00 PM - 2:30 PM",
+  "2:30 PM - 3:00 PM",
   "3:00 PM - 3:30 PM",
+  "3:30 PM - 4:00 PM",
   "4:00 PM - 4:30 PM",
+  "4:30 PM - 5:00 PM",
   "5:00 PM - 5:30 PM",
+  "5:30 PM - 6:00 PM",
   "6:00 PM - 6:30 PM",
+  "6:30 PM - 7:00 PM",
   "7:00 PM - 7:30 PM",
+  "7:30 PM - 8:00 PM",
   "8:00 PM - 8:30 PM",
 ];
 
-// Time options for dropdown select
-const timeOptions = [
-  "7:00 AM",
-  "7:30 AM",
-  "8:00 AM",
-  "8:30 AM",
-  "9:00 AM",
-  "9:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:00 AM",
-  "11:30 AM",
-  "12:00 PM",
-  "12:30 PM",
-  "1:00 PM",
-  "1:30 PM",
-  "2:00 PM",
-  "2:30 PM",
-  "3:00 PM",
-  "3:30 PM",
-  "4:00 PM",
-  "4:30 PM",
-  "5:00 PM",
-  "5:30 PM",
-  "6:00 PM",
-  "6:30 PM",
-  "7:00 PM",
-  "7:30 PM",
-  "8:00 PM",
-  "8:30 PM",
-];
+// time options for dropdown select
+const timeStringToMinutes = (timeStr) => {
+  const [time, period] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0; // Midnight case
+  return hours * 60 + minutes;
+};
+
+// time options for dropdowns, derived from the available timeslots to ensure validity
+const timeOptions = Array.from(
+  new Set(timeSlots.flatMap((slot) => slot.split(" - ").map((s) => s.trim())))
+).sort((a, b) => timeStringToMinutes(a) - timeStringToMinutes(b));
 
 // month names for month view
 const monthNames = [
@@ -617,20 +612,33 @@ export default function ScheduleCalendar({
 
   // calculate the position of a schedule in the calendar
   const calculateSchedulePosition = (schedule) => {
-    // find the closest time slot index for start and end time
-    const startIndex = timeOptions.findIndex(
-      (time) => time === schedule.startTime
+    // Find the index of the time slot where the schedule begins.
+    const startIndex = timeSlots.findIndex(
+      (slot) => slot.split(" - ")[0].trim() === schedule.startTime
     );
-    const endIndex = timeOptions.findIndex((time) => time === schedule.endTime);
 
-    // calculate the height based on duration (each slot is 60px high)
-    const finalStartIndex = startIndex >= 0 ? Math.floor(startIndex / 2) : 0;
-    const finalEndIndex =
-      endIndex >= 0 ? Math.floor(endIndex / 2) : finalStartIndex + 1;
+    // Find the index of the last slot occupied by the schedule by its end time.
+    const lastSlotIndex = timeSlots.findIndex(
+      (slot) => slot.split(" - ")[1].trim() === schedule.endTime
+    );
+
+    // If the schedule's start time doesn't align with a slot, it cannot be rendered.
+    // This can happen if data exists for a time that has been removed (e.g., "9:00 AM").
+    if (startIndex === -1) {
+      console.warn(
+        "Schedule start time does not align with grid and cannot be rendered:",
+        schedule
+      );
+      return { top: 0, height: 0, zIndex: -1 }; // Hide the schedule
+    }
+
+    // The end index for calculation is one after the last occupied slot.
+    // If the exact end time isn't found, default to a single-slot duration.
+    const endIndex = lastSlotIndex !== -1 ? lastSlotIndex + 1 : startIndex + 1;
 
     return {
-      top: finalStartIndex * 60,
-      height: Math.max((finalEndIndex - finalStartIndex) * 60, 60),
+      top: startIndex * 60,
+      height: Math.max((endIndex - startIndex) * 60, 60), // Ensure min height
     };
   };
 
@@ -672,8 +680,7 @@ export default function ScheduleCalendar({
         onClick={() => handleScheduleClick(schedule)}
         className={`absolute w-full px-2 py-1 rounded-md overflow-hidden text-center
         transition-colors cursor-pointer flex flex-col justify-center
-        ${bg} ${hoverBg} ${text}
-        ${isCurrentSchedule ? "ring-1 ring-offset-1 ring-primary" : ""}`}
+        ${bg} ${hoverBg} ${text}`}
         style={{
           top: `${top}px`,
           height: `${Math.max(height, 60)}px`,
@@ -681,21 +688,21 @@ export default function ScheduleCalendar({
         }}
       >
         {/* section name with schedule type */}
-        <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
+        <div className="text-md font-medium opacity-80 mb-0.5 truncate">
           {sectionName || "Section"} • {getScheduleTypeName(schedule)}
         </div>
 
         {/* subject code with subject name */}
-        <div className="font-semibold text-xs leading-tight truncate">
+        <div className="font-semibold text-md leading-tight truncate">
           {schedule.subjectCode} - {schedule.subjectName}
         </div>
 
         {/* room information */}
-        <div className="text-xs mt-0.5 truncate">{schedule.roomName}</div>
+        <div className="text-md mt-0.5 truncate">{schedule.roomName}</div>
 
         {/* time information and total hours */}
         {height >= 75 && (
-          <div className="flex justify-center items-center gap-1 mt-1 text-xs">
+          <div className="flex justify-center items-center gap-1 mt-1 text-md">
             <Clock className="h-2.5 w-2.5" />
             <span className="truncate">{totalHours}</span>
           </div>
@@ -923,8 +930,8 @@ export default function ScheduleCalendar({
                 <div
                   key={schedule.id}
                   onClick={() => handleScheduleClick(schedule)}
-                  className={`absolute left-0 right-0 mx-2 px-3 py-2 rounded-md overflow-hidden text-center border
-                  transition-colors cursor-pointer
+                  className={`absolute left-0 right-0 rounded-md overflow-hidden text-center border
+                  transition-colors cursor-pointer flex flex-col justify-center space-y-1
                   ${bg} ${hoverBg} ${text}`}
                   style={{
                     top: `${top}px`,
@@ -933,24 +940,24 @@ export default function ScheduleCalendar({
                   }}
                 >
                   {/* section name with schedule type */}
-                  <div className="text-xs font-medium opacity-80 mb-0.5 truncate">
+                  <div className="text-lg font-medium opacity-80 mb-0.5 truncate">
                     {sectionName || "Section"} • {getScheduleTypeName(schedule)}
                   </div>
 
                   {/* subject code with subject name*/}
-                  <div className="font-semibold text-sm sm:text-base leading-tight truncate">
+                  <div className="font-semibold text-xl leading-tight truncate">
                     {schedule.subjectCode && `${schedule.subjectCode} - `}
                     {schedule.subjectName}
                   </div>
 
                   {/* room information */}
-                  <div className="text-xs mt-0.5 truncate">
+                  <div className="text-md mt-0.5 truncate">
                     {schedule.roomName}
                   </div>
 
                   {/* time and total hours */}
                   {height >= 90 && (
-                    <div className="flex justify-center items-center gap-1 mt-1 text-xs">
+                    <div className="flex justify-center items-center gap-1 mt-1 text-md">
                       <Clock className="h-3 w-3" />
                       <span>{totalHours}</span>
                     </div>
@@ -958,7 +965,7 @@ export default function ScheduleCalendar({
 
                   {/* instructor - only show if enough space */}
                   {height >= 120 && (
-                    <div className="truncate text-xs mt-1 italic">
+                    <div className="truncate text-md mt-1 italic">
                       {schedule.instructorName}
                     </div>
                   )}

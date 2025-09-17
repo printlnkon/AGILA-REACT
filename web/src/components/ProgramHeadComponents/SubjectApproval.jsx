@@ -247,14 +247,23 @@ const SubjectDetailModal = ({
               <Field label="Created By">
                 <div className="flex items-center">
                   {subject.createdBy.userRole && (
-                    <span>
-                      {subject.createdBy.userName}
-                    </span>
+                    <span>{subject.createdBy.userName}</span>
                   )}
                 </div>
               </Field>
               <Field label="Created At">
-                <p>{subject.createdAt?.toDate().toLocaleString() || "—"}</p>
+                <p>
+                  {subject.createdAt
+                    ? subject.createdAt.toDate().toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true, // AM/PM
+                      })
+                    : "—"}
+                </p>
               </Field>
             </div>
 
@@ -272,7 +281,16 @@ const SubjectDetailModal = ({
                       <p className="text-sm font-medium">
                         <StatusBadge status={item.status} />
                         <span className="ml-2 text-xs text-muted-foreground">
-                          {item.timestamp.toDate().toLocaleString()}
+                          {item.timestamp
+                            ? item.timestamp.toDate().toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true, // AM/PM
+                              })
+                            : "—"}
                         </span>
                       </p>
                       {item.comment && (
@@ -329,7 +347,14 @@ const ConfirmActionDialog = ({
   onConfirm,
   isLoading,
 }) => {
-  const [comment, setComment] = useState("");
+  const [remarks, setRemarks] = useState("");
+
+  // reset remarks when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setRemarks("");
+    }
+  }, [isOpen]);
 
   if (!subject) return null;
 
@@ -349,9 +374,9 @@ const ConfirmActionDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* show when clicked on either Reject or Approve */}
+        {/* display subject details */}
         <div className="py-4 space-y-4">
-          <div className="rounded-lg border bg-muted/50 p-4">
+          <Card className="rounded-lg border bg-muted/50 p-4">
             <div className="flex items-start gap-4">
               <div className="pt-0.5">
                 <BookText className="h-5 w-5 text-muted-foreground" />
@@ -371,21 +396,21 @@ const ConfirmActionDialog = ({
                 </p>
               </div>
             </div>
-          </div>
+          </Card>
 
-          {/* comment section */}
+          {/* Remarks section */}
           <div className="space-y-1.5">
-            <label htmlFor="comment" className="text-sm font-medium">
-              Comment (Optional)
+            <label htmlFor="remarks" className="text-sm font-medium">
+              Remarks (Optional)
             </label>
             <p className="text-xs text-muted-foreground">
-              Your comment will be recorded in the subject's status history.
+              Your remarks will be recorded in the subject's status history.
             </p>
             <Textarea
-              id="comment"
+              id="remarks"
               placeholder="Provide a reason for your decision..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
               className="min-h-[100px] resize-none"
             />
           </div>
@@ -406,7 +431,7 @@ const ConfirmActionDialog = ({
                 ? "bg-green-500 text-white cursor-pointer hover:bg-green-600"
                 : "bg-red-500 text-white cursor-pointer hover:bg-red-600"
             }
-            onClick={() => onConfirm(subject, action, comment)}
+            onClick={() => onConfirm(subject, action, remarks)}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -441,51 +466,73 @@ const ConflictDialog = ({
         <DialogHeader>
           <DialogTitle className="text-amber-600 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Potential Conflicts Detected
+            Conflict Subject Detected
           </DialogTitle>
           <DialogDescription>
-            The following conflicts were found with this subject approval.
+            Approving this subject may create duplicates. Please review the
+            conflicts below.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 max-h-[50vh] overflow-auto">
+        <div className="max-h-[50vh] overflow-auto pr-2">
           <div className="space-y-4">
-            <div className="bg-amber-50 p-3 border border-amber-200 rounded-md">
-              <h3 className="font-medium">Subject being approved:</h3>
-              <p>
-                <span className="font-semibold">{subject.subjectCode}</span> -{" "}
-                {subject.subjectName}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {subject.departmentName} • {subject.courseName} •{" "}
-                {subject.yearLevelName}
-              </p>
+            <div className="p-3 border rounded-md">
+              <div className="flex items-start gap-4">
+                <div className="pt-0.5">
+                  <BookText className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold">
+                    {subject.subjectCode} - {subject.subjectName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    • {subject.departmentName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    • {subject.courseName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    • {subject.yearLevelName}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <h3 className="font-medium">Conflicting subjects:</h3>
-            <div className="space-y-2">
+            <h3 className="font-medium">
+              Conflicting Subjects ({conflicts.length}):
+            </h3>
+            <div className="space-y-3">
               {conflicts.map((conflict, i) => (
-                <div key={i} className="border p-3 rounded-md">
-                  <div className="flex justify-between">
+                <div key={i} className="border rounded-md p-3 relative pl-5">
+                  {/* red accent bar */}
+                  <div className="absolute left-0 top-0 h-full w-1.5 bg-destructive rounded-l-md" />
+                  <div className="flex justify-between items-start gap-4">
                     <div>
-                      <p>
-                        <span className="font-semibold">
-                          {conflict.subjectCode}
-                        </span>{" "}
-                        - {conflict.subjectName}
+                      <p className="text-sm font-semibold text-destructive mb-1.5">
+                        {conflict.conflictType}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {conflict.departmentName} • {conflict.courseName} •{" "}
-                        {conflict.yearLevelName}
+                      <p>
+                        {/* conditionally display only the conflicting information */}
+                        {conflict.conflictType
+                          .toLowerCase()
+                          .includes("code") ? (
+                          <>
+                            <span className="font-semibold">
+                              {conflict.subjectCode}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold">
+                              {conflict.subjectName}
+                            </span>
+                          </>
+                        )}
                       </p>
                     </div>
-                    <StatusBadge status={conflict.status} />
-                  </div>
-                  <div className="mt-2 text-sm">
-                    <span className="font-medium text-red-600">
-                      Conflict type:
-                    </span>{" "}
-                    {conflict.conflictType}
+                    <div className="shrink-0">
+                      <StatusBadge status={conflict.status} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -493,20 +540,14 @@ const ConflictDialog = ({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
-            Cancel Approval
-          </Button>
+        <DialogFooter className="sm:justify-end">
           <Button
-            variant="default"
-            className="bg-amber-500 hover:bg-amber-600 text-white"
-            onClick={onProceed}
+            variant="destructive"
+            onClick={onCancel}
             disabled={isLoading}
+            className="cursor-pointer"
           >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            Proceed Anyway
+            Cancel Approval
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -523,7 +564,17 @@ const BatchActionDialog = ({
   onConfirm,
   isLoading,
 }) => {
-  const [comment, setComment] = useState("");
+  const [remarks, setRemarks] = useState("");
+
+  // reset remarks when the dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setRemarks("");
+    }
+  }, [isOpen]);
+
+  // handle pluralization of the word "subject"
+  const subjectText = `Subject${selectedCount > 1 ? "s" : ""}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -531,32 +582,37 @@ const BatchActionDialog = ({
         <DialogHeader>
           <DialogTitle>
             {action === "Approved"
-              ? "Batch Approve Subjects"
-              : "Batch Reject Subjects"}
+              ? `Batch Approve ${subjectText}`
+              : `Batch Reject ${subjectText}`}
           </DialogTitle>
           <DialogDescription>
             You are about to {action === "Approved" ? "approve" : "reject"}{" "}
-            {selectedCount} subjects.
+            {selectedCount} {subjectText.toLowerCase()}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
           <div className="space-y-2">
-            <label htmlFor="batchComment" className="text-sm font-medium">
-              Comment (Optional - will be applied to all selected subjects)
+            <label htmlFor="batchRemarks" className="text-sm font-medium">
+              Remarks (Optional - will be applied to all selected subjects)
             </label>
             <Textarea
-              id="batchComment"
-              placeholder="Add a comment for all subjects..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              id="batchRemarks"
+              placeholder="Add remarks for all subjects..."
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
               className="min-h-[100px]"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={isLoading} className="cursor-pointer">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            disabled={isLoading}
+            className="cursor-pointer"
+          >
             Cancel
           </Button>
           <Button
@@ -565,7 +621,7 @@ const BatchActionDialog = ({
                 ? "bg-green-500 text-white hover:bg-green-600 cursor-pointer"
                 : "bg-red-500 text-white hover:bg-red-600 cursor-pointer"
             }
-            onClick={() => onConfirm(comment)}
+            onClick={() => onConfirm(remarks)}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -576,8 +632,8 @@ const BatchActionDialog = ({
               <X className="h-4 w-4" />
             )}
             {action === "Approved"
-              ? `Approve ${selectedCount} Subjects`
-              : `Reject ${selectedCount} Subjects`}
+              ? `Approve ${selectedCount} ${subjectText}`
+              : `Reject ${selectedCount} ${subjectText}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -819,7 +875,7 @@ export default function SubjectApproval() {
             ...doc.data(),
             conflictType: "Duplicate subject code",
           }))
-          .filter((s) => s.id !== subject.id); // Don't include the subject itself
+          .filter((s) => s.id !== subject.id);
 
         potentialConflicts.push(...conflictingSubjects);
       }
@@ -842,7 +898,7 @@ export default function SubjectApproval() {
               ...doc.data(),
               conflictType: "Duplicate subject name in the same department",
             }))
-            .filter((s) => s.id !== subject.id); // Don't include the subject itself
+            .filter((s) => s.id !== subject.id);
 
           potentialConflicts.push(...conflictingSubjects);
         }
@@ -880,25 +936,6 @@ export default function SubjectApproval() {
       toast.error(
         `Failed to ${action.toLowerCase()} subject. Please try again.`
       );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Proceed with approval despite conflicts
-  const handleProceedDespiteConflicts = async () => {
-    setIsSubmitting(true);
-
-    try {
-      await updateSubjectStatus(selectedSubject, "Approved");
-      setConflicts([]);
-
-      toast.success(
-        "Subject approved successfully (with acknowledged conflicts)"
-      );
-    } catch (error) {
-      console.error("Error approving subject with conflicts:", error);
-      toast.error("Failed to approve subject. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -1297,7 +1334,6 @@ export default function SubjectApproval() {
         conflicts={conflicts}
         subject={selectedSubject}
         onClose={() => setConflicts([])}
-        onProceed={handleProceedDespiteConflicts}
         onCancel={handleCancelConflictResolution}
         isLoading={isSubmitting}
       />
