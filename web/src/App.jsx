@@ -176,7 +176,7 @@ function AppContent() {
 function App() {
   return (
     <>
-      <Toaster richColors />
+      <Toaster richColors expand visibleToasts={9} />
       <ErrorMessage>
         <AuthProvider>
           <ActiveSessionProvider>

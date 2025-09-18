@@ -1,12 +1,11 @@
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Card } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -17,15 +16,6 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import {
-  Plus,
-  LoaderCircle,
-  CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Info,
-} from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -38,126 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-function YearCalendar({
-  selected,
-  onSelect,
-  disabledYears = [],
-  initialFromYear,
-}) {
-  // Use the current year as default starting point
-  const currentYear = new Date().getFullYear();
-  const [viewStartYear, setViewStartYear] = useState(
-    initialFromYear || currentYear
-  );
-
-  // Show 12 years at once (4 rows of 3)
-  const yearsPerPage = 9;
-
-  // Create array of years for current view
-  const years = [];
-  for (let i = 0; i < yearsPerPage; i++) {
-    years.push(viewStartYear + i);
-  }
-
-  // Group years into rows of 3
-  const yearRows = [];
-  for (let i = 0; i < years.length; i += 3) {
-    yearRows.push(years.slice(i, i + 3));
-  }
-
-  // Navigate to previous set of years
-  const goToPreviousYears = () => {
-    setViewStartYear((prevYears) => prevYears - yearsPerPage);
-  };
-
-  // Navigate to next set of years
-  const goToNextYears = () => {
-    setViewStartYear((prevYears) => prevYears + yearsPerPage);
-  };
-
-  // Check if a year is the selected year
-  const isSelectedYear = (year) => {
-    if (!selected) return false;
-    return selected.getFullYear() === year;
-  };
-
-  // Check if a year is disabled
-  const isDisabledYear = (year) => {
-    return year < currentYear || disabledYears.includes(year);
-  };
-
-  return (
-    <div className="p-3 w-[280px]">
-      <div className="flex items-center justify-between mb-3">
-        {/* left button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={goToPreviousYears}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="sr-only">Previous years</span>
-        </Button>
-
-        <div className="text-sm font-medium">
-          {viewStartYear} - {viewStartYear + yearsPerPage - 1}
-        </div>
-
-        {/* right button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={goToNextYears}
-        >
-          <ChevronRight className="h-4 w-4" />
-          <span className="sr-only">Next years</span>
-        </Button>
-      </div>
-
-      <div className="space-y-2">
-        {yearRows.map((row, i) => (
-          <div key={i} className="flex gap-2 justify-center">
-            {row.map((year) => (
-              <Button
-                key={year}
-                variant={isSelectedYear(year) ? "default" : "outline"}
-                className={cn(
-                  "h-9 flex-1 text-sm",
-                  isDisabledYear(year) && "opacity-50 cursor-not-allowed"
-                )}
-                disabled={isDisabledYear(year)}
-                onClick={() => {
-                  if (!isDisabledYear(year)) {
-                    const date = new Date(year, 0, 1);
-                    onSelect(date);
-                  }
-                }}
-              >
-                {year}
-              </Button>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {currentYear !== viewStartYear && (
-        <div className="mt-3 flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs cursor-pointer"
-            onClick={() => setViewStartYear(currentYear)}
-          >
-            Go to Current Year
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
+import {
+  Plus,
+  LoaderCircle,
+  CalendarIcon,
+  ChevronDown,
+  Info,
+} from "lucide-react";
+import { YearCalendar } from "@/components/ui/year-calendar";
 
 export default function AddAcademicYearModal({
   open,
@@ -166,116 +44,75 @@ export default function AddAcademicYearModal({
   existingYears,
   academicYearsList = [],
 }) {
-  const [selectedDate, setSelectedDate] = useState();
+  const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [canAddYear, setCanAddYear] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [disabledYears, setDisabledYears] = useState([]);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-
-  // copy settings states
+  const [isCalendarOpen, setCalendarOpen] = useState(false);
   const [enableCopy, setEnableCopy] = useState(false);
   const [copyFromYear, setCopyFromYear] = useState("");
+  const canAddYear = !errorMessage;
 
-  // extract existing years and create disabled years
+  // set up the component based on existing academic years
   useEffect(() => {
     const currentYear = new Date().getFullYear();
-    const existingStartYears = [];
 
-    // extract start years from existing academic years
-    if (existingYears && existingYears.length > 0) {
-      existingYears.forEach((year) => {
-        const match = year.match(/S\.Y - (\d{4})-\d{4}/);
-        if (match && match[1]) {
-          existingStartYears.push(parseInt(match[1]));
-        }
-      });
-    }
+    // extract start years from the "s.y - yyyy-yyyy" format
+    const existingStartYears = existingYears
+      ? existingYears
+          .map((year) => parseInt(year.slice(6, 10), 10))
+          .filter(Boolean)
+      : [];
 
     setDisabledYears(existingStartYears);
 
-    // Set default selected year to first available starting from current year
+    // find the first available year to suggest as a default.
     let defaultYear = currentYear;
-    while (
-      existingStartYears.includes(defaultYear) &&
-      defaultYear < currentYear + 20
-    ) {
+    while (existingStartYears.includes(defaultYear)) {
       defaultYear++;
     }
 
-    if (defaultYear < currentYear + 100) {
-      // Arbitrary large number to ensure we find something
-      setSelectedDate(new Date(defaultYear, 0, 1));
-      setCanAddYear(true);
-      setErrorMessage("");
-    } else {
-      setCanAddYear(false);
-      setErrorMessage("No available academic years to add.");
-    }
-  }, [existingYears]);
+    setSelectedDate(new Date(defaultYear, 0, 1));
+    setErrorMessage("");
+  }, [existingYears, open]); // Re-run when modal is opened
 
+  // --- HANDLERS ---
   const handleDateChange = (date) => {
     setSelectedDate(date);
-
-    // Check if the selected year is disabled
-    const selectedYear = date.getFullYear();
-    const isDisabledYear = disabledYears.includes(selectedYear);
-
-    if (isDisabledYear) {
-      setCanAddYear(false);
-      setErrorMessage(
-        `Academic year starting in ${selectedYear} already exists.`
-      );
-    } else {
-      setCanAddYear(true);
-      setErrorMessage("");
-    }
-  };
-
-  const formatAcademicYear = (date) => {
-    if (!date) return "";
-    const startYear = date.getFullYear();
-    const endYear = startYear + 1;
-    return `S.Y - ${startYear}-${endYear}`;
+    setErrorMessage("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!canAddYear) {
-      toast.error(errorMessage || "Cannot add this academic year.");
+    if (!canAddYear || !selectedDate) {
+      toast.error(errorMessage || "No valid academic year to add.");
       return;
     }
 
-    if (!selectedDate) {
-      toast.error("No valid academic year to add.");
-      return;
-    }
-
-    const academicYearFormat = formatAcademicYear(selectedDate);
+    const academicYearFormat = `S.Y - ${selectedDate.getFullYear()}-${
+      selectedDate.getFullYear() + 1
+    }`;
     setLoading(true);
 
-    // copy settings if enabled
     const copyData =
       enableCopy && copyFromYear ? { copyFrom: copyFromYear } : null;
-
     const success = await onAcademicYearAdded(academicYearFormat, copyData);
-    setLoading(false);
 
+    setLoading(false);
     if (success) {
       onOpenChange(false);
     }
   };
 
-   const resetFormState = () => {
+  const resetForm = () => {
     setEnableCopy(false);
     setCopyFromYear("");
+    setErrorMessage("");
   };
 
   const handleOpenChange = (isOpen) => {
     if (!isOpen) {
-      // reset the form state when the dialog is closed.
-      resetFormState();
+      resetForm();
     }
     onOpenChange(isOpen);
   };
@@ -283,21 +120,21 @@ export default function AddAcademicYearModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="cursor-pointer">
+        <Button className="w-full sm:w-auto cursor-pointer">
           <Plus className="h-4 w-4" /> Add School Year
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add School Year</DialogTitle>
+          <DialogTitle>Add New School Year</DialogTitle>
           <DialogDescription>
-            Select a starting year for the new school year.
+            Select a starting year. The end year will be set automatically.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-2 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="schoolYear">Select Starting Year</Label>
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <Popover open={isCalendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   id="schoolYear"
@@ -328,86 +165,73 @@ export default function AddAcademicYearModal({
             </Popover>
 
             {selectedDate && (
-              <div className="mt-2 text-sm">
-                School Year <strong>{formatAcademicYear(selectedDate)}</strong>{" "}
-                will be created
-              </div>
-            )}
-
-            {/* copy settings */}
-            <div className="mt-4 border-t pt-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <Checkbox
-                  id="enableCopy"
-                  checked={enableCopy}
-                  onCheckedChange={setEnableCopy}
-                />
-                <Label
-                  htmlFor="enableCopy"
-                  className="flex items-center cursor-pointer"
-                >
-                  Copy configurations from previous school year
-                </Label>
-              </div>
-
-              {enableCopy && (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="copyFromYear" className="mb-2">
-                      Copy from:
-                    </Label>
-                    <Select
-                      value={copyFromYear}
-                      onValueChange={setCopyFromYear}
-                      disabled={!enableCopy}
-                    >
-                      <SelectTrigger id="copyFromYear" className="w-full mt-1">
-                        <SelectValue placeholder="Select school year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {academicYearsList.map((year) => (
-                          <SelectItem key={year.id} value={year.id}>
-                            {year.acadYear}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {copyFromYear !== "" && (
-                    <Card className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="mt-1.5">
-                          <Info />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">
-                            All configuration collections will be copied,
-                            including:
-                          </p>
-                          <ul className="mt-2 grid grid-cols-1 gap-y-1 text-sm text-muted-foreground list-disc list-inside sm:grid-cols-1 sm:gap-x-6">
-                            <li>Semesters</li>
-                            <li>Departments & Courses</li>
-                            <li>Year Levels & Sections</li>
-                            <li>Subjects</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {!canAddYear && (
-              <Alert variant="destructive" className="mt-2">
-                <AlertDescription>
-                  {errorMessage ||
-                    "Cannot add the next academic year at this time."}
-                </AlertDescription>
-              </Alert>
+              <p className="text-sm text-muted-foreground">
+                This will create:{" "}
+                <strong>{`S.Y - ${selectedDate.getFullYear()}-${
+                  selectedDate.getFullYear() + 1
+                }`}</strong>
+              </p>
             )}
           </div>
+
+          {/* copy settings section */}
+          <div className="border-t pt-4 space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="enableCopy"
+                checked={enableCopy}
+                onCheckedChange={setEnableCopy}
+              />
+              <Label
+                htmlFor="enableCopy"
+                className="font-medium cursor-pointer"
+              >
+                Copy settings from a previous year?
+              </Label>
+            </div>
+
+            {enableCopy && (
+              <div className="space-y-4 pl-2">
+                <div>
+                  <Label htmlFor="copyFromYear">Copy from:</Label>
+                  <Select value={copyFromYear} onValueChange={setCopyFromYear}>
+                    <SelectTrigger id="copyFromYear" className="w-full mt-1">
+                      <SelectValue placeholder="Select a school year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicYearsList.map((year) => (
+                        <SelectItem key={year.id} value={year.id}>
+                          {year.acadYear}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {copyFromYear && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>What will be copied?</AlertTitle>
+                    <AlertDescription>
+                      All configurations will be duplicated, including:
+                      • Semesters <br />
+                      • Departments <br />
+                      • Courses <br />
+                      • Subjects <br />
+                      • Sections <br />• Year Levels
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </div>
+
+          {errorMessage && (
+            <Alert variant="destructive">
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="ghost" className="cursor-pointer">
@@ -416,24 +240,16 @@ export default function AddAcademicYearModal({
             </DialogClose>
             <Button
               type="submit"
+              className="cursor-pointer"
               disabled={
                 loading ||
                 !canAddYear ||
                 !selectedDate ||
                 (enableCopy && !copyFromYear)
               }
-              className="cursor-pointer"
             >
-              {loading ? (
-                <>
-                  <span className="animate-spin mr-2">
-                    <LoaderCircle />
-                  </span>
-                  Adding school year...
-                </>
-              ) : (
-                "Add"
-              )}
+              {loading && <LoaderCircle className="h-4 w-4 animate-spin" />}
+              {loading ? "Adding..." : "Add School Year"}
             </Button>
           </DialogFooter>
         </form>
