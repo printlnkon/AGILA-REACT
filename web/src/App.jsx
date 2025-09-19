@@ -19,17 +19,17 @@ import ProgramHead from "@/pages/ProgramHead/ProgramHead";
 import AcademicHead from "@/pages/AcademicHead";
 import StudentDashboard from "@/components/StudentComponents/StudentDashboard";
 import StudentAttendance from "@/components/StudentComponents/Attendance";
-import StudentRequest from "@/components/StudentComponents/Request";
+import StudentRequest from "@/components/StudentComponents/StudentRequest";
 import StudentProfile from "@/components/StudentComponents/Profile";
 import TeacherDashboard from "@/components/TeacherComponents/TeacherDashboard";
 import TeacherSchedule from "@/components/TeacherComponents/Schedule";
-import TeacherRequest from "@/components/TeacherComponents/Request";
+import TeacherRequest from "@/components/TeacherComponents/TeacherRequest";
 import TeacherProfile from "@/components/TeacherComponents/Profile";
 import AcademicHeadDashboard from "@/components/AcademicHeadComponents/AcademicHeadDashboard";
 import AcademicHeadAttendance from "@/components/AcademicHeadComponents/Attendance";
 import ProgramHeadDashboard from "@/components/ProgramHeadComponents/ProgramHeadDashboard";
 import ProgramHeadSchedule from "@/components/ProgramHeadComponents/Schedule";
-import ProgramHeadRequest from "@/components/ProgramHeadComponents/Request";
+import ProgramHeadRequest from "@/components/ProgramHeadComponents/ProgramHeadRequest";
 import ProgramHeadProfile from "@/components/ProgramHeadComponents/Profile";
 import ProgramHeadSubjectApproval from "@/components/ProgramHeadComponents/ProgramHeadSubjectApproval";
 import AdminDashboard from "@/components/AdminComponents/AdminDashboard";
@@ -176,7 +176,7 @@ function AppContent() {
 function App() {
   return (
     <>
-      <Toaster richColors />
+      <Toaster richColors expand visibleToasts={9} />
       <ErrorMessage>
         <AuthProvider>
           <ActiveSessionProvider>

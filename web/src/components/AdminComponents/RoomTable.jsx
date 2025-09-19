@@ -282,6 +282,8 @@ export default function RoomTable() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showSchedulesModal, setShowSchedulesModal] = useState(false);
 
+  const [existingRoomNos, setExistingRoomNos] = useState([]);
+
   // state for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [roomToEdit, setRoomToEdit] = useState(null);
@@ -290,21 +292,6 @@ export default function RoomTable() {
   const availableFloors = Array.from(
     new Set(rooms.map((room) => room.floor))
   ).sort();
-
-  // Function to check if a room has schedules
-  const checkRoomHasSchedules = async (roomId) => {
-    try {
-      const schedulesQuery = query(
-        collectionGroup(db, "schedules"),
-        where("roomId", "==", roomId)
-      );
-      const querySnapshot = await getDocs(schedulesQuery);
-      return !querySnapshot.empty; // Returns true if schedules exist, false otherwise
-    } catch (error) {
-      console.error("Error checking room schedules:", error);
-      throw error;
-    }
-  };
 
   // Function to view room schedules
   const handleViewSchedules = (room) => {
@@ -366,6 +353,10 @@ export default function RoomTable() {
           };
         });
         setRooms(roomsData);
+
+        const roomNos = roomsData.map(room => room.roomNo);
+        setExistingRoomNos(roomNos);
+
         setLoading(false);
       },
       (error) => {
@@ -548,7 +539,10 @@ export default function RoomTable() {
 
       <div className="flex flex-col md:flex-row items-start md:items-center gap-2 py-4">
         {/* add room button */}
-        <AddRoomModal onRoomAdded={handleRoomAdded} />
+        <AddRoomModal 
+          onRoomAdded={handleRoomAdded}
+          existingRooms={existingRoomNos}
+        />
 
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 ml-auto">
           {/* search */}
@@ -785,11 +779,11 @@ export default function RoomTable() {
                     {/* first page */}
                     <PaginationItem className="hidden sm:block">
                       {" "}
-                      {/* Hide on extra small mobile */}
+                      {/* hide on extra small mobile */}
                       <PaginationLink
                         onClick={() => table.setPageIndex(0)}
                         isActive={table.getState().pagination.pageIndex === 0}
-                        className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                        className="cursor-pointer h-8 w-8 p-0"
                       >
                         1
                       </PaginationLink>
@@ -799,7 +793,7 @@ export default function RoomTable() {
                     {table.getState().pagination.pageIndex > 2 && (
                       <PaginationItem className="hidden sm:block">
                         {" "}
-                        {/* Hide on extra small mobile */}
+                        {/* hide on extra small mobile */}
                         <PaginationEllipsis />
                       </PaginationItem>
                     )}
@@ -815,13 +809,13 @@ export default function RoomTable() {
                         return (
                           <PaginationItem key={i} className="hidden sm:block">
                             {" "}
-                            {/* Hide on extra small mobile */}
+                            {/* hide on extra small mobile */}
                             <PaginationLink
                               onClick={() => table.setPageIndex(i)}
                               isActive={
                                 table.getState().pagination.pageIndex === i
                               }
-                              className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                              className="cursor-pointer h-8 w-8 p-0"
                             >
                               {i + 1}
                             </PaginationLink>
@@ -854,7 +848,7 @@ export default function RoomTable() {
                             table.getState().pagination.pageIndex ===
                             table.getPageCount() - 1
                           }
-                          className="cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                          className="cursor-pointer h-8 w-8 p-0"
                         >
                           {table.getPageCount()}
                         </PaginationLink>
@@ -879,7 +873,7 @@ export default function RoomTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                      : "cursor-pointer h-8 w-8 p-0"
                   }
                 />
               </PaginationItem>
@@ -890,7 +884,7 @@ export default function RoomTable() {
                   className={
                     !table.getCanNextPage()
                       ? "pointer-events-none opacity-50"
-                      : "cursor-pointer h-8 w-8 p-0" // Added responsive classes for touch targets
+                      : "cursor-pointer h-8 w-8 p-0"
                   }
                 />
               </PaginationItem>
@@ -915,6 +909,7 @@ export default function RoomTable() {
           onOpenChange={setShowEditModal}
           roomData={roomToEdit}
           onRoomUpdated={handleRoomUpdated}
+          existingRooms={existingRoomNos}
         />
       )}
     </div>
