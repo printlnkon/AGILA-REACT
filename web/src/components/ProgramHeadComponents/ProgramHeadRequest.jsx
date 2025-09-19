@@ -1,36 +1,102 @@
 import React from "react";
 import {
-  Eye, CheckCircle2, XCircle, ClipboardList, Search, Loader2, MoreHorizontal, Trash2
+  Eye,
+  CheckCircle2,
+  XCircle,
+  ClipboardList,
+  Search,
+  Loader2,
+  MoreHorizontal,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
-  getFirestore, collectionGroup, query, where, orderBy, onSnapshot,
-  updateDoc, serverTimestamp, collection, doc, setDoc
+  getFirestore,
+  collectionGroup,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  serverTimestamp,
+  collection,
+  doc,
+  setDoc,
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 
 const Badge = ({ children, className = "" }) => (
-  <span className={`text-xs font-bold px-3 py-1 rounded-full ${className}`}>{children}</span>
+  <span className={`text-xs font-bold px-3 py-1 rounded-full ${className}`}>
+    {children}
+  </span>
 );
 
 const statusBadge = (status) => {
   switch (status) {
-    case "Approved": return "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400";
-    case "Rejected": return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400";
-    default: return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400";
+    case "Approved":
+      return "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400";
+    case "Rejected":
+      return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400";
+    default:
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400";
   }
 };
 
-export default function Request() {
+export default function ProgramHeadRequest() {
   const { currentUser } = useAuth();
-  const [rows, setRows] = React.useState([]);
-  const [inboxHiddenIds, setInboxHiddenIds] = React.useState([]);
-  const [tab, setTab] = React.useState("All");
-  const [loading, setLoading] = React.useState(true);
-  const [selected, setSelected] = React.useState(null);
-  const [search, setSearch] = React.useState("");
-  const [openMenu, setOpenMenu] = React.useState(null);
+  const [rows, setRows] = useState([]);
+  const [inboxHiddenIds, setInboxHiddenIds] = useState([]);
+  const [tab, setTab] = useState("All");
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [openMenu, setOpenMenu] = useState(null);
 
-  React.useEffect(() => {
+  const [decision, setDecision] = useState({
+    open: false,
+    type: null,
+    row: null,
+    remarks: "",
+    loading: false,
+  });
+
+  const openDecision = (type, row) => {
+    setDecision({ open: true, type, row, remarks: "", loading: false });
+  };
+
+  const closeDecision = () => {
+    setDecision((d) => ({ ...d, open: false }));
+  };
+
+  const confirmDecision = async () => {
+    if (!decision.row?.ref || !decision.type) return;
+    try {
+      setDecision((d) => ({ ...d, loading: true }));
+      const db = getFirestore();
+      await updateDoc(decision.row.ref, {
+        status: decision.type,
+        updatedAt: serverTimestamp(),
+        programHeadDecision: {
+          by: currentUser?.uid || null,
+          byName: currentUser?.displayName || currentUser?.email || null,
+          type: decision.type,
+          remarks: decision.remarks || "",
+          decidedAt: serverTimestamp(),
+        },
+      });
+    } finally {
+      setDecision({
+        open: false,
+        type: null,
+        row: null,
+        remarks: "",
+        loading: false,
+      });
+      setSelected(null);
+    }
+  };
+
+  useEffect(() => {
     if (!currentUser?.uid) return;
     const db = getFirestore();
 
@@ -44,7 +110,14 @@ export default function Request() {
       setLoading(false);
     });
 
-    const qInboxHist = collection(db, "users", "program_head", "accounts", currentUser.uid, "InboxHistory");
+    const qInboxHist = collection(
+      db,
+      "users",
+      "program_head",
+      "accounts",
+      currentUser.uid,
+      "InboxHistory"
+    );
     const unsubHist = onSnapshot(qInboxHist, (snap) => {
       setInboxHiddenIds(snap.docs.map((d) => d.id));
     });
@@ -55,7 +128,10 @@ export default function Request() {
     };
   }, [currentUser?.uid]);
 
-  const hiddenSet = React.useMemo(() => new Set(inboxHiddenIds), [inboxHiddenIds]);
+  const hiddenSet = useMemo(
+    () => new Set(inboxHiddenIds),
+    [inboxHiddenIds]
+  );
   const visible = rows.filter((r) => !hiddenSet.has(r.id));
 
   const filtered = visible.filter((r) => {
@@ -66,17 +142,30 @@ export default function Request() {
       (r.fromStudentName || "") +
       (r.toProgramHeadName || "") +
       (r.reason || "");
-    const bySearch = !search?.trim() ? true : hay.toLowerCase().includes(search.toLowerCase());
+    const bySearch = !search?.trim()
+      ? true
+      : hay.toLowerCase().includes(search.toLowerCase());
     return byTab && bySearch;
   });
 
   const act = async (docRef, nextStatus) => {
-    await updateDoc(docRef, { status: nextStatus, updatedAt: serverTimestamp() });
+    await updateDoc(docRef, {
+      status: nextStatus,
+      updatedAt: serverTimestamp(),
+    });
   };
 
   const removeFromInbox = async (row) => {
     const db = getFirestore();
-    const destRef = doc(db, "users", "program_head", "accounts", currentUser.uid, "InboxHistory", row.id);
+    const destRef = doc(
+      db,
+      "users",
+      "program_head",
+      "accounts",
+      currentUser.uid,
+      "InboxHistory",
+      row.id
+    );
     await setDoc(destRef, {
       sourcePath: row.ref?.path || null,
       removedAt: serverTimestamp(),
@@ -95,7 +184,9 @@ export default function Request() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Requests</h1>
-          <p className="text-muted-foreground">Review requests addressed to you from teachers.</p>
+          <p className="text-muted-foreground">
+            Review requests addressed to you from teachers.
+          </p>
         </div>
         <div className="ml-auto relative w-full sm:w-72">
           <input
@@ -151,19 +242,26 @@ export default function Request() {
                     <span className="truncate">{r.type}</span>
                   </p>
                   <p className="text-sm text-muted-foreground truncate">
-                    From: {r.fromTeacherName || r.fromStudentName || "—"} • To: {r.toProgramHeadName || "—"}
+                    From: {r.fromTeacherName || r.fromStudentName || "—"} • To:{" "}
+                    {r.toProgramHeadName || "—"}
                   </p>
                 </div>
 
                 <div className="w-28 sm:w-32 flex-shrink-0 flex justify-start pl-2">
-                  <span className={`text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full ${statusBadge(r.status)}`}>
+                  <span
+                    className={`text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full ${statusBadge(
+                      r.status
+                    )}`}
+                  >
                     {r.status}
                   </span>
                 </div>
 
                 <div className="w-40 sm:w-52 relative flex justify-center">
                   <button
-                    onClick={() => setOpenMenu((id) => (id === r.id ? null : r.id))}
+                    onClick={() =>
+                      setOpenMenu((id) => (id === r.id ? null : r.id))
+                    }
                     className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-muted-foreground"
                   >
                     <MoreHorizontal size={18} />
@@ -174,7 +272,10 @@ export default function Request() {
                       <ul className="py-1">
                         <li>
                           <button
-                            onClick={() => { setSelected(r); setOpenMenu(null); }}
+                            onClick={() => {
+                              setSelected(r);
+                              setOpenMenu(null);
+                            }}
                             className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                           >
                             <Eye size={16} /> View Details
@@ -185,7 +286,10 @@ export default function Request() {
                           <>
                             <li>
                               <button
-                                onClick={async () => { await act(r.ref, "Approved"); setOpenMenu(null); }}
+                                onClick={() => {
+                                  openDecision("Approved", r);
+                                  setOpenMenu(null);
+                                }}
                                 className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                               >
                                 <CheckCircle2 size={16} /> Approve
@@ -193,7 +297,10 @@ export default function Request() {
                             </li>
                             <li>
                               <button
-                                onClick={async () => { await act(r.ref, "Rejected"); setOpenMenu(null); }}
+                                onClick={() => {
+                                  openDecision("Rejected", r);
+                                  setOpenMenu(null);
+                                }}
                                 className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                               >
                                 <XCircle size={16} /> Reject
@@ -205,7 +312,10 @@ export default function Request() {
                         {r.status !== "Pending" && (
                           <li>
                             <button
-                              onClick={async () => { await removeFromInbox(r); setOpenMenu(null); }}
+                              onClick={async () => {
+                                await removeFromInbox(r);
+                                setOpenMenu(null);
+                              }}
                               className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/50"
                             >
                               <Trash2 size={16} /> Remove
@@ -232,12 +342,16 @@ export default function Request() {
             className="w-full sm:max-w-md bg-white dark:bg-gray-950 rounded-t-2xl sm:rounded-2xl shadow-xl"
           >
             <div className="p-4 text-center">
-              <Badge className={statusBadge(selected.status)}>{selected.status}</Badge>
+              <Badge className={statusBadge(selected.status)}>
+                {selected.status}
+              </Badge>
             </div>
             <div className="px-5 pb-5 space-y-3">
               <h3 className="font-semibold">{selected.type}</h3>
               <p className="text-xs text-muted-foreground">
-                {selected.createdAt?.toDate ? selected.createdAt.toDate().toLocaleString() : "—"}
+                {selected.createdAt?.toDate
+                  ? selected.createdAt.toDate().toLocaleString()
+                  : "—"}
               </p>
               <hr className="my-2 border-gray-200 dark:border-gray-800" />
               <div className="space-y-2 text-sm">
@@ -257,13 +371,30 @@ export default function Request() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Reason</p>
-                  <p className="whitespace-pre-wrap break-words">{selected.reason}</p>
+                  <p className="whitespace-pre-wrap break-words">
+                    {selected.reason}
+                  </p>
+                  {selected.programHeadDecision?.remarks ? (
+                    <div>
+                      <p className="text-muted-foreground">
+                        Program Head Remarks
+                      </p>
+                      <p className="whitespace-pre-wrap break-words">
+                        {selected.programHeadDecision.remarks}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <p className="text-muted-foreground">Attachment</p>
                   {selected.attachmentUrl ? (
-                    <a href={selected.attachmentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                     {selected.attachmentName || "attachment"}
+                    <a
+                      href={selected.attachmentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {selected.attachmentName || "attachment"}
                     </a>
                   ) : (
                     <p>{selected.attachmentName || "—"}</p>
@@ -281,19 +412,100 @@ export default function Request() {
               {selected.status === "Pending" && (
                 <>
                   <button
-                    onClick={async () => { await act(selected.ref, "Approved"); setSelected(null); }}
+                    onClick={() => openDecision("Approved", selected)}
                     className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700"
                   >
                     Approve
                   </button>
                   <button
-                    onClick={async () => { await act(selected.ref, "Rejected"); setSelected(null); }}
+                    onClick={() => openDecision("Rejected", selected)}
                     className="px-4 py-2 rounded-lg text-white bg-red-600 hover:bg-red-700"
                   >
                     Reject
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {decision.open && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"
+          onClick={closeDecision}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-gray-950 rounded-2xl shadow-xl"
+          >
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-800">
+              <h3 className="text-lg font-semibold">
+                Confirm{" "}
+                {decision.type === "Approved" ? "Approval" : "Rejection"}
+              </h3>
+              <button
+                onClick={closeDecision}
+                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <p className="text-sm">
+                Are you sure you want to{" "}
+                <span className="font-semibold">
+                  {decision.type?.toLowerCase()}
+                </span>{" "}
+                this request?
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Remarks{" "}
+                  {decision.type === "Rejected" ? "(required)" : "(optional)"}
+                </label>
+                <textarea
+                  rows={4}
+                  value={decision.remarks}
+                  onChange={(e) =>
+                    setDecision((d) => ({ ...d, remarks: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg"
+                  placeholder={
+                    decision.type === "Rejected"
+                      ? "Briefly explain the reason for rejection…"
+                      : "Add any notes for the teacher…"
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This note will be saved with the decision.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl flex justify-end gap-2">
+              <button
+                onClick={closeDecision}
+                className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDecision}
+                disabled={
+                  decision.loading ||
+                  (decision.type === "Rejected" && !decision.remarks.trim())
+                }
+                className={`px-4 py-2 rounded-lg text-white ${
+                  decision.type === "Approved"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {decision.loading ? "Saving…" : `Confirm ${decision.type}`}
+              </button>
             </div>
           </div>
         </div>
