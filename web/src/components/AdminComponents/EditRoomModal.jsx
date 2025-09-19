@@ -29,20 +29,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAvailableRooms } from "@/hooks/use-available-rooms";
 
 export default function EditRoomModal({
   open,
   onOpenChange,
   roomData,
   onRoomUpdated,
+  existingRooms = [],
 }) {
-  // State management consistent with AddRoomModal
   const [formData, setFormData] = useState({ floor: "", roomNo: "" });
-  const [availableRoomNumbers, setAvailableRoomNumbers] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Populate form with existing room data when modal opens
+  // get available room numbers using custom hook
+  const availableRoomNumbers = useAvailableRooms(formData.floor, existingRooms, roomData.roomNo);
+
   useEffect(() => {
     if (roomData) {
       setFormData({
@@ -52,32 +54,17 @@ export default function EditRoomModal({
     }
   }, [roomData]);
 
-  // Logic to generate room numbers based on selected floor, reused from AddRoomModal
-  useEffect(() => {
-    if (formData.floor) {
-      const floorPrefix = formData.floor;
-      const roomNumbers = Array.from({ length: 10 }, (_, i) => {
-        const num = i + 1;
-        return `RM ${floorPrefix}${num < 10 ? "0" : ""}${num}`;
-      });
-      setAvailableRoomNumbers(roomNumbers);
-    } else {
-      setAvailableRoomNumbers([]);
-    }
-  }, [formData.floor]);
-
-  // Form handling consistent with AddRoomModal
   const handleSelectChange = (field, value) => {
     setFormData((prev) => {
       const newFormData = { ...prev, [field]: value };
-      // If the floor is changed, reset the room number to prompt a new selection
       if (field === "floor" && prev.floor !== value) {
-        newFormData.roomNo = "";
+        const firstAvailable = availableRoomNumbers.find(r => !r.exists);
+        newFormData.roomNo = firstAvailable ? firstAvailable.name : "";
       }
       return newFormData;
     });
     setError("");
-  };
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,6 +72,14 @@ export default function EditRoomModal({
       setError("Both Floor and Room No. are required.");
       return;
     }
+
+    // validation check before submitting
+    const isChangingToAnExistingRoom = existingRooms.includes(formData.roomNo) && formData.roomNo !== roomData.roomNo;
+    if (isChangingToAnExistingRoom) {
+      toast.error("Another room with this number already exists.");
+      return;
+    }
+
     setIsSaving(true);
     setError("");
 
@@ -210,8 +205,12 @@ export default function EditRoomModal({
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">
                     {availableRoomNumbers.map((roomNo) => (
-                      <SelectItem key={roomNo} value={roomNo}>
-                        {roomNo}
+                      <SelectItem 
+                        key={roomNo.name} 
+                        value={roomNo.name}
+                        disabled={roomNo.exists}  
+                      >
+                        {roomNo.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

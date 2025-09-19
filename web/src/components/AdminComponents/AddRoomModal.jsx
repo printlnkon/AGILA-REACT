@@ -22,35 +22,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAvailableRooms } from "@/hooks/use-available-rooms";
 
-export default function AddRoomModal({ onRoomAdded }) {
+export default function AddRoomModal({ onRoomAdded, existingRooms = [] }) {
   const [open, setOpen] = useState(false);
-  const [availableRoomNumbers, setAvailableRoomNumbers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     floor: "",
     roomNo: "",
   });
 
-  // generate room numbers based on selected floor
+  // get available room numbers using custom hook
+  const availableRoomNumbers = useAvailableRooms(formData.floor, existingRooms);
+
+  // auto-select the first available room
   useEffect(() => {
     if (formData.floor) {
-      const floorPrefix = formData.floor;
-      const roomNumbers = Array.from({ length: 10 }, (_, i) => {
-        const num = i + 1;
-        return `RM ${floorPrefix}${num < 10 ? "0" : ""}${num}`;
-      });
-      setAvailableRoomNumbers(roomNumbers);
-
-      // auto-select the first room number if none is selected
-      if (!formData.roomNo) {
-        setFormData((prev) => ({ ...prev, roomNo: roomNumbers[0] }));
-      }
+      const firstAvailableRoom = availableRoomNumbers.find(
+        (room) => !room.exists
+      );
+      setFormData((prev) => ({
+        ...prev,
+        roomNo: firstAvailableRoom ? firstAvailableRoom.name : "",
+      }));
     } else {
-      setAvailableRoomNumbers([]);
       setFormData((prev) => ({ ...prev, roomNo: "" }));
     }
-  }, [formData.floor]);
+  }, [formData.floor, availableRoomNumbers]);
 
   // handle select changes
   const handleSelectChange = (field, value) => {
@@ -71,6 +69,13 @@ export default function AddRoomModal({ onRoomAdded }) {
         return;
       }
 
+      // validation check before submitting
+      if (existingRooms.includes(formData.roomNo)) {
+        toast.error("Room already exists. Please select another.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // add room to Firestore
       const roomData = {
         roomNo: formData.roomNo,
@@ -80,14 +85,14 @@ export default function AddRoomModal({ onRoomAdded }) {
       };
 
       const roomRef = await addDoc(collection(db, "rooms"), roomData);
-      
+
       if (onRoomAdded) {
         onRoomAdded({ id: roomRef.id, ...roomData });
       }
-      
+
       // close the dialog
       setOpen(false);
-    
+
       // reset form after submission
       setFormData({ floor: "", roomNo: "" });
     } catch (error) {
@@ -106,7 +111,7 @@ export default function AddRoomModal({ onRoomAdded }) {
           Add Room
         </Button>
       </DialogTrigger>
-       <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl">Add Room</DialogTitle>
           <DialogDescription>
@@ -133,7 +138,7 @@ export default function AddRoomModal({ onRoomAdded }) {
                     <SelectValue placeholder="Select floor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 7 }, (_, i) => i + 1).map((floor) => (
+                    {Array.from({ length: 8 }, (_, i) => i + 1).map((floor) => (
                       <SelectItem key={floor} value={floor.toString()}>
                         {floor === 1
                           ? `${floor}st Floor`
@@ -166,8 +171,12 @@ export default function AddRoomModal({ onRoomAdded }) {
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
                       {availableRoomNumbers.map((roomNo) => (
-                        <SelectItem key={roomNo} value={roomNo}>
-                          {roomNo}
+                        <SelectItem
+                          key={roomNo.name}
+                          value={roomNo.name}
+                          disabled={roomNo.exists}
+                        >
+                          {roomNo.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
