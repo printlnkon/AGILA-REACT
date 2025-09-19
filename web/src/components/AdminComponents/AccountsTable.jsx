@@ -88,19 +88,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ExportExcelFormat from "@/components/AdminComponents/ExportExcelFormat";
 import TryRecognition from "@/components/AdminComponents/TryRecognition";
 
-// Action handlers
-const handleCopyStudentNumber = (studentNumber) => {
-  if (!studentNumber) {
-    toast.error("Student Number not found");
+const handleCopyId = (id, role) => {
+  if (!id) {
+    toast.error("ID not found for this user.");
     return;
   }
+
+  const idType = role === "student" ? "Student Id" : "Employee ID";
+
   navigator.clipboard
-    .writeText(studentNumber)
+    .writeText(id)
     .then(() => {
-      toast.success("Student Number copied to clipboard");
+      toast.success(`${idType} copied to clipboard`);
     })
     .catch(() => {
-      toast.error("Failed to copy Student Number");
+      toast.error("Failed to copy ID");
     });
 };
 
@@ -174,19 +176,29 @@ const createColumns = (handleArchiveUser) => [
   },
   // student no. column
   {
-    id: "studentNumber",
+    id: "Student No.",
     accessorKey: "studentNumber",
-    header: "Student No.",
-    cell: ({ row }) => <div>{row.getValue("studentNumber") || "N/A"}</div>,
+    header: <div className="font-semibold">Student No.</div>,
+    cell: ({ row }) => {
+      const studentNo = row.original.studentNumber;
+      return (
+        <div className="font-semibold capitalize">{studentNo || "N/A"}</div>
+      );
+    },
     className: "hidden md:table-cell",
     enableHiding: true,
   },
   // employee no. column
   {
-    id: "employeeNumber",
+    id: "Employee No.",
     accessorKey: "employeeNumber",
-    header: "Employee No.",
-    cell: ({ row }) => <div>{row.getValue("employeeNumber") || "N/A"}</div>,
+    header: <div className="font-semibold">Employee No.</div>,
+    cell: ({ row }) => {
+      const employeeNo = row.original.employeeNumber;
+      return (
+        <div className="font-semibold capitalize">{employeeNo || "N/A"}</div>
+      );
+    },
     className: "hidden md:table-cell",
     enableHiding: true,
   },
@@ -199,12 +211,14 @@ const createColumns = (handleArchiveUser) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Role
+          <div className="font-semibold">Role</div>
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({ row }) => <div>{row.getValue("role") || "N/A"}</div>,
+    cell: ({ row }) => (
+      <div className="ml-3 font-semibold">{row.getValue("role") || "N/A"}</div>
+    ),
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
@@ -213,7 +227,7 @@ const createColumns = (handleArchiveUser) => [
   {
     id: "Photo",
     accessorKey: "photoURL",
-    header: "Photo",
+    header: <div className="font-semibold">Photo</div>,
     cell: ({ row }) => {
       const photoURL = row.original.photoURL;
       const firstName = row.original.firstName || "";
@@ -239,7 +253,7 @@ const createColumns = (handleArchiveUser) => [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="mr-12"
         >
-          Name
+          <div className="font-semibold">Name</div>
           <ArrowUpDown />
         </Button>
       );
@@ -260,7 +274,7 @@ const createColumns = (handleArchiveUser) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          <div className="font-semibold">Email</div>
           <ArrowUpDown />
         </Button>
       );
@@ -274,7 +288,17 @@ const createColumns = (handleArchiveUser) => [
   {
     id: "Date Created",
     accessorKey: "createdAt",
-    header: "Date Created",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Date Created</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
@@ -287,7 +311,7 @@ const createColumns = (handleArchiveUser) => [
         if (isNaN(date.getTime())) {
           return <div>Invalid Date</div>;
         }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -297,7 +321,17 @@ const createColumns = (handleArchiveUser) => [
   {
     id: "Last Updated",
     accessorKey: "updatedAt",
-    header: "Last Updated",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Last Updated</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
@@ -306,11 +340,11 @@ const createColumns = (handleArchiveUser) => [
         const date = timestamp.toDate
           ? timestamp.toDate()
           : new Date(timestamp);
-        // Check if the created date is valid before formatting
+        // check if the created date is valid before formatting
         if (isNaN(date.getTime())) {
           return <div>Invalid Date</div>;
         }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -319,7 +353,7 @@ const createColumns = (handleArchiveUser) => [
   // status column
   {
     accessorKey: "status",
-    header: "Status",
+    header: <div className="font-semibold">Status</div>,
     cell: ({ row }) => {
       const status = row.getValue("status") || "active";
       const isActive = status === "active";
@@ -338,7 +372,7 @@ const createColumns = (handleArchiveUser) => [
   // actions column
   {
     id: "actions",
-    header: "Actions",
+    header: <div className="font-semibold">Actions</div>,
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original;
@@ -364,7 +398,14 @@ const createColumns = (handleArchiveUser) => [
               </Tooltip>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => handleCopyStudentNumber(user.studentNumber)}
+                  onClick={() => {
+                    // check the user's role and select the correct id
+                    const idToCopy =
+                      user.role === "student"
+                        ? user.studentNumber
+                        : user.employeeNumber;
+                    handleCopyId(idToCopy, user.role);
+                  }}
                   className="cursor-pointer"
                 >
                   <Copy className="mr-2 h-4 w-4" />
@@ -431,8 +472,8 @@ export default function AccountsTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({
-    studentNumber: false,
-    employeeNumber: false,
+    "Student No.": false,
+    "Employee No.": false,
   });
   const [globalFilter, setGlobalFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -637,8 +678,8 @@ export default function AccountsTable() {
     },
     initialState: {
       columnVisibility: {
-        studentNumber: false,
-        employeeNumber: false,
+        "Student No.": false,
+        "Employee No.": false,
       },
     },
   });
@@ -842,7 +883,7 @@ export default function AccountsTable() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="w-full sm:w-auto cursor-pointer">
-                <UserRoundSearch /> Filter By Role <ChevronDown />
+                <UserRoundSearch /> Filter by Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

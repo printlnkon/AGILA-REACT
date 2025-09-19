@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/api/firebase";
 import { format } from "date-fns";
@@ -46,6 +46,7 @@ import {
   Archive,
   UsersRound,
   UserRoundSearch,
+  Building2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -93,7 +94,6 @@ import { useTeacherProfile } from "@/context/TeacherProfileContext";
 import AddStaffAccountModal from "@/components/AdminComponents/AddStaffAccountModal";
 import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
-// Action handlers
 const handleCopyEmployeeNumber = (employeeNumber) => {
   if (!employeeNumber) {
     toast.error("Employee Number not found");
@@ -102,7 +102,7 @@ const handleCopyEmployeeNumber = (employeeNumber) => {
   navigator.clipboard
     .writeText(employeeNumber)
     .then(() => {
-      toast.success("Employee Number copied to clipboard");
+      toast.success("Employee No. copied to clipboard");
     })
     .catch(() => {
       toast.error("Failed to copy Employee Number");
@@ -159,10 +159,14 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   {
     id: "Employee No.",
     accessorKey: "employeeNumber",
-    header: "Employee No.",
+    header: <div className="font-semibold ml-3">Employee No.</div>,
     cell: ({ row }) => {
       const employeeNo = row.original.employeeNumber;
-      return <div className="capitalize">{employeeNo || "N/A"}</div>;
+      return (
+        <div className="font-semibold ml-3 capitalize">
+          {employeeNo || "N/A"}
+        </div>
+      );
     },
   },
   // role column
@@ -174,12 +178,14 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Role
+          <div className="font-semibold">Role</div>
           <ArrowUpDown />
         </Button>
       );
     },
-    cell: ({ row }) => <div>{row.getValue("role") || "N/A"}</div>,
+    cell: ({ row }) => (
+      <div className="ml-3">{row.getValue("role") || "N/A"}</div>
+    ),
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
@@ -188,7 +194,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   {
     id: "Photo",
     accessorKey: "photoURL",
-    header: "Photo",
+    header: <div className="font-semibold">Photo</div>,
     cell: ({ row }) => {
       const photoURL = row.original.photoURL;
       const firstName = row.original.firstName || "";
@@ -214,7 +220,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="mr-12"
         >
-          Name
+          <div className="font-semibold">Name</div>
           <ArrowUpDown />
         </Button>
       );
@@ -236,7 +242,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          <div className="font-semibold">Email</div>
           <ArrowUpDown />
         </Button>
       );
@@ -256,7 +262,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Department
+          <div className="font-semibold">Department</div>
           <ArrowUpDown />
         </Button>
       );
@@ -264,13 +270,26 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
     cell: ({ row }) => (
       <div className="ml-3">{row.original.departmentName || "N/A"}</div>
     ),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
   },
 
   // date created
   {
     id: "Date Created",
     accessorKey: "createdAt",
-    header: "Date Created",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Date Created</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
@@ -286,7 +305,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
           return <div>Invalid Date</div>;
         }
 
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -296,7 +315,17 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   {
     id: "Last Updated",
     accessorKey: "updatedAt",
-    header: "Last Updated",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Last Updated</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
@@ -309,7 +338,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
         if (isNaN(date.getTime())) {
           return <div>Invalid Date</div>;
         }
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -319,7 +348,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   // status column
   {
     accessorKey: "status",
-    header: "Status",
+    header: <div className="font-semibold">Status</div>,
     cell: ({ row }) => {
       const status = row.getValue("status") || "active";
       const isActive = status === "active";
@@ -339,7 +368,7 @@ const createColumns = (handleArchiveUser, handleViewStaffProfile) => [
   // actions column
   {
     id: "actions",
-    header: "Actions",
+    header: <div className="font-semibold">Actions</div>,
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original;
@@ -442,6 +471,7 @@ export default function StaffTable() {
   const [error, setError] = useState(null);
   const [showBatchArchiveDialog, setShowBatchArchiveDialog] = useState(false);
   const [roleFilter, setRoleFilter] = useState([]);
+  const [departmentFilter, setDepartmentFilter] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFaceDialog, setShowFaceDialog] = useState(false);
   const [newUserInfo, setNewUserInfo] = useState(null); 
@@ -697,6 +727,18 @@ export default function StaffTable() {
       setRoleFilter(selectedRoles);
     }
   };
+  
+  const uniqueDepartments = useMemo(() => {
+    const departments = new Set(staff.map(user => user.departmentName).filter(Boolean));
+    return Array.from(departments).sort();
+  }, [staff]);
+
+  const handleDepartmentFilterChange = (selectedDepartments) => {
+    table.getColumn("department")?.setFilterValue(
+      selectedDepartments.length > 0 ? selectedDepartments : undefined
+    );
+    setDepartmentFilter(selectedDepartments);
+  };
 
   const columns = createColumns(handleArchiveUser, handleViewStaffProfile);
   const table = useReactTable({
@@ -907,7 +949,7 @@ export default function StaffTable() {
             {/* search icon */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" />
             <Input
-              placeholder="Search staff..."
+              placeholder="Search users..."
               value={globalFilter ?? ""}
               onChange={(event) => setGlobalFilter(event.target.value)}
               className="pl-10 max-w-sm"
@@ -929,8 +971,7 @@ export default function StaffTable() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="cursor-pointer">
-                <UserRoundSearch className="mr-2 h-4 w-4" /> Filter By Role{" "}
-                <ChevronDown className="ml-2 h-4 w-4" />
+                <UserRoundSearch /> Filter by Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -974,6 +1015,43 @@ export default function StaffTable() {
                     variant="ghost"
                     className="w-full justify-center text-red-500 hover:text-red-600 cursor-pointer"
                     onClick={() => handleRoleFilterChange([])}
+                  >
+                    Clear Filters
+                  </Button>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* filter by department */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="cursor-pointer">
+                <Building2 /> Filter by Department <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {uniqueDepartments.map((department) => (
+                <DropdownMenuCheckboxItem
+                  key={department}
+                  checked={departmentFilter.includes(department)}
+                  onCheckedChange={(checked) => {
+                    const newFilter = checked
+                      ? [...departmentFilter, department]
+                      : departmentFilter.filter((d) => d !== department);
+                    handleDepartmentFilterChange(newFilter);
+                  }}
+                >
+                  {department}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {departmentFilter.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-red-500 hover:text-red-600 cursor-pointer"
+                    onClick={() => handleDepartmentFilterChange([])}
                   >
                     Clear Filters
                   </Button>

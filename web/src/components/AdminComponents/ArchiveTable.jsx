@@ -404,11 +404,35 @@ export default function ArchiveTable() {
       enableHiding: false,
     },
 
+    // role column
+    {
+      accessorKey: "role",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <div className="font-semibold">Role</div>
+            <ArrowUpDown />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const role = row.getValue("role") || "N/A";
+        return (
+          <div className="capitalize font-semibold ml-3">
+            {role.replace("_", " ")}
+          </div>
+        );
+      },
+    },
+
     // photo column
     {
       id: "Photo",
       accessorKey: "photoURL",
-      header: "Photo",
+      header: <div className="font-semibold">Photo</div>,
       cell: ({ row }) => {
         const photoURL = row.original.photoURL;
         const firstName = row.original.firstName || "";
@@ -434,7 +458,7 @@ export default function ArchiveTable() {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="mr-12"
           >
-            Name
+            <div className="font-semibold">Name</div>
             <ArrowUpDown />
           </Button>
         );
@@ -456,7 +480,7 @@ export default function ArchiveTable() {
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Email
+            <div className="font-semibold">Email</div>
             <ArrowUpDown />
           </Button>
         );
@@ -466,23 +490,23 @@ export default function ArchiveTable() {
       ),
     },
 
-    // role column
-    {
-      accessorKey: "role",
-      header: "Role",
-      cell: ({ row }) => {
-        const role = row.getValue("role") || "N/A";
-        return <div className="capitalize">{role.replace("_", " ")}</div>;
-      },
-    },
-
     // date created
     {
       id: "Date Created",
       accessorKey: "createdAt",
-      header: "Date Created",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <div className="font-semibold">Date Created</div>
+            <ArrowUpDown />
+          </Button>
+        );
+      },
       cell: ({ row }) => {
-        return <div>{formatDate(row.original.createdAt)}</div>;
+        return <div className="ml-3">{formatDate(row.original.createdAt)}</div>;
       },
     },
 
@@ -490,15 +514,25 @@ export default function ArchiveTable() {
     {
       id: "Last Updated",
       accessorKey: "updatedAt",
-      header: "Last Updated",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <div className="font-semibold">Last Updated</div>
+            <ArrowUpDown />
+          </Button>
+        );
+      },
       cell: ({ row }) => {
-        return <div>{formatDate(row.original.updatedAt)}</div>;
+        return <div className="ml-3">{formatDate(row.original.updatedAt)}</div>;
       },
     },
     // status column
     {
       accessorKey: "status",
-      header: "Status",
+      header: <div className="font-semibold">Status</div>,
       cell: ({ row }) => {
         const status = row.getValue("status") || "active";
         const isActive = status === "active";
@@ -512,7 +546,7 @@ export default function ArchiveTable() {
     // actions column
     {
       id: "actions",
-      header: "Actions",
+      header: <div className="font-semibold">Actions</div>,
       enableHiding: false,
       cell: ({ row }) => {
         const user = row.original;
@@ -832,7 +866,7 @@ export default function ArchiveTable() {
             {/* search icon */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search archived users..."
+              placeholder="Search users..."
               value={globalFilter ?? ""}
               onChange={(event) => {
                 const value = event.target.value;
@@ -857,7 +891,7 @@ export default function ArchiveTable() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button className="cursor-pointer">
-                <UserRoundSearch /> Filter By Role <ChevronDown />
+                <UserRoundSearch /> Filter by Role <ChevronDown />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { db } from "@/api/firebase";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,8 @@ import {
   X,
   Archive,
   UsersRound,
+  Layers,
+  GraduationCap,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -93,7 +95,6 @@ import AddStudentModal from "@/components/AdminComponents/AddStudentModal";
 import AddUserBulkUpload from "@/components/AdminComponents/AddUserBulkUpload";
 import FaceRecognition from "@/components/AdminComponents/FaceRecognition";
 
-// Action handlers
 const handleCopyStudentNumber = (studentNumber) => {
   if (!studentNumber) {
     toast.error("Student Number not found");
@@ -125,6 +126,25 @@ const searchGlobalFilter = (row, columnId, filterValue) => {
   );
 };
 
+const generateCourseAbbreviation = (courseName) => {
+  if (!courseName) return "N/A";
+
+  if (courseName.toLowerCase().includes("bachelor")) {
+    const words = courseName.split(" ");
+    let abbreviation = "";
+    const excludedWords = ["of", "in", "and", "the"];
+
+    for (const word of words) {
+      if (excludedWords.includes(word.toLowerCase()) || word.length <= 2)
+        continue;
+      abbreviation += word[0].toUpperCase();
+    }
+    return abbreviation;
+  }
+
+  return courseName;
+};
+  
 const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   {
     id: "select",
@@ -155,10 +175,10 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   {
     id: "Student No.",
     accessorKey: "studentNumber",
-    header: "Student No.",
+    header: <div className="ml-3 font-semibold">Student No.</div>,
     cell: ({ row }) => {
       const studentNo = row.original.studentNumber;
-      return <div className="capitalize">{studentNo || "N/A"}</div>;
+      return <div className="capitalize ml-3 font-semibold">{studentNo || "N/A"}</div>;
     },
   },
 
@@ -166,7 +186,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   {
     id: "Photo",
     accessorKey: "photoURL",
-    header: "Photo",
+    header: <div className="font-semibold">Photo</div>,
     cell: ({ row }) => {
       const photoURL = row.original.photoURL;
       const firstName = row.original.firstName || "";
@@ -192,7 +212,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="mr-12"
         >
-          Name
+          <div className="font-semibold">Name</div>
           <ArrowUpDown />
         </Button>
       );
@@ -201,7 +221,9 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
       const firstName = row.original.firstName || "";
       const lastName = row.original.lastName || "";
       const fullName = `${firstName} ${lastName}`.trim();
-      return <div className="ml-3 capitalize">{fullName || "N/A"}</div>;
+      return (
+        <div className="ml-3 capitalize">{fullName || "N/A"}</div>
+      );
     },
   },
 
@@ -214,7 +236,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          <div className="font-semibold">Email</div>
           <ArrowUpDown />
         </Button>
       );
@@ -225,11 +247,50 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
     ),
   },
 
+  // course column
+  {
+    id: "Course",
+    accessorKey: "courseName",
+    header: <div className="font-semibold">Course</div>,
+    filterFn: "arrIncludesSome",
+    cell: ({ row }) => {
+      const fullCourseName = row.original.courseName;
+      const abbreviation = generateCourseAbbreviation(fullCourseName);
+
+      return <div className="uppercase">{abbreviation}</div>;
+    },
+  },
+
+  // year level column
+  {
+    id: "Year Level",
+    accessorKey: "yearLevelName",
+    header: <div className="font-semibold">Year Level</div>,
+    filterFn: "arrIncludesSome",
+  },
+  // section column
+  {
+    id: "Section",
+    accessorKey: "sectionName",
+    header: <div className="font-semibold">Section</div>,
+    filterFn: "arrIncludesSome",
+  },
+
   // date created
   {
     id: "Date Created",
     accessorKey: "createdAt",
-    header: "Date Created",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Date Created</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.createdAt;
       if (!timestamp) return <div>-</div>;
@@ -245,7 +306,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
           return <div>Invalid Date</div>;
         }
 
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -256,7 +317,17 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   {
     id: "Last Updated",
     accessorKey: "updatedAt",
-    header: "Last Updated",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          <div className="font-semibold">Last Updated</div>
+          <ArrowUpDown />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const timestamp = row.original.updatedAt;
       if (!timestamp) return <div>-</div>;
@@ -272,7 +343,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
           return <div>Invalid Date</div>;
         }
 
-        return <div>{format(date, "MMMM do, yyyy")}</div>;
+        return <div className="ml-3">{format(date, "MMMM do, yyyy")}</div>;
       } catch (error) {
         return <div>Invalid Date</div>;
       }
@@ -282,7 +353,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   // status column
   {
     accessorKey: "status",
-    header: "Status",
+    header: <div className="font-semibold">Status</div>,
     cell: ({ row }) => {
       const status = row.getValue("status") || "active";
       const isActive = status === "active";
@@ -302,7 +373,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
   // actions column
   {
     id: "actions",
-    header: "Actions",
+    header: <div className="font-semibold">Actions</div>,
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original;
@@ -396,6 +467,7 @@ const createColumns = (handleArchiveUser, handleViewStudentProfile) => [
 
 export const pagination = {};
 
+
 export default function StudentsTable() {
   const [users, setUsers] = useState([]);
   const [sorting, setSorting] = useState([]);
@@ -409,6 +481,44 @@ export default function StudentsTable() {
   const [activeSession, setActiveSession] = useState(null);
   const [showFaceDialog, setShowFaceDialog] = useState(false);
   const [newUserInfo, setNewUserInfo] = useState(null);
+  const [courseFilter, setCourseFilter] = useState([]);
+  const [yearLevelFilter, setYearLevelFilter] = useState([]);
+  const [sectionFilter, setSectionFilter] = useState([]);
+
+  // resets the Year Level & Section filters when the Course filter changes
+  useEffect(() => {
+    setYearLevelFilter([]);
+    setSectionFilter([]);
+  }, [courseFilter]);
+
+  // resets the Section filter when the Year Level filter changes
+  useEffect(() => {
+    setSectionFilter([]);
+  }, [yearLevelFilter]);
+
+  useEffect(() => {
+    const newColumnFilters = [];
+
+    if (courseFilter.length > 0) {
+      newColumnFilters.push({
+        id: "Course",
+        value: courseFilter,
+      });
+    }
+    if (yearLevelFilter.length > 0) {
+      newColumnFilters.push({
+        id: "Year Level",
+        value: yearLevelFilter,
+      });
+    }
+    if (sectionFilter.length > 0) {
+      newColumnFilters.push({
+        id: "Section",
+        value: sectionFilter,
+      });
+    }
+    setColumnFilters(newColumnFilters);
+  }, [courseFilter, yearLevelFilter, sectionFilter]);
 
   // navigate to student profile
   const navigate = useNavigate();
@@ -494,8 +604,6 @@ export default function StudentsTable() {
       setLoading(true);
       const hasActiveSession = await fetchActiveSession();
 
-      // if we have an active session, fetchdepartments will be triggered by its own useeffect
-      // if not, we should set loading to false here
       if (!hasActiveSession) {
         setLoading(false);
       }
@@ -649,6 +757,35 @@ export default function StudentsTable() {
     }
   };
 
+  // course, year level, & section
+  const filterOptions = useMemo(() => {
+    const courses = Array.from(
+      new Set(users.map((user) => user.courseName).filter(Boolean))
+    ).sort();
+
+    const usersForYearLevel =
+      courseFilter.length > 0
+        ? users.filter((user) => courseFilter.includes(user.courseName))
+        : users;
+
+    const yearLevels = Array.from(
+      new Set(usersForYearLevel.map((user) => user.yearLevelName).filter(Boolean))
+    ).sort();
+
+    const usersForSection =
+      yearLevelFilter.length > 0
+        ? usersForYearLevel.filter((user) =>
+            yearLevelFilter.includes(user.yearLevelName)
+          )
+        : usersForYearLevel;
+
+    const sections = Array.from(
+      new Set(usersForSection.map((user) => user.sectionName).filter(Boolean))
+    ).sort();
+
+    return { courses, yearLevels, sections };
+  }, [users, courseFilter, yearLevelFilter]);
+
   const columns = createColumns(handleArchiveUser, handleViewStudentProfile);
   const table = useReactTable({
     data: users,
@@ -663,6 +800,13 @@ export default function StudentsTable() {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
+    filterFns: {
+      arrIncludesSome: (row, columnId, filterValue) => {
+        if (!filterValue || filterValue.length === 0) return true;
+        const rowValue = row.getValue(columnId);
+        return rowValue && filterValue.includes(rowValue);
+      },
+    },
     state: {
       sorting,
       columnFilters,
@@ -820,7 +964,7 @@ export default function StudentsTable() {
               variant="ghost"
               size="sm"
               onClick={() => table.resetRowSelection()}
-              className="text-amber-600 hover:text-amber-800 cursor-pointer" 
+              className="text-amber-600 hover:text-amber-800 cursor-pointer"
             >
               <X />
               Clear selection
@@ -870,6 +1014,125 @@ export default function StudentsTable() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Filter by Course */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="w-full sm:w-auto cursor-pointer">
+                  <GraduationCap /> Filter by Course <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {filterOptions.courses.map((course) => (
+                  <DropdownMenuCheckboxItem
+                    key={course}
+                    checked={courseFilter.includes(course)}
+                    onCheckedChange={(checked) => {
+                      const newFilter = checked
+                        ? [...courseFilter, course]
+                        : courseFilter.filter((c) => c !== course);
+                      setCourseFilter(newFilter);
+                    }}
+                  >
+                    {course}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {courseFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Button
+                      variant="ghost"
+                      className="w-full text-sm text-destructive h-8"
+                      onClick={() => setCourseFilter([])}
+                    >
+                      Clear Filter
+                    </Button>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter by Year Level */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="w-full sm:w-auto cursor-pointer"
+                  disabled={filterOptions.yearLevels.length === 0}
+                >
+                  <Layers /> Filter by Year <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {filterOptions.yearLevels.map((year) => (
+                  <DropdownMenuCheckboxItem
+                    key={year}
+                    checked={yearLevelFilter.includes(year)}
+                    onCheckedChange={(checked) => {
+                      const newFilter = checked
+                        ? [...yearLevelFilter, year]
+                        : yearLevelFilter.filter((y) => y !== year);
+                      setYearLevelFilter(newFilter);
+                    }}
+                  >
+                    {year}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {yearLevelFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Button
+                      variant="ghost"
+                      className="w-full text-sm text-destructive h-8"
+                      onClick={() => setYearLevelFilter([])}
+                    >
+                      Clear Filter
+                    </Button>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter by Section */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="w-full sm:w-auto cursor-pointer"
+                  disabled={filterOptions.sections.length === 0}
+                >
+                  <UsersRound /> Filter by Section <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {filterOptions.sections.map((section) => (
+                  <DropdownMenuCheckboxItem
+                    key={section}
+                    checked={sectionFilter.includes(section)}
+                    onCheckedChange={(checked) => {
+                      const newFilter = checked
+                        ? [...sectionFilter, section]
+                        : sectionFilter.filter((s) => s !== section);
+                      setSectionFilter(newFilter);
+                    }}
+                  >
+                    {section}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {sectionFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <Button
+                      variant="ghost"
+                      className="w-full text-sm text-destructive h-8"
+                      onClick={() => setSectionFilter([])}
+                    >
+                      Clear Filter
+                    </Button>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* flter columns */}
