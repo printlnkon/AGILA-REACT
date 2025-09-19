@@ -74,7 +74,7 @@ export default function AddSemesterModal({
         (sem) => sem.semesterName === formData.semesterName
       )
     ) {
-      toast.error("This semester already exists in this academic year.");
+      toast.error("This semester already exists in this school year.");
       return;
     }
 
@@ -101,10 +101,10 @@ export default function AddSemesterModal({
             {activeAcadYear ? (
               <strong>{activeAcadYear.acadYear}.</strong>
             ) : (
-              "the active academic year"
+              "the active school year"
             )}{" "}
-            All fields marked with <span className="text-destructive">*</span> are
-            required.
+            All fields marked with <span className="text-destructive">*</span>{" "}
+            are required.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
@@ -154,11 +154,14 @@ export default function AddSemesterModal({
                 <Calendar
                   mode="single"
                   selected={formData.startDate}
+                  month={formData.startDate}
                   onSelect={(date) => {
                     setFormData((prev) => ({ ...prev, startDate: date }));
                     setIsStartDatePickerOpen(false);
                   }}
                   captionLayout="dropdown"
+                  fromYear={new Date().getFullYear() - 1}
+                  toYear={new Date().getFullYear() + 10}
                   className="text-primary"
                   initialFocus
                 />
@@ -193,11 +196,14 @@ export default function AddSemesterModal({
                 <Calendar
                   mode="single"
                   selected={formData.endDate}
+                  month={formData.endDate}
                   onSelect={(date) => {
                     setFormData((prev) => ({ ...prev, endDate: date }));
                     setIsEndDatePickerOpen(false);
                   }}
                   captionLayout="dropdown"
+                  fromYear={new Date().getFullYear() - 1}
+                  toYear={new Date().getFullYear() + 10}
                   className="text-primary"
                   initialFocus
                 />
