@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationFirst,
+  PaginationLast,
+} from "@/components/ui/pagination";
 import { useActiveSession } from "@/context/ActiveSessionContext";
 import AddSubjectModal from "@/components/AdminComponents/AddSubjectModal";
 import SubjectCard from "@/components/AdminComponents/SubjectCard";
@@ -35,6 +45,8 @@ export default function SubjectTable() {
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedYearLevelId, setSelectedYearLevelId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [subjectsPerPage, setSubjectsPerPage] = useState(6);
 
   // Effect to get departments for the active session
   useEffect(() => {
@@ -63,6 +75,7 @@ export default function SubjectTable() {
     if (!selectedDeptId || !activeSession || !activeSession.semesterId) {
       setCourses([]);
       setSelectedCourseId("");
+      setCurrentPage(1);
       return;
     }
     const coursePath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDeptId}/courses`;
@@ -77,6 +90,7 @@ export default function SubjectTable() {
     if (!selectedCourseId || !activeSession || !activeSession.semesterId) {
       setYearLevels([]);
       setSelectedYearLevelId("");
+      setCurrentPage(1);
       return;
     }
     const yearLevelPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDeptId}/courses/${selectedCourseId}/year_levels`;
@@ -100,6 +114,7 @@ export default function SubjectTable() {
       setLoading(false);
       return;
     }
+    setCurrentPage(1);
     setLoading(true);
     const subjectPath = `academic_years/${activeSession.id}/semesters/${activeSession.semesterId}/departments/${selectedDeptId}/courses/${selectedCourseId}/year_levels/${selectedYearLevelId}/subjects`;
 
@@ -292,42 +307,28 @@ export default function SubjectTable() {
         <>
           <div className="flex flex-col gap-4">
             <div>
-              {(() => {
-                const selectedDept = departments.find(
-                  (d) => d.id === selectedDeptId
-                );
-                const selectedCourse = courses.find(
-                  (c) => c.id === selectedCourseId
-                );
-                const selectedYearLevel = yearLevels.find(
-                  (yl) => yl.id === selectedYearLevelId
-                );
-
-                return (
-                  <AddSubjectModal
-                    isOpen={addDialogOpen}
-                    onOpenChange={setAddDialogOpen}
-                    onSubjectAdded={(newSubject) =>
-                      setSubjects([...subjects, newSubject])
-                    }
-                    session={{
-                      ...activeSession,
-                      selectedDeptId,
-                      selectedCourseId,
-                      selectedYearLevelId,
-                      selectedDeptName: selectedDept
-                        ? selectedDept.departmentName
-                        : null,
-                      selectedCourseName: selectedCourse
-                        ? selectedCourse.courseName
-                        : null,
-                      selectedYearLevelName: selectedYearLevel
-                        ? selectedYearLevel.yearLevelName
-                        : null,
-                    }}
-                  />
-                );
-              })()}
+              <AddSubjectModal
+                isOpen={addDialogOpen}
+                onOpenChange={setAddDialogOpen}
+                onSubjectAdded={(newSubject) =>
+                  setSubjects([...subjects, newSubject])
+                }
+                session={{
+                  ...activeSession,
+                  selectedDeptId,
+                  selectedCourseId,
+                  selectedYearLevelId,
+                  selectedDeptName:
+                    departments.find((d) => d.id === selectedDeptId)
+                      ?.departmentName || null,
+                  selectedCourseName:
+                    courses.find((c) => c.id === selectedCourseId)
+                      ?.courseName || null,
+                  selectedYearLevelName:
+                    yearLevels.find((yl) => yl.id === selectedYearLevelId)
+                      ?.yearLevelName || null,
+                }}
+              />
             </div>
             {/* department, year level, and course filters */}
             <Card>
@@ -432,19 +433,151 @@ export default function SubjectTable() {
             </Card>
           </div>
 
+          {/* displays subject card with pagination */}
           <div>
             {selectedYearLevelId ? (
               subjects.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {subjects.map((subject) => (
-                    <SubjectCard
-                      key={subject.id}
-                      subject={subject}
-                      onSubjectUpdated={handleSubjectUpdated}
-                      onSubjectDeleted={handleSubjectDeleted}
-                    />
-                  ))}
-                </div>
+                <>
+                  {(() => {
+                    const totalPages = Math.ceil(
+                      subjects.length / subjectsPerPage
+                    );
+                    const indexOfLastSubject = currentPage * subjectsPerPage;
+                    const indexOfFirstSubject =
+                      indexOfLastSubject - subjectsPerPage;
+                    const currentSubjects = subjects.slice(
+                      indexOfFirstSubject,
+                      indexOfLastSubject
+                    );
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {currentSubjects.map((subject) => (
+                            <SubjectCard
+                              key={subject.id}
+                              subject={subject}
+                              onSubjectUpdated={handleSubjectUpdated}
+                              onSubjectDeleted={handleSubjectDeleted}
+                            />
+                          ))}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+                          {/* showing 1 of x subjects */}
+                          <div className="text-sm text-muted-foreground">
+                            Showing{" "}
+                            {Math.min(indexOfLastSubject, subjects.length)} of{" "}
+                            {subjects.length} subjects.
+                          </div>
+                          <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
+                            {/* subjects per page selector */}
+                            <div className="flex items-center gap-2">
+                              <Label className="text-sm font-medium whitespace-nowrap">
+                                Subjects per page
+                              </Label>
+                              <Select
+                                value={`${subjectsPerPage}`}
+                                onValueChange={(value) => {
+                                  setSubjectsPerPage(Number(value));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 w-16 cursor-pointer">
+                                  <SelectValue placeholder={subjectsPerPage} />
+                                </SelectTrigger>
+                                <SelectContent side="top">
+                                  {[6, 9, 12, 15, 18].map((pageSize) => (
+                                    <SelectItem
+                                      key={pageSize}
+                                      value={`${pageSize}`}
+                                    >
+                                      {pageSize}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* pagination */}
+                            <Pagination className="flex items-center">
+                              <PaginationContent className="flex flex-wrap justify-center gap-1">
+                                {/* pagination buttons on left */}
+                                <PaginationItem>
+                                  <PaginationFirst
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className={
+                                      currentPage === 1
+                                        ? "pointer-events-none opacity-50"
+                                        : "cursor-pointer h-8 w-8 p-0"
+                                    }
+                                  />
+                                </PaginationItem>
+                                <PaginationItem>
+                                  <PaginationPrevious
+                                    onClick={() =>
+                                      setCurrentPage((prev) =>
+                                        Math.max(prev - 1, 1)
+                                      )
+                                    }
+                                    disabled={currentPage === 1}
+                                    className={
+                                      currentPage === 1
+                                        ? "pointer-events-none opacity-50"
+                                        : "cursor-pointer h-8 w-8 p-0"
+                                    }
+                                  />
+                                </PaginationItem>
+
+                                {/* show ellipsis */}
+                                {currentPage > 2 && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+
+                                {/* show page numbers */}
+                                <PaginationItem>
+                                  <span className="text-sm font-medium mx-2 whitespace-nowrap">
+                                    Page {currentPage} of {totalPages}
+                                  </span>
+                                </PaginationItem>
+
+                                {/* pagination buttons on right */}
+                                <PaginationItem>
+                                  <PaginationNext
+                                    onClick={() =>
+                                      setCurrentPage((prev) =>
+                                        Math.min(prev + 1, totalPages)
+                                      )
+                                    }
+                                    disabled={currentPage === totalPages}
+                                    className={
+                                      currentPage === totalPages
+                                        ? "pointer-events-none opacity-50"
+                                        : "cursor-pointer h-8 w-8 p-0"
+                                    }
+                                  />
+                                </PaginationItem>
+                                <PaginationItem>
+                                  <PaginationLast
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    className={
+                                      currentPage === totalPages
+                                        ? "pointer-events-none opacity-50"
+                                        : "cursor-pointer h-8 w-8 p-0"
+                                    }
+                                  />
+                                </PaginationItem>
+                              </PaginationContent>
+                            </Pagination>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
               ) : (
                 <Card className="py-12">
                   <CardContent className="flex flex-col items-center justify-center space-y-2">

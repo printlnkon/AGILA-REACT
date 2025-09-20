@@ -17,11 +17,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Edit, Trash2, X, LoaderCircle, MoreHorizontal } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  X,
+  LoaderCircle,
+  MoreHorizontal,
+  BookText,
+  History,
+  Clock,
+  Check,
+  Eye,
+} from "lucide-react";
 import {
   Card,
   CardDescription,
   CardHeader,
+  CardFooter,
   CardTitle,
 } from "@/components/ui/card";
 import {
@@ -216,6 +228,139 @@ const sendProgramHeadNotification = async (subject, actionType) => {
   }
 };
 
+const StatusBadge = ({ status }) => {
+  const statusMap = {
+    Pending: {
+      color: "bg-orange-100 text-orange-800",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    Approved: {
+      color: "bg-green-100 text-green-800",
+      icon: <Check className="h-3 w-3" />,
+    },
+    Rejected: {
+      color: "bg-red-100 text-red-800",
+      icon: <X className="h-3 w-3" />,
+    },
+  };
+
+  const style = statusMap[status] || {
+    color: "bg-gray-100 text-gray-800",
+    icon: <Clock className="h-3 w-3" />,
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${style.color}`}
+    >
+      {style.icon}
+      <span className="ml-1">{status}</span>
+    </span>
+  );
+};
+
+const SubjectDetailModal = ({ subject, isOpen, onClose }) => {
+  if (!subject) return null;
+
+  const Field = ({ label, children }) => (
+    <div className="flex flex-col sm:flex-row sm:items-center">
+      <p className="w-full sm:w-1/3 text-sm text-muted-foreground">{label}</p>
+      <div className="w-full sm:w-2/3 font-medium">{children}</div>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>
+            {subject.subjectCode} - {subject.subjectName}
+          </DialogTitle>
+          <DialogDescription>
+            Detailed information for the subject.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[65vh] overflow-y-auto pr-4 space-y-6 py-2">
+          {/* Basic Info */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold border-b pb-2">
+              Basic Information
+            </h3>
+            <div className="space-y-2">
+              <Field label="Department">{subject.departmentName || "—"}</Field>
+              <Field label="Course">{subject.courseName || "—"}</Field>
+              <Field label="Year Level">{subject.yearLevelName || "—"}</Field>
+              <Field label="Units">{subject.units || "—"}</Field>
+              {subject.withLaboratory && (
+                <Field label="Laboratory">w/ Laboratory</Field>
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold border-b pb-2">Description</h3>
+            <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-md">
+              {subject.description || "No description provided."}
+            </p>
+          </div>
+
+          {/* Status & History */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold border-b pb-2">
+              Status Information
+            </h3>
+            {subject.statusHistory && subject.statusHistory.length > 0 ? (
+              <div className="pt-2">
+                <h4 className="font-medium flex items-center gap-2 mb-3">
+                  <History className="h-4 w-4" />
+                  Status History
+                </h4>
+                <div className="border-l-2 pl-6 relative space-y-6">
+                  {subject.statusHistory
+                    .slice() // Create a shallow copy to avoid modifying the original
+                    .sort(
+                      (a, b) => b.timestamp.toMillis() - a.timestamp.toMillis()
+                    ) // Sort by newest first
+                    .map((item, index) => (
+                      <div key={index} className="relative">
+                        <div className="absolute -left-[33px] top-1 h-3 w-3 bg-primary rounded-full border-2 border-background"></div>
+                        <p className="text-sm font-medium">
+                          <StatusBadge status={item.status} />
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {item.timestamp
+                              ? item.timestamp.toDate().toLocaleString()
+                              : "—"}
+                          </span>
+                        </p>
+                        {item.comment && (
+                          <p className="text-sm text-muted-foreground mt-2 border-l-2 pl-3 italic">
+                            "{item.comment}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <Field label="Current Status">
+                <StatusBadge status={subject.status} />
+              </Field>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="pt-4 border-t">
+          <Button variant="ghost" className="cursor-pointer" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default function SubjectCard({
   subject,
   onSubjectUpdated,
@@ -223,6 +368,7 @@ export default function SubjectCard({
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [actionType, setActionType] = useState(null);
   const [subjectFormData, setSubjectFormData] = useState({
@@ -427,7 +573,7 @@ export default function SubjectCard({
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
             <div>
-              <CardTitle className="text-lg sm:text-xl font-bold">
+              <CardTitle className="text-lg font-bold">
                 {subject.subjectCode} - {subject.subjectName}
               </CardTitle>
             </div>
@@ -496,7 +642,22 @@ export default function SubjectCard({
             <div>{subject.description}</div>
           </CardDescription>
         </CardHeader>
+        <CardFooter className="flex justify-between items-center border-t">
+          <Button
+            variant="ghost"
+            onClick={() => setDetailDialogOpen(true)}
+            className="cursor-pointer"
+          >
+            <Eye className="h-4 w-4" /> Details
+          </Button>
+        </CardFooter>
       </Card>
+
+      <SubjectDetailModal
+        subject={subject}
+        isOpen={detailDialogOpen}
+        onClose={() => setDetailDialogOpen(false)}
+      />
 
       {/* approval confirmation dialog */}
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
