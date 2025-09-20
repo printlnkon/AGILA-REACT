@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
   Loader2,
   Check,
@@ -60,6 +61,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationFirst,
+  PaginationLast,
+} from "@/components/ui/pagination";
 import { useProgramHeadProfile } from "@/context/ProgramHeadProfileContext";
 import SubjectApprovalCard from "@/components/ProgramHeadComponents/SubjectApprovalCard";
 
@@ -667,6 +678,10 @@ export default function SubjectApproval() {
     status: "Pending",
   });
 
+  // pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [subjectsPerPage, setSubjectsPerPage] = useState(6);
+
   // for filtering options
   const [availableYearLevels, setAvailableYearLevels] = useState([]);
 
@@ -816,6 +831,11 @@ export default function SubjectApproval() {
         );
       });
   }, [pendingSubjects, filters]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, subjectsPerPage]);
 
   // Toggle subject selection for batch actions
   const toggleSelectSubject = (subjectId) => {
@@ -1290,19 +1310,142 @@ export default function SubjectApproval() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-3">
-            {filteredSubjects.map((subject) => (
-              <SubjectApprovalCard
-                key={subject.id}
-                subject={subject}
-                isSelected={selectedSubjects.has(subject.id)}
-                onSelect={toggleSelectSubject}
-                onViewDetails={openDetailView}
-                onApprove={(s) => initiateAction(s, "Approved")}
-                onReject={(s) => initiateAction(s, "Rejected")}
-              />
-            ))}
-          </div>
+          (() => {
+            const totalPages = Math.ceil(
+              filteredSubjects.length / subjectsPerPage
+            );
+            const indexOfLastSubject = currentPage * subjectsPerPage;
+            const indexOfFirstSubject = indexOfLastSubject - subjectsPerPage;
+            const currentSubjects = filteredSubjects.slice(
+              indexOfFirstSubject,
+              indexOfLastSubject
+            );
+
+            return (
+              <>
+                <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 xl:grid-cols-3">
+                  {currentSubjects.map((subject) => (
+                    <SubjectApprovalCard
+                      key={subject.id}
+                      subject={subject}
+                      isSelected={selectedSubjects.has(subject.id)}
+                      onSelect={toggleSelectSubject}
+                      onViewDetails={openDetailView}
+                      onApprove={(s) => initiateAction(s, "Approved")}
+                      onReject={(s) => initiateAction(s, "Rejected")}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+                  {/* showing 1 of x subjects */}
+                  <div className="text-sm text-muted-foreground">
+                    Showing{" "}
+                    {Math.min(indexOfLastSubject, filteredSubjects.length)} of{" "}
+                    {filteredSubjects.length} subjects.
+                  </div>
+                  <div className="flex flex-col items-center sm:flex-row sm:justify-end gap-4">
+                    {/* subjects per page selector */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-medium whitespace-nowrap">
+                        Subjects per page
+                      </Label>
+                      <Select
+                        value={`${subjectsPerPage}`}
+                        onValueChange={(value) => {
+                          setSubjectsPerPage(Number(value));
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-16 cursor-pointer">
+                          <SelectValue placeholder={subjectsPerPage} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                          {[6, 9, 12, 15, 18].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                              {pageSize}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* pagination */}
+                    <Pagination className="flex items-center">
+                      <PaginationContent className="flex flex-wrap justify-center gap-1">
+                        {/* pagination buttons on left */}
+                        <PaginationItem>
+                          <PaginationFirst
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer h-8 w-8 p-0"
+                            }
+                          />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() =>
+                              setCurrentPage((prev) => Math.max(prev - 1, 1))
+                            }
+                            disabled={currentPage === 1}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer h-8 w-8 p-0"
+                            }
+                          />
+                        </PaginationItem>
+
+                        {/* show ellipsis */}
+                        {currentPage > 2 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+
+                        {/* show page numbers */}
+                        <PaginationItem>
+                          <span className="text-sm font-medium mx-2 whitespace-nowrap">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                        </PaginationItem>
+
+                        {/* pagination buttons on right */}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() =>
+                              setCurrentPage((prev) =>
+                                Math.min(prev + 1, totalPages)
+                              )
+                            }
+                            disabled={currentPage === totalPages}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer h-8 w-8 p-0"
+                            }
+                          />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationLast
+                            onClick={() => setCurrentPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer h-8 w-8 p-0"
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                </div>
+              </>
+            );
+          })()
         )}
       </div>
 
