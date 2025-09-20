@@ -1,5 +1,5 @@
 import { db } from "@/api/firebase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
+import DuplicateSubjectForm from "@/components/AdminComponents/DuplicateSubjectForm";
 
 const INITIAL_SUBJECT_DATA = {
   subjectCode: "",
@@ -101,14 +102,36 @@ export default function AddSubjectModal({
   const [subjectFormData, setSubjectFormData] = useState(INITIAL_SUBJECT_DATA);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isDuplicationComplete, setIsDuplicationComplete] = useState(false);
+  const [sourceSubject, setSourceSubject] = useState(null);
 
   // reset form
   useEffect(() => {
     if (!isOpen) {
       setSubjectFormData(INITIAL_SUBJECT_DATA);
       setFormErrors({});
+      setIsDuplicating(false);
+      setIsDuplicationComplete(false);
+      setSourceSubject(null);
     }
   }, [isOpen]);
+
+  const handleSubjectSelectedForDuplication = useCallback((subjectData) => {
+    setSubjectFormData({
+      subjectCode: subjectData.subjectCode,
+      subjectName: subjectData.subjectName,
+      description: subjectData.description || "",
+      units: subjectData.units.toString(),
+      withLaboratory: subjectData.withLaboratory || false,
+    });
+    setFormErrors({});
+    setSourceSubject(subjectData);
+  }, []);
+
+  const handleDuplicationCompletion = useCallback((isComplete) => {
+    setIsDuplicationComplete(isComplete);
+  }, []);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -157,6 +180,15 @@ export default function AddSubjectModal({
 
   const handleAddSubject = async (e) => {
     e.preventDefault();
+
+    if (isDuplicating && !isDuplicationComplete) {
+      toast.error("Please select a subject to duplicate", {
+        description:
+          "You must complete the duplication selection process before adding.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     const errors = validateForm(subjectFormData);
     if (Object.keys(errors).length > 0) {
@@ -184,10 +216,15 @@ export default function AddSubjectModal({
     }
 
     try {
+      const newStatus =
+        isDuplicating && sourceSubject?.status
+          ? sourceSubject.status
+          : "Pending";
+
       const subjectPath = `academic_years/${session.id}/semesters/${session.semesterId}/departments/${session.selectedDeptId}/courses/${session.selectedCourseId}/year_levels/${session.selectedYearLevelId}/subjects`;
       const newSubjectData = {
         ...subjectFormData,
-        status: "Pending",
+        status: newStatus,
         units: parseFloat(subjectFormData.units),
         withLaboratory: subjectFormData.withLaboratory || false,
         createdAt: serverTimestamp(),
@@ -210,7 +247,10 @@ export default function AddSubjectModal({
       const docRef = await addDoc(collection(db, subjectPath), newSubjectData);
       const newSubject = { ...newSubjectData, id: docRef.id };
 
-      await sendProgramHeadNotification(newSubject);
+      // send notification if the subject needs approval "Pending"
+      if (newStatus === "Pending") {
+        await sendProgramHeadNotification(newSubject);
+      }
 
       onSubjectAdded(newSubject);
       toast.success("Subject added successfully");
@@ -224,7 +264,7 @@ export default function AddSubjectModal({
     }
   };
 
-  const isDisabled = isSubmitting;
+  const isDisabled = isSubmitting || (isDuplicating && !isDuplicationComplete);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -246,8 +286,35 @@ export default function AddSubjectModal({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleAddSubject}>
+          <div className="space-y-2 border p-4 rounded-md">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isDuplicating"
+                checked={isDuplicating}
+                onCheckedChange={(checked) => {
+                  setIsDuplicating(checked);
+                  if (!checked) {
+                    setSubjectFormData(INITIAL_SUBJECT_DATA);
+                    setFormErrors({});
+                    setSourceSubject(null);
+                  }
+                }}
+              />
+              <Label htmlFor="isDuplicating" className="font-semibold">
+                Duplicate subject from another department/course
+              </Label>
+            </div>
+
+            {isDuplicating && (
+              <DuplicateSubjectForm
+                session={session}
+                onSubjectSelected={handleSubjectSelectedForDuplication}
+                onCompletionStateChange={handleDuplicationCompletion}
+              />
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* subject code */}
             <div className="space-y-1">
               <Label htmlFor="subjectCode">
                 Subject Code <span className="text-destructive">*</span>
@@ -258,11 +325,10 @@ export default function AddSubjectModal({
                 required
                 value={subjectFormData.subjectCode}
                 onChange={handleChange}
+                disabled={isDuplicating}
               />
               <FormError message={formErrors.subjectCode} />
             </div>
-
-            {/* subject name */}
             <div className="space-y-1">
               <Label htmlFor="subjectName">
                 Subject Name <span className="text-destructive">*</span>
@@ -273,13 +339,13 @@ export default function AddSubjectModal({
                 required
                 value={subjectFormData.subjectName}
                 onChange={handleChange}
+                disabled={isDuplicating}
               />
               <FormError message={formErrors.subjectName} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* units */}
             <div className="space-y-1">
               <Label htmlFor="units">
                 Units <span className="text-destructive">*</span>
@@ -287,6 +353,7 @@ export default function AddSubjectModal({
               <Select
                 value={subjectFormData.units}
                 onValueChange={handleSelectChange}
+                disabled={isDuplicating}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select unit value" />
@@ -300,7 +367,6 @@ export default function AddSubjectModal({
               </Select>
               <FormError message={formErrors.units} />
             </div>
-            {/* w/ laboratory checkbox */}
             <div className="space-y-1 flex items-center gap-2 mt-2">
               <Label htmlFor="withLaboratory">W/ Laboratory</Label>
               <Checkbox
@@ -312,10 +378,10 @@ export default function AddSubjectModal({
                     withLaboratory: checked,
                   }));
                 }}
+                disabled={isDuplicating}
               />
             </div>
           </div>
-          {/* description */}
           <div className="space-y-1">
             <Label htmlFor="description">Description</Label>
             <Input
@@ -323,6 +389,7 @@ export default function AddSubjectModal({
               placeholder="Enter a brief description of the subject"
               value={subjectFormData.description}
               onChange={handleChange}
+              disabled={isDuplicating}
             />
           </div>
 
@@ -332,7 +399,6 @@ export default function AddSubjectModal({
               variant="ghost"
               className="cursor-pointer"
               onClick={() => onOpenChange(false)}
-              disabled={isDisabled}
             >
               Cancel
             </Button>
